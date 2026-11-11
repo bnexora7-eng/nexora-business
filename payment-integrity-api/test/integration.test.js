@@ -6,7 +6,7 @@ import pg from "pg";
 import { signPayload } from "../src/screening.js";
 
 const enabled = process.env.RUN_INTEGRATION === "1";
-test("HTTP API persists events and rejects duplicates", { skip: !enabled, timeout: 30000 }, async (t) => {
+test("HTTP API persists minimized event data and rejects duplicates", { skip: !enabled, timeout: 30000 }, async (t) => {
   const { Pool } = pg;
   const pool = new Pool({ connectionString: process.env.DATABASE_URL });
   const port = 8081;
@@ -48,10 +48,29 @@ test("HTTP API persists events and rejects duplicates", { skip: !enabled, timeou
     });
   }
 
-  const unique = { provider_id: providerId, event_id: "evt-integration-001", amount: 125, currency: "EUR", status: "SUCCESS" };
+  const unique = {
+    provider_id: providerId,
+    event_id: "evt-integration-001",
+    amount: 125,
+    currency: "EUR",
+    status: "SUCCESS",
+    customer_email: "must-not-be-stored@example.invalid"
+  };
   const first = await submit(unique);
   assert.equal(first.status, 200);
   assert.equal((await first.json()).decision, "ACCEPT");
+
+  const stored = await pool.query(
+    "SELECT payload FROM screened_events WHERE provider_id=$1 AND event_id=$2",
+    [providerId, unique.event_id]
+  );
+  assert.deepEqual(stored.rows[0].payload, {
+    provider_id: providerId,
+    event_id: unique.event_id,
+    amount: 125,
+    currency: "EUR",
+    status: "SUCCESS"
+  }, "database payload must exclude arbitrary customer/provider metadata");
 
   const duplicate = await submit(unique);
   assert.equal(duplicate.status, 200);
