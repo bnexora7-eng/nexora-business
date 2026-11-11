@@ -14,7 +14,7 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   const providerId = "integration-provider";
   const child = spawn(process.execPath, ["src/server.js"], {
     cwd: process.cwd(),
-    env: { ...process.env, PORT: String(port), PROVIDER_SECRETS: JSON.stringify({ [providerId]: secret }) },
+    env: { ...process.env, PORT: String(port), PROVIDER_SECRETS: JSON.stringify({ [providerId]: secret }), ENABLE_PUBLIC_DEMO: "true", DEMO_ORIGIN: "https://bnexora7-eng.github.io" },
     stdio: "ignore"
   });
   t.after(async () => {
@@ -83,6 +83,32 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
 
   const badSignature = await submit({ ...unique, event_id: "evt-integration-003" }, true);
   assert.equal(badSignature.status, 401);
+
+  const demoEvent = { event_id: "evt-public-demo-001", amount: 40, currency: "EUR", status: "succeeded" };
+  const demoFirst = await fetch(`http://127.0.0.1:${port}/v1/demo/events`, {
+    method: "POST",
+    headers: { "content-type": "application/json", origin: "https://bnexora7-eng.github.io" },
+    body: JSON.stringify(demoEvent)
+  });
+  assert.equal(demoFirst.status, 200);
+  assert.equal(demoFirst.headers.get("access-control-allow-origin"), "https://bnexora7-eng.github.io");
+  assert.equal((await demoFirst.json()).decision, "ACCEPT");
+
+  const demoDuplicate = await fetch(`http://127.0.0.1:${port}/v1/demo/events`, {
+    method: "POST",
+    headers: { "content-type": "application/json", origin: "https://bnexora7-eng.github.io" },
+    body: JSON.stringify(demoEvent)
+  });
+  const demoDuplicateBody = await demoDuplicate.json();
+  assert.equal(demoDuplicateBody.decision, "REJECT");
+  assert.equal(demoDuplicateBody.duplicate, true);
+
+  const blockedOrigin = await fetch(`http://127.0.0.1:${port}/v1/demo/events`, {
+    method: "POST",
+    headers: { "content-type": "application/json", origin: "https://evil.example" },
+    body: JSON.stringify({ ...demoEvent, event_id: "evt-blocked-origin" })
+  });
+  assert.equal(blockedOrigin.status, 403);
 
   const counts = await pool.query(
     "SELECT COUNT(*)::int AS events FROM screened_events WHERE provider_id=$1 AND event_id IN ($2,$3)",
