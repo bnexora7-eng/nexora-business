@@ -59,3 +59,11 @@ Reward points have no monetary value. No paid entry, deposits, cash prizes or wi
 ## Project status
 
 **Interactive concept prototype — pre-production.** This repository is suitable for demonstrating the proposed user experience and discussing a scoped MVP. It should not be represented as a launched financial, payment or rewards service.
+
+
+
+## Payment Integrity API backend scaffold
+
+A separate pre-production backend scaffold now lives in [payment-integrity-api](payment-integrity-api/README.md). It includes a Node.js API, PostgreSQL schema, provider HMAC-SHA256 webhook authentication, five-minute replay protection, database-backed idempotency, a screening audit table, Docker Compose configuration and automated unit tests.
+
+The backend is not deployed and is not connected to the browser demo. It has not yet been validated against a running PostgreSQL instance or a real payment provider. Do not send real payment data or describe it as production-ready.
