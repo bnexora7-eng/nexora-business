@@ -11,11 +11,21 @@ const REVIEW_THRESHOLD = Number(process.env.REVIEW_THRESHOLD || 10000);
 const MAX_BODY_BYTES = 65536;
 const DEMO_ORIGIN = process.env.DEMO_ORIGIN || "https://bnexora7-eng.github.io";
 const demoRequests = new Map();
-if (!DATABASE_URL) throw new Error("DATABASE_URL is required");
-if (!Object.keys(PROVIDER_SECRETS).length && !ENABLE_PUBLIC_DEMO) throw new Error("PROVIDER_SECRETS must contain a provider secret when public demo is disabled");
-const pool = new Pool({ connectionString: DATABASE_URL, ssl: process.env.PGSSL === "true" ? { rejectUnauthorized: true } : undefined });
-await pool.query(await readFile(new URL("./schema.sql", import.meta.url), "utf8"));
-console.log("NEXORA database schema is ready");
+const demoEvents = new Map();
+let pool = null;
+
+// The public demo is deliberately self-contained and can run without PostgreSQL.
+// Authenticated provider webhooks still require DATABASE_URL and persistent storage.
+if (DATABASE_URL) {
+  pool = new Pool({ connectionString: DATABASE_URL, ssl: process.env.PGSSL === "true" ? { rejectUnauthorized: true } : undefined });
+  await pool.query(await readFile(new URL("./schema.sql", import.meta.url), "utf8"));
+  console.log("NEXORA database schema is ready");
+} else {
+  console.log("NEXORA running in demo-only mode; DATABASE_URL is not configured");
+}
+if (!Object.keys(PROVIDER_SECRETS).length && !ENABLE_PUBLIC_DEMO) {
+  throw new Error("Set PROVIDER_SECRETS or enable the public demo");
+}
 
 function send(res, status, body) {
   res.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
@@ -41,6 +51,7 @@ async function readBody(req) {
   return Buffer.concat(chunks);
 }
 async function persistEvent(event) {
+  if (!pool) return { unavailable: true };
   const result = screenEvent(event, { reviewThreshold: REVIEW_THRESHOLD });
   const client = await pool.connect();
   try {
@@ -67,6 +78,7 @@ async function persistEvent(event) {
   } finally { client.release(); }
 }
 async function handleEvent(req, res) {
+  if (!pool) return send(res, 503, { error: "Provider webhook endpoint requires DATABASE_URL; public demo remains available" });
   const rawBody = await readBody(req);
   let event;
   try { event = JSON.parse(rawBody.toString("utf8")); }
@@ -112,16 +124,24 @@ async function handleDemoEvent(req, res) {
       !/^[A-Z]{3}$/.test(currency) || !status) {
     return send(res, 422, { error: "event_id, positive amount, ISO currency and supported status are required" });
   }
-  const normalizedEvent = { provider_id: "demo-provider", event_id: eventId, amount, currency, status };
-  return send(res, 200, await persistEvent(normalizedEvent));
+  const event = { provider_id: "demo-provider", event_id: eventId, amount, currency, status };
+  const key = JSON.stringify([event.provider_id, event.event_id]);
+  if (demoEvents.has(key)) {
+    return send(res, 200, { decision: "REJECT", reason: "Duplicate provider + event identifier", duplicate: true,
+      reference: { provider_id: event.provider_id, event_id: event.event_id }, storage: "temporary-demo-memory" });
+  }
+  const result = screenEvent(event, { reviewThreshold: REVIEW_THRESHOLD });
+  demoEvents.set(key, result);
+  return send(res, 200, { ...result, duplicate: false,
+    reference: { provider_id: event.provider_id, event_id: event.event_id }, storage: "temporary-demo-memory" });
 }
 const server = createServer(async (req, res) => {
   try {
     cors(req, res);
     if (req.method === "OPTIONS") { res.writeHead(204); return res.end(); }
     if (req.method === "GET" && req.url === "/health") {
-      await pool.query("SELECT 1");
-      return send(res, 200, { status: "ok", service: "nexora-payment-integrity-api" });
+      if (pool) await pool.query("SELECT 1");
+      return send(res, 200, { status: "ok", service: "nexora-payment-integrity-api", mode: pool ? "database" : "demo-only" });
     }
     if (req.method === "POST" && req.url === "/v1/events") return await handleEvent(req, res);
     if (req.method === "POST" && req.url === "/v1/demo/events") return await handleDemoEvent(req, res);
@@ -133,7 +153,7 @@ const server = createServer(async (req, res) => {
 });
 server.listen(PORT, "0.0.0.0", () => console.log("NEXORA Payment Integrity API listening on port " + PORT));
 async function shutdown() {
-  server.close(async () => { await pool.end(); process.exit(0); });
+  server.close(async () => { if (pool) await pool.end(); process.exit(0); });
 }
 process.on("SIGTERM", shutdown);
 process.on("SIGINT", shutdown);
