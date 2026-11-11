@@ -61,7 +61,7 @@ button{border:0;border-radius:9px;background:var(--mint);color:#061923;font-weig
 <script>
 (function(){
 const $=id=>document.getElementById(id);const records=[];const seen=new Set();let accepted=0,flagged=0;
-const API_BASE_URL=String(window.NEXORA_API_BASE_URL||"").replace(/\\/$/,"");
+const API_BASE_URL=String(window.NEXORA_API_BASE_URL||"").replace(/\/+$/,"");
 function renderStats(){$('total').textContent=records.length;$('accepted').textContent=accepted;$('flagged').textContent=flagged}
 function evaluate(data){
 const key=data.provider+'::'+data.event;const reasons=[];let decision='ACCEPT';
