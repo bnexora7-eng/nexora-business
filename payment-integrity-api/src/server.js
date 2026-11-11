@@ -30,21 +30,24 @@ async function handleEvent(req, res) {
   try { event = JSON.parse(rawBody.toString("utf8")); }
   catch { return send(res, 400, { error: "Invalid JSON" }); }
   if (!event || typeof event !== "object" || Array.isArray(event)) return send(res, 422, { error: "Event must be a JSON object" });
-  const providerId = String(event.provider_id ?? "").trim();
-  const eventId = String(event.event_id ?? "").trim();
+  const providerId = typeof event.provider_id === "string" ? event.provider_id.trim() : "";
+  const eventId = typeof event.event_id === "string" ? event.event_id.trim() : "";
   const amount = Number(event.amount);
-  const currency = String(event.currency ?? "").trim().toUpperCase();
-  const status = String(event.status ?? "").trim().toUpperCase();
+  const currency = typeof event.currency === "string" ? event.currency.trim().toUpperCase() : "";
+  const status = typeof event.status === "string" ? event.status.trim().toUpperCase() : "";
   const secret = PROVIDER_SECRETS[providerId];
   if (!secret) return send(res, 401, { error: "Unknown provider" });
   const timestamp = req.headers["x-nexora-timestamp"];
   const signature = req.headers["x-nexora-signature"];
   if (!verifySignature({ rawBody, timestamp, signature, secret })) return send(res, 401, { error: "Invalid or expired webhook signature" });
-  if (!eventId || !Number.isFinite(amount) || amount <= 0 || !/^[A-Z]{3}$/.test(currency) || !status) {
-    return send(res, 422, { error: "event_id, positive amount, ISO currency code and status are required" });
+  if (!eventId || eventId.length > 256 || providerId.length > 128 ||
+      !Number.isFinite(amount) || amount <= 0 || !/^[A-Z]{3}$/.test(currency) || !status || status.length > 32) {
+    return send(res, 422, { error: "provider_id (max 128 chars), event_id (max 256 chars), positive amount, ISO currency code and status (max 32 chars) are required" });
   }
 
-  const result = screenEvent(event, { reviewThreshold: REVIEW_THRESHOLD });
+  // Persist only fields required for screening; discard arbitrary provider/customer metadata.
+  const normalizedEvent = { provider_id: providerId, event_id: eventId, amount, currency, status };
+  const result = screenEvent(normalizedEvent, { reviewThreshold: REVIEW_THRESHOLD });
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -52,7 +55,7 @@ async function handleEvent(req, res) {
       `INSERT INTO screened_events (provider_id,event_id,amount,currency,event_status,decision,reason,payload)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8::jsonb)
        ON CONFLICT (provider_id,event_id) DO NOTHING RETURNING id`,
-      [providerId, eventId, amount, currency, status, result.decision, result.reason, JSON.stringify(event)]
+      [providerId, eventId, amount, currency, status, result.decision, result.reason, JSON.stringify(normalizedEvent)]
     );
     const duplicate = inserted.rowCount === 0;
     const decision = duplicate ? "REJECT" : result.decision;
@@ -60,7 +63,7 @@ async function handleEvent(req, res) {
     await client.query(
       `INSERT INTO screening_audit (provider_id,event_id,decision,reason,is_duplicate,request_payload)
        VALUES ($1,$2,$3,$4,$5,$6::jsonb)`,
-      [providerId, eventId, decision, reason, duplicate, JSON.stringify(event)]
+      [providerId, eventId, decision, reason, duplicate, JSON.stringify(normalizedEvent)]
     );
     await client.query("COMMIT");
     return send(res, 200, { decision, reason, duplicate, reference: { provider_id: providerId, event_id: eventId } });
