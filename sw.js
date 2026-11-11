@@ -1,0 +1,48 @@
+const CACHE_NAME = "nexora-shell-v1";
+const BASE_URL = new URL("./", self.location).href;
+const APP_FILES = [
+  BASE_URL,
+  BASE_URL + "index.html",
+  BASE_URL + "manifest.webmanifest",
+  BASE_URL + "nexora-icon.svg"
+];
+
+self.addEventListener("install", event => {
+  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_FILES)));
+  self.skipWaiting();
+});
+
+self.addEventListener("activate", event => {
+  event.waitUntil(
+    caches.keys().then(keys =>
+      Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key)))
+    )
+  );
+  self.clients.claim();
+});
+
+self.addEventListener("fetch", event => {
+  const request = event.request;
+  if (request.method !== "GET" || new URL(request.url).origin !== self.location.origin) return;
+
+  if (request.mode === "navigate") {
+    event.respondWith(
+      fetch(request).then(response => {
+        const copy = response.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
+        return response;
+      }).catch(() => caches.match(request).then(cached => cached || caches.match(BASE_URL + "index.html")))
+    );
+    return;
+  }
+
+  event.respondWith(
+    fetch(request).then(response => {
+      if (response.ok) {
+        const copy = response.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
+      }
+      return response;
+    }).catch(() => caches.match(request))
+  );
+});
