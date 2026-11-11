@@ -54,7 +54,7 @@ button{border:0;border-radius:9px;background:var(--mint);color:#061923;font-weig
 <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><h2 style="margin:0">Session audit log</h2><button class="secondary" id="clear" type="button">Clear session log</button></div>
 <div class="tablewrap"><table><thead><tr><th>Time</th><th>Provider</th><th>Event</th><th>Amount</th><th>Decision</th><th>Reason</th></tr></thead><tbody id="log"><tr><td colspan="6" class="muted">No events evaluated yet.</td></tr></tbody></table></div>
 </section>
-<div class="notice"><b>Sandbox limitation:</b> when the API URL is configured, demo events are sent to the NEXORA sandbox API and stored in its PostgreSQL database. This public demo route is rate-limited and accepts simulated fields only. The signed provider webhook endpoint is separate. No bank or payment-provider integration, payment execution, regulatory certification or production fraud detection is provided.</div>
+<div class="notice"><b>Sandbox limitation:</b> on the Netlify-hosted demo, events are sent to the NEXORA sandbox API and held in temporary function memory. Demo state may reset when the function restarts; this is not persistent PostgreSQL storage. The route is rate-limited and accepts simulated fields only. The signed provider webhook endpoint is separate. No bank or payment-provider integration, payment execution, regulatory certification or production fraud detection is provided.</div>
 <div class="footer">NEXORA BUSINESS · Product concept and technical sandbox · Not a live financial service</div>
 </main>
 <script src="./config.js"></script>
