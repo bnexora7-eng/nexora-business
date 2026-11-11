@@ -48,17 +48,18 @@ export default async (request) => {
   try { input = JSON.parse(raw); } catch { return reply(400, { error: "Invalid JSON" }); }
   if (!input || typeof input !== "object" || Array.isArray(input)) return reply(422, { error: "Event must be a JSON object" });
 
+  const providerId = typeof input.provider_id === "string" ? input.provider_id.trim() : "demo-provider";
   const eventId = typeof input.event_id === "string" ? input.event_id.trim() : "";
   const amount = Number(input.amount);
   const currency = typeof input.currency === "string" ? input.currency.trim().toUpperCase() : "";
   const statusMap = { SUCCEEDED: "SUCCESS", SUCCESS: "SUCCESS", PENDING: "PENDING", FAILED: "FAILED" };
   const status = statusMap[String(input.status || "").trim().toUpperCase()];
-  if (!eventId || eventId.length > 256 || !Number.isFinite(amount) || amount <= 0 ||
+  if (!providerId || providerId.length > 80 || !eventId || eventId.length > 256 || !Number.isFinite(amount) || amount <= 0 ||
       !/^[A-Z]{3}$/.test(currency) || !status) {
     return reply(422, { error: "event_id, positive amount, ISO currency and supported status are required" });
   }
 
-  const event = { provider_id: "demo-provider", event_id: eventId, amount, currency, status };
+  const event = { provider_id: providerId, event_id: eventId, amount, currency, status };
   const key = JSON.stringify([event.provider_id, event.event_id]);
   if (events.has(key)) {
     return reply(200, { decision: "REJECT", reason: "Duplicate provider + event identifier", duplicate: true,
