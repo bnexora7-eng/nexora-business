@@ -7,7 +7,7 @@ const threshold = 10000;
 
 export default async (request) => {
   const origin = request.headers.get("origin") || "";
-  const allowedOrigin = siteOrigin(request);
+  const allowedOrigin = "https://bnexora7-eng.github.io";
   const headers = {
     "content-type": "application/json; charset=utf-8",
     "cache-control": "no-store",
