@@ -1,3 +1,3 @@
-// Netlify hosts the live serverless demo API on the same origin.
-// Keep GitHub Pages in local simulation mode until its API is separately configured.
-window.NEXORA_API_BASE_URL = window.location.hostname.endsWith("github.io") ? "" : window.location.origin;
+// Route the GitHub Pages demo to the deployed Netlify demo API.
+// The API is a sandbox only; it does not connect to live banks or move money.
+window.NEXORA_API_BASE_URL = "https://splendid-lokum-02523e.netlify.app";
