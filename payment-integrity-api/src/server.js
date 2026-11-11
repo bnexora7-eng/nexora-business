@@ -7,6 +7,9 @@ const DATABASE_URL = process.env.DATABASE_URL;
 const PROVIDER_SECRETS = JSON.parse(process.env.PROVIDER_SECRETS || "{}");
 const REVIEW_THRESHOLD = Number(process.env.REVIEW_THRESHOLD || 10000);
 const MAX_BODY_BYTES = 65536;
+const ENABLE_PUBLIC_DEMO = process.env.ENABLE_PUBLIC_DEMO === "true";
+const DEMO_ORIGIN = process.env.DEMO_ORIGIN || "https://bnexora7-eng.github.io";
+const demoRequests = new Map();
 if (!DATABASE_URL) throw new Error("DATABASE_URL is required");
 if (!Object.keys(PROVIDER_SECRETS).length) throw new Error("PROVIDER_SECRETS must contain a provider secret");
 const pool = new Pool({ connectionString: DATABASE_URL, ssl: process.env.PGSSL === "true" ? { rejectUnauthorized: true } : undefined });
@@ -14,6 +17,16 @@ const pool = new Pool({ connectionString: DATABASE_URL, ssl: process.env.PGSSL =
 function send(res, status, body) {
   res.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
   res.end(JSON.stringify(body));
+}
+function cors(req, res) {
+  const origin = req.headers.origin;
+  if (origin === DEMO_ORIGIN) {
+    res.setHeader("access-control-allow-origin", DEMO_ORIGIN);
+    res.setHeader("vary", "Origin");
+    res.setHeader("access-control-allow-methods", "GET, POST, OPTIONS");
+    res.setHeader("access-control-allow-headers", "content-type, x-nexora-timestamp, x-nexora-signature");
+    res.setHeader("access-control-max-age", "600");
+  }
 }
 async function readBody(req) {
   const chunks = []; let size = 0;
@@ -23,6 +36,32 @@ async function readBody(req) {
     chunks.push(chunk);
   }
   return Buffer.concat(chunks);
+}
+async function persistEvent(event) {
+  const result = screenEvent(event, { reviewThreshold: REVIEW_THRESHOLD });
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const inserted = await client.query(
+      `INSERT INTO screened_events (provider_id,event_id,amount,currency,event_status,decision,reason,payload)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8::jsonb)
+       ON CONFLICT (provider_id,event_id) DO NOTHING RETURNING id`,
+      [event.provider_id, event.event_id, event.amount, event.currency, event.status, result.decision, result.reason, JSON.stringify(event)]
+    );
+    const duplicate = inserted.rowCount === 0;
+    const decision = duplicate ? "REJECT" : result.decision;
+    const reason = duplicate ? "Duplicate provider + event identifier" : result.reason;
+    await client.query(
+      `INSERT INTO screening_audit (provider_id,event_id,decision,reason,is_duplicate,request_payload)
+       VALUES ($1,$2,$3,$4,$5,$6::jsonb)`,
+      [event.provider_id, event.event_id, decision, reason, duplicate, JSON.stringify(event)]
+    );
+    await client.query("COMMIT");
+    return { decision, reason, duplicate, reference: { provider_id: event.provider_id, event_id: event.event_id } };
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally { client.release(); }
 }
 async function handleEvent(req, res) {
   const rawBody = await readBody(req);
@@ -37,49 +76,52 @@ async function handleEvent(req, res) {
   const status = typeof event.status === "string" ? event.status.trim().toUpperCase() : "";
   const secret = PROVIDER_SECRETS[providerId];
   if (!secret) return send(res, 401, { error: "Unknown provider" });
-  const timestamp = req.headers["x-nexora-timestamp"];
-  const signature = req.headers["x-nexora-signature"];
-  if (!verifySignature({ rawBody, timestamp, signature, secret })) return send(res, 401, { error: "Invalid or expired webhook signature" });
+  if (!verifySignature({ rawBody, timestamp: req.headers["x-nexora-timestamp"], signature: req.headers["x-nexora-signature"], secret })) {
+    return send(res, 401, { error: "Invalid or expired webhook signature" });
+  }
   if (!eventId || eventId.length > 256 || providerId.length > 128 ||
       !Number.isFinite(amount) || amount <= 0 || !/^[A-Z]{3}$/.test(currency) || !status || status.length > 32) {
     return send(res, 422, { error: "provider_id (max 128 chars), event_id (max 256 chars), positive amount, ISO currency code and status (max 32 chars) are required" });
   }
-
-  // Persist only fields required for screening; discard arbitrary provider/customer metadata.
   const normalizedEvent = { provider_id: providerId, event_id: eventId, amount, currency, status };
-  const result = screenEvent(normalizedEvent, { reviewThreshold: REVIEW_THRESHOLD });
-  const client = await pool.connect();
-  try {
-    await client.query("BEGIN");
-    const inserted = await client.query(
-      `INSERT INTO screened_events (provider_id,event_id,amount,currency,event_status,decision,reason,payload)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8::jsonb)
-       ON CONFLICT (provider_id,event_id) DO NOTHING RETURNING id`,
-      [providerId, eventId, amount, currency, status, result.decision, result.reason, JSON.stringify(normalizedEvent)]
-    );
-    const duplicate = inserted.rowCount === 0;
-    const decision = duplicate ? "REJECT" : result.decision;
-    const reason = duplicate ? "Duplicate provider + event identifier" : result.reason;
-    await client.query(
-      `INSERT INTO screening_audit (provider_id,event_id,decision,reason,is_duplicate,request_payload)
-       VALUES ($1,$2,$3,$4,$5,$6::jsonb)`,
-      [providerId, eventId, decision, reason, duplicate, JSON.stringify(normalizedEvent)]
-    );
-    await client.query("COMMIT");
-    return send(res, 200, { decision, reason, duplicate, reference: { provider_id: providerId, event_id: eventId } });
-  } catch (error) {
-    await client.query("ROLLBACK");
-    console.error("screening transaction failed", error);
-    return send(res, 500, { error: "Screening could not be completed" });
-  } finally { client.release(); }
+  return send(res, 200, await persistEvent(normalizedEvent));
+}
+async function handleDemoEvent(req, res) {
+  if (!ENABLE_PUBLIC_DEMO) return send(res, 404, { error: "Demo endpoint disabled" });
+  if (req.headers.origin !== DEMO_ORIGIN) return send(res, 403, { error: "Origin not allowed" });
+  const ip = String(req.headers["x-forwarded-for"] || req.socket.remoteAddress || "unknown").split(",")[0].trim();
+  const now = Date.now();
+  const bucket = demoRequests.get(ip);
+  if (bucket && now - bucket.startedAt < 60000 && bucket.count >= 20) return send(res, 429, { error: "Demo rate limit exceeded; try again in one minute" });
+  if (!bucket || now - bucket.startedAt >= 60000) demoRequests.set(ip, { startedAt: now, count: 1 });
+  else bucket.count++;
+  const rawBody = await readBody(req);
+  let input;
+  try { input = JSON.parse(rawBody.toString("utf8")); }
+  catch { return send(res, 400, { error: "Invalid JSON" }); }
+  if (!input || typeof input !== "object" || Array.isArray(input)) return send(res, 422, { error: "Event must be a JSON object" });
+  const eventId = typeof input.event_id === "string" ? input.event_id.trim() : "";
+  const amount = Number(input.amount);
+  const currency = typeof input.currency === "string" ? input.currency.trim().toUpperCase() : "";
+  const statusMap = { SUCCEEDED: "SUCCESS", SUCCESS: "SUCCESS", PENDING: "PENDING", FAILED: "FAILED" };
+  const status = statusMap[String(input.status || "").trim().toUpperCase()];
+  if (!eventId || eventId.length > 256 || !Number.isFinite(amount) || amount <= 0 ||
+      !/^[A-Z]{3}$/.test(currency) || !status) {
+    return send(res, 422, { error: "event_id, positive amount, ISO currency and supported status are required" });
+  }
+  const normalizedEvent = { provider_id: "demo-provider", event_id: eventId, amount, currency, status };
+  return send(res, 200, await persistEvent(normalizedEvent));
 }
 const server = createServer(async (req, res) => {
   try {
+    cors(req, res);
+    if (req.method === "OPTIONS") { res.writeHead(204); return res.end(); }
     if (req.method === "GET" && req.url === "/health") {
       await pool.query("SELECT 1");
       return send(res, 200, { status: "ok", service: "nexora-payment-integrity-api" });
     }
     if (req.method === "POST" && req.url === "/v1/events") return await handleEvent(req, res);
+    if (req.method === "POST" && req.url === "/v1/demo/events") return await handleDemoEvent(req, res);
     return send(res, 404, { error: "Not found" });
   } catch (error) {
     console.error("request failed", error);
