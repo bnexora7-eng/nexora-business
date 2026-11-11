@@ -1,5 +1,6 @@
 import { createServer } from "node:http";
 import pg from "pg";
+import { readFile } from "node:fs/promises";
 import { screenEvent, verifySignature } from "./screening.js";
 const { Pool } = pg;
 const PORT = Number(process.env.PORT || 8080);
@@ -13,6 +14,8 @@ const demoRequests = new Map();
 if (!DATABASE_URL) throw new Error("DATABASE_URL is required");
 if (!Object.keys(PROVIDER_SECRETS).length) throw new Error("PROVIDER_SECRETS must contain a provider secret");
 const pool = new Pool({ connectionString: DATABASE_URL, ssl: process.env.PGSSL === "true" ? { rejectUnauthorized: true } : undefined });
+await pool.query(await readFile(new URL("./schema.sql", import.meta.url), "utf8"));
+console.log("NEXORA database schema is ready");
 
 function send(res, status, body) {
   res.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
