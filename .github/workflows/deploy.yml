@@ -19,6 +19,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Run screening unit tests
+        working-directory: payment-integrity-api
+        run: node --test
       - name: Configure Pages
         uses: actions/configure-pages@v5
         with:
@@ -39,3 +46,39 @@ jobs:
           grep -q "NEXORA Payment Integrity" /tmp/nexora-demo.html
           grep -q "Run server checks: ACCEPT / REVIEW / REJECT / DUPLICATE" /tmp/nexora-demo.html
           echo "Public demo URL returned the expected NEXORA demo page."
+      - name: Verify deployed API with real POST requests
+        env:
+          API_BASE_URL: https://splendid-lokum-02523e.netlify.app
+          DEMO_ORIGIN: https://bnexora7-eng.github.io
+        run: |
+          node --input-type=module <<'NODE'
+          const base = process.env.API_BASE_URL;
+          const headers = { "content-type": "application/json", origin: process.env.DEMO_ORIGIN };
+          const healthResponse = await fetch(base + "/v1/demo/events", { headers: { origin: process.env.DEMO_ORIGIN } });
+          const health = await healthResponse.json();
+          if (!healthResponse.ok || health.status !== "ok") throw new Error("API health check failed");
+          const id = "ci-" + process.env.GITHUB_RUN_ID + "-" + process.env.GITHUB_RUN_ATTEMPT;
+          async function post(eventId, status) {
+            const response = await fetch(base + "/v1/demo/events", {
+              method: "POST", headers,
+              body: JSON.stringify({ provider_id: "nexora-github-ci", event_id: eventId, amount: 25, currency: "EUR", status })
+            });
+            const body = await response.json();
+            if (!response.ok) throw new Error("POST " + response.status + ": " + JSON.stringify(body));
+            return body;
+          }
+          const checks = [];
+          const accepted = await post(id + "-accept", "succeeded");
+          checks.push(["ACCEPT", accepted.decision === "ACCEPT"]);
+          const review = await post(id + "-review", "pending");
+          checks.push(["REVIEW", review.decision === "REVIEW"]);
+          const rejected = await post(id + "-reject", "failed");
+          checks.push(["REJECT", rejected.decision === "REJECT"]);
+          const duplicateId = id + "-duplicate";
+          const first = await post(duplicateId, "succeeded");
+          const replay = await post(duplicateId, "succeeded");
+          checks.push(["DUPLICATE", first.decision === "ACCEPT" && replay.decision === "REJECT" && replay.duplicate === true]);
+          for (const [name, passed] of checks) console.log((passed ? "PASS " : "FAIL ") + name);
+          if (checks.some(([, passed]) => !passed)) throw new Error("One or more live API checks failed");
+          console.log("PASS API health: " + health.service + " " + health.version);
+          NODE
