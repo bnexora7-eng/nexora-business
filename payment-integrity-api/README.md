@@ -10,6 +10,8 @@ This pre-production API scaffold adds server-side screening, HMAC webhook authen
 - Rejects unknown providers, invalid signatures and timestamps outside a five-minute window.
 - Uses a database unique constraint on (provider_id, event_id) for idempotency.
 - Persists the first screening result and every authenticated attempt in separate tables.
+- Enforces a 64 KiB request-body limit and bounded provider, event and status identifiers.
+- Persists only the normalized screening fields (provider_id, event_id, amount, currency, status); arbitrary customer/provider metadata is discarded.
 
 ## Local run
 Requirements: Node.js 20+ and PostgreSQL 16+.
