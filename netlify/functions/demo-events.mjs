@@ -12,12 +12,24 @@ export default async (request) => {
     "content-type": "application/json; charset=utf-8",
     "cache-control": "no-store",
     "access-control-allow-origin": allowedOrigin,
-    "access-control-allow-methods": "POST, OPTIONS",
+    "access-control-allow-methods": "GET, POST, OPTIONS",
     "access-control-allow-headers": "content-type",
     "vary": "Origin"
   };
   const reply = (status, body) => new Response(JSON.stringify(body), { status, headers });
-  if (origin !== allowedOrigin) return reply(403, { error: "Origin not allowed" });
+
+  // A browser-openable health check confirms the deployed function is running.
+  if (request.method === "GET") {
+    return reply(200, {
+      status: "ok",
+      service: "NEXORA Payment Integrity Demo API",
+      version: "0.1.0",
+      storage: "temporary-demo-memory",
+      supported_methods: ["GET", "POST", "OPTIONS"]
+    });
+  }
+
+  if (origin && origin !== allowedOrigin) return reply(403, { error: "Origin not allowed" });
   if (request.method === "OPTIONS") return new Response(null, { status: 204, headers });
   if (request.method !== "POST") return reply(405, { error: "Method not allowed" });
 
