@@ -54,12 +54,14 @@ button{border:0;border-radius:9px;background:var(--mint);color:#061923;font-weig
 <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><h2 style="margin:0">Session audit log</h2><button class="secondary" id="clear" type="button">Clear session log</button></div>
 <div class="tablewrap"><table><thead><tr><th>Time</th><th>Provider</th><th>Event</th><th>Amount</th><th>Decision</th><th>Reason</th></tr></thead><tbody id="log"><tr><td colspan="6" class="muted">No events evaluated yet.</td></tr></tbody></table></div>
 </section>
-<div class="notice"><b>Prototype limitation:</b> this is a browser-only demonstration. Data stays in this page session and is not sent to a server. No authentication, webhook signature verification, persistent database, provider integration, payment execution, regulatory certification or production security is implemented.</div>
+<div class="notice"><b>Sandbox limitation:</b> when the API URL is configured, demo events are sent to the NEXORA sandbox API and stored in its PostgreSQL database. This public demo route is rate-limited and accepts simulated fields only. The signed provider webhook endpoint is separate. No bank or payment-provider integration, payment execution, regulatory certification or production fraud detection is provided.</div>
 <div class="footer">NEXORA BUSINESS · Product concept and technical sandbox · Not a live financial service</div>
 </main>
+<script src="./config.js"></script>
 <script>
 (function(){
 const $=id=>document.getElementById(id);const records=[];const seen=new Set();let accepted=0,flagged=0;
+const API_BASE_URL=String(window.NEXORA_API_BASE_URL||"").replace(/\\/$/,"");
 function renderStats(){$('total').textContent=records.length;$('accepted').textContent=accepted;$('flagged').textContent=flagged}
 function evaluate(data){
 const key=data.provider+'::'+data.event;const reasons=[];let decision='ACCEPT';
@@ -78,7 +80,20 @@ if(decision==='ACCEPT')accepted++;else flagged++;renderStats();renderLog();showR
 function showResult(row,reasons){$('result').innerHTML='<div class="muted">DECISION OUTPUT</div><div class="decision '+row.decision.toLowerCase()+'">'+row.decision+'</div><ul class="checks">'+reasons.map(x=>'<li>'+escapeHtml(x)+'</li>').join('')+'</ul><div class="muted">Demo reference: '+escapeHtml(row.provider)+' / '+escapeHtml(row.event)+'</div>'}
 function renderLog(){$('log').innerHTML=records.length?records.map(r=>'<tr><td>'+escapeHtml(r.time)+'</td><td>'+escapeHtml(r.provider)+'</td><td>'+escapeHtml(r.event)+'</td><td>'+r.amount.toFixed(2)+' '+escapeHtml(r.currency)+'</td><td class="'+r.decision.toLowerCase()+'">'+r.decision+'</td><td>'+escapeHtml(r.reason)+'</td></tr>').join(''):'<tr><td colspan="6" class="muted">No events evaluated yet.</td></tr>'}
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-$('eventForm').addEventListener('submit',e=>{e.preventDefault();evaluate({provider:$('provider').value.trim(),event:$('event').value.trim(),amount:Number($('amount').value),currency:$('currency').value,status:$('status').value})});
+$('eventForm').addEventListener('submit',async e=>{
+e.preventDefault();
+const data={provider:$('provider').value.trim(),event:$('event').value.trim(),amount:Number($('amount').value),currency:$('currency').value,status:$('status').value};
+if(!API_BASE_URL){evaluate(data);return}
+const button=$('eventForm').querySelector('button[type="submit"]');button.disabled=true;button.textContent='Sending to API…';
+try{
+const response=await fetch(API_BASE_URL+'/v1/demo/events',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({event_id:data.event,amount:data.amount,currency:data.currency,status:data.status})});
+const result=await response.json();
+if(!response.ok)throw new Error(result.error||'API request failed');
+const reasons=[result.reason];const row={time:new Date().toLocaleTimeString(),...data,provider:'demo-provider',decision:result.decision,reason:result.reason};
+records.unshift(row);if(row.decision==='ACCEPT')accepted++;else flagged++;renderStats();renderLog();showResult(row,reasons);
+}catch(error){$('result').innerHTML='<div class="muted">API ERROR</div><div class="decision reject">NOT PROCESSED</div><div class="muted">'+escapeHtml(error.message)+'</div>'}
+finally{button.disabled=false;button.textContent='Evaluate event'}
+});
 $('sample').addEventListener('click',()=>{$('provider').value='demo-provider';$('event').value='evt-review-950';$('amount').value='950';$('currency').value='EUR';$('status').value='pending'});
 $('clear').addEventListener('click',()=>{records.length=0;seen.clear();accepted=0;flagged=0;renderStats();renderLog();$('result').innerHTML='<div class="muted">DECISION OUTPUT</div><div class="muted">Session log cleared.</div>'});
 })();
