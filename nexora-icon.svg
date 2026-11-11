@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+<defs>
+ <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#102c48"/><stop offset="1" stop-color="#050d1a"/></linearGradient>
+ <linearGradient id="metal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#e6ffff"/><stop offset=".38" stop-color="#66e9d0"/><stop offset=".72" stop-color="#83aaff"/><stop offset="1" stop-color="#d8e7ff"/></linearGradient>
+ <linearGradient id="ring" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#62e6c5"/><stop offset=".55" stop-color="#5b8fff"/><stop offset="1" stop-color="#b18cff"/></linearGradient>
+ <radialGradient id="glow"><stop stop-color="#5edfc9" stop-opacity=".32"/><stop offset="1" stop-color="#5edfc9" stop-opacity="0"/></radialGradient>
+</defs>
+<rect width="512" height="512" rx="112" fill="url(#bg)"/>
+<circle cx="256" cy="248" r="205" fill="url(#glow)"/>
+<circle cx="256" cy="246" r="158" fill="none" stroke="#5483b0" stroke-opacity=".28" stroke-width="2"/>
+<ellipse cx="256" cy="246" rx="158" ry="68" fill="none" stroke="#62e6c5" stroke-opacity=".42" stroke-width="3" transform="rotate(-28 256 246)"/>
+<ellipse cx="256" cy="246" rx="158" ry="68" fill="none" stroke="#8b9cff" stroke-opacity=".5" stroke-width="3" transform="rotate(48 256 246)"/>
+<path d="M145 120 L250 354 L367 120" fill="none" stroke="url(#metal)" stroke-width="42" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M145 120 L250 354 L367 120" fill="none" stroke="#ffffff" stroke-opacity=".35" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="145" cy="120" r="9" fill="#b8fff1"/><circle cx="367" cy="120" r="9" fill="#a9baff"/>
+<circle cx="250" cy="354" r="8" fill="#b8fff1"/>
+<path d="M108 395 Q256 430 404 395" fill="none" stroke="url(#ring)" stroke-width="5" stroke-linecap="round" opacity=".85"/>
+<text x="256" y="448" text-anchor="middle" fill="#eff8ff" font-family="Arial,sans-serif" font-size="35" font-weight="800" letter-spacing="9">NEXORA</text>
+</svg>
