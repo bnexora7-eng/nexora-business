@@ -1,0 +1,70 @@
+openapi: 3.1.0
+info:
+  title: NEXORA Payment Integrity API
+  version: 0.1.0
+  description: Pre-production API scaffold for authenticated synthetic payment-event screening. Not a production payment service.
+servers:
+  - url: http://localhost:8080
+paths:
+  /health:
+    get:
+      summary: Check API and PostgreSQL connectivity
+      responses:
+        "200":
+          description: Service and database are reachable
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, const: ok }
+                  service: { type: string }
+  /v1/events:
+    post:
+      summary: Authenticate and screen a provider event
+      description: The request body must be signed as HMAC-SHA256(timestamp + "." + exact raw request bytes). Timestamp tolerance is five minutes.
+      parameters:
+        - in: header
+          name: x-nexora-timestamp
+          required: true
+          schema: { type: string }
+        - in: header
+          name: x-nexora-signature
+          required: true
+          description: "sha256=<64-character lowercase or uppercase hex digest>"
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [provider_id, event_id, amount, currency, status]
+              properties:
+                provider_id: { type: string, minLength: 1 }
+                event_id: { type: string, minLength: 1 }
+                amount: { type: number, exclusiveMinimum: 0 }
+                currency: { type: string, pattern: "^[A-Za-z]{3}$" }
+                status: { type: string }
+      responses:
+        "200":
+          description: Event screened or duplicate detected
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [decision, reason, duplicate, reference]
+                properties:
+                  decision: { type: string, enum: [ACCEPT, REVIEW, REJECT] }
+                  reason: { type: string }
+                  duplicate: { type: boolean }
+                  reference:
+                    type: object
+                    properties:
+                      provider_id: { type: string }
+                      event_id: { type: string }
+        "400": { description: Invalid JSON }
+        "401": { description: Unknown provider or invalid/expired signature }
+        "413": { description: Payload too large }
+        "422": { description: Missing or invalid event fields }
+        "500": { description: Screening could not be completed }
