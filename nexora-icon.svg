@@ -15,5 +15,5 @@
 <circle cx="145" cy="120" r="9" fill="#b8fff1"/><circle cx="367" cy="120" r="9" fill="#a9baff"/>
 <circle cx="250" cy="354" r="8" fill="#b8fff1"/>
 <path d="M108 395 Q256 430 404 395" fill="none" stroke="url(#ring)" stroke-width="5" stroke-linecap="round" opacity=".85"/>
-<text x="256" y="448" text-anchor="middle" fill="#eff8ff" font-family="Arial,sans-serif" font-size="35" font-weight="800" letter-spacing="9">NEXORA</text>
+<text x="256" y="448" text-anchor="middle" fill="#eff8ff" font-family="Arial,sans-serif" font-size="35" font-weight="800" letter-spacing="9">AURVYNT</text>
 </svg>
