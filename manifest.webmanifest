@@ -1,8 +1,8 @@
 {
   "id": "./",
-  "name": "AURVYNT — Connect. Build. Grow.",
-  "short_name": "AURVYNT",
-  "description": "AURVYNT community, marketplace, rewards and business tools demo.",
+  "name": "NEXORA — Connect. Build. Grow.",
+  "short_name": "NEXORA",
+  "description": "NEXORA community, marketplace, rewards and business tools demo.",
   "start_url": "./?source=pwa",
   "scope": "./",
   "display": "standalone",
