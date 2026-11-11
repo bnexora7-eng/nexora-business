@@ -23,3 +23,7 @@ Alternatively, run docker compose up --build. Replace all example secrets before
 This is a prototype scaffold, not a certified payment service or production fraud-detection system. It does not connect to banks, payment processors or real provider accounts. The static Pages demo is separate and does not call this API. The rule engine is deterministic, not machine learning.
 Before production: use a managed secret store, secret rotation and revocation, TLS, rate limiting, monitoring, retention controls, database migrations, integration tests, privacy/legal review and a secured deployment. Do not use real payment or personal data in this prototype.
 Do not claim this backend is deployed or live until it has been configured and tested against PostgreSQL on a secured host.
+
+## API contract
+
+The HTTP API contract is documented in [openapi.yaml](openapi.yaml).
