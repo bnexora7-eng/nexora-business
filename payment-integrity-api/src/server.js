@@ -29,15 +29,22 @@ async function handleEvent(req, res) {
   let event;
   try { event = JSON.parse(rawBody.toString("utf8")); }
   catch { return send(res, 400, { error: "Invalid JSON" }); }
-  const providerId = String(event?.provider_id ?? "").trim();
+  if (!event || typeof event !== "object" || Array.isArray(event)) return send(res, 422, { error: "Event must be a JSON object" });
+  const providerId = String(event.provider_id ?? "").trim();
+  const eventId = String(event.event_id ?? "").trim();
+  const amount = Number(event.amount);
+  const currency = String(event.currency ?? "").trim().toUpperCase();
+  const status = String(event.status ?? "").trim().toUpperCase();
   const secret = PROVIDER_SECRETS[providerId];
   if (!secret) return send(res, 401, { error: "Unknown provider" });
   const timestamp = req.headers["x-nexora-timestamp"];
   const signature = req.headers["x-nexora-signature"];
   if (!verifySignature({ rawBody, timestamp, signature, secret })) return send(res, 401, { error: "Invalid or expired webhook signature" });
+  if (!eventId || !Number.isFinite(amount) || amount <= 0 || !/^[A-Z]{3}$/.test(currency) || !status) {
+    return send(res, 422, { error: "event_id, positive amount, ISO currency code and status are required" });
+  }
 
   const result = screenEvent(event, { reviewThreshold: REVIEW_THRESHOLD });
-  const eventId = String(event?.event_id ?? "").trim();
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -45,7 +52,7 @@ async function handleEvent(req, res) {
       `INSERT INTO screened_events (provider_id,event_id,amount,currency,event_status,decision,reason,payload)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8::jsonb)
        ON CONFLICT (provider_id,event_id) DO NOTHING RETURNING id`,
-      [providerId, eventId, Number(event?.amount), String(event?.currency ?? "XXX").toUpperCase().slice(0,3), String(event?.status ?? "UNKNOWN").toUpperCase(), result.decision, result.reason, JSON.stringify(event)]
+      [providerId, eventId, amount, currency, status, result.decision, result.reason, JSON.stringify(event)]
     );
     const duplicate = inserted.rowCount === 0;
     const decision = duplicate ? "REJECT" : result.decision;
