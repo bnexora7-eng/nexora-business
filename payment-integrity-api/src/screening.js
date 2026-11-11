@@ -2,7 +2,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 
 export function verifySignature({ rawBody, timestamp, signature, secret, now = Date.now(), toleranceSeconds = 300 }) {
   if (!rawBody || !timestamp || !signature || !secret) return false;
-  if (!/^\\d{10,13}$/.test(String(timestamp))) return false;
+  if (!/^\d{10,13}$/.test(String(timestamp))) return false;
   const timestampMs = String(timestamp).length === 10 ? Number(timestamp) * 1000 : Number(timestamp);
   if (!Number.isFinite(timestampMs) || Math.abs(now - timestampMs) > toleranceSeconds * 1000) return false;
   const expected = createHmac("sha256", secret).update(String(timestamp) + ".").update(rawBody).digest("hex");
