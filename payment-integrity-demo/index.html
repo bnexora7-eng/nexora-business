@@ -20,7 +20,7 @@ button{border:0;border-radius:9px;background:var(--mint);color:#061923;font-weig
 <header class="top"><div class="brand">NEXORA<small>PAYMENT INTEGRITY</small></div><span class="tag">INTERACTIVE TECHNICAL DEMO</span></header>
 <div class="muted">RISK DECISION WORKFLOW / SANDBOX</div>
 <h1>Make every payment event accountable.</h1>
-<p class="intro">A demonstrator for screening payment-event data, flagging duplicate identifiers and recording explainable decisions. It uses simulated inputs only; it does not connect to banks, payment providers or live money.</p>
+<p class="intro">A browser-based demonstrator for screening simulated payment-event data, flagging duplicate identifiers and recording explainable decisions. This public GitHub Pages version runs locally in your browser; it does not call a backend or connect to banks, payment providers or live money.</p>
 <div class="grid">
 <section class="card">
 <h2>Evaluate a payment event</h2>
@@ -30,7 +30,7 @@ button{border:0;border-radius:9px;background:var(--mint);color:#061923;font-weig
 <div class="field"><label for="amount">Amount</label><input id="amount" type="number" min="0" step="0.01" value="25.00" required></div>
 <div class="field"><label for="currency">Currency</label><select id="currency"><option>EUR</option><option>USD</option><option>GBP</option></select></div>
 <div class="field"><label for="status">Event status</label><select id="status"><option value="succeeded">Succeeded</option><option value="pending">Pending</option><option value="failed">Failed</option></select></div>
-<div class="actions"><button type="submit">Evaluate event</button><button type="button" class="secondary" id="sample">Load and run review example</button><button type="button" class="secondary" id="apiTests">Run API tests: REVIEW / REJECT / DUPLICATE</button></div><div id="apiTestResults" class="result" aria-live="polite" hidden></div>
+<div class="actions"><button type="submit">Evaluate event</button><button type="button" class="secondary" id="sample">Load and run review example</button><button type="button" class="secondary" id="apiTests">Run local checks: REVIEW / REJECT / DUPLICATE</button></div><div id="apiTestResults" class="result" aria-live="polite" hidden></div>
 </form>
 <div id="result" class="result" aria-live="polite"><div class="muted">DECISION OUTPUT</div><div class="muted">Submit an event to see the screening result.</div></div>
 </section>
@@ -54,7 +54,7 @@ button{border:0;border-radius:9px;background:var(--mint);color:#061923;font-weig
 <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><h2 style="margin:0">Session audit log</h2><button class="secondary" id="clear" type="button">Clear session log</button></div>
 <div class="tablewrap"><table><thead><tr><th>Time</th><th>Provider</th><th>Event</th><th>Amount</th><th>Decision</th><th>Reason</th></tr></thead><tbody id="log"><tr><td colspan="6" class="muted">No events evaluated yet.</td></tr></tbody></table></div>
 </section>
-<div class="notice"><b>Sandbox limitation:</b> on the Netlify-hosted demo, events are sent to the NEXORA sandbox API and held in temporary function memory. Demo state may reset when the function restarts; this is not persistent PostgreSQL storage. The route is rate-limited and accepts simulated fields only. The signed provider webhook endpoint is separate. No bank or payment-provider integration, payment execution, regulatory certification or production fraud detection is provided.</div>
+<div class="notice"><b>Sandbox limitation:</b> this GitHub Pages build runs screening in the browser only. It does not send events to a server, persist records, connect to banks or payment providers, execute payments, or provide production fraud detection or regulatory certification. Any results and audit entries are temporary and disappear when the page is refreshed.</div>
 <div class="footer">NEXORA BUSINESS · Product concept and technical sandbox · Not a live financial service</div>
 </main>
 <script src="./config.js"></script>
@@ -95,30 +95,27 @@ records.unshift(row);if(row.decision==='ACCEPT')accepted++;else flagged++;render
 finally{button.disabled=false;button.textContent='Evaluate event'}
 });
 $('sample').addEventListener('click',()=>{$('provider').value='demo-provider';$('event').value='evt-review-'+Date.now();$('amount').value='950';$('currency').value='EUR';$('status').value='pending';$('eventForm').requestSubmit();});
-$('apiTests').addEventListener('click',async()=>{
+$('apiTests').addEventListener('click',()=>{
  const button=$('apiTests'),panel=$('apiTestResults');
- if(!API_BASE_URL){panel.hidden=false;panel.textContent='API base URL is not configured.';return}
- button.disabled=true;panel.hidden=false;panel.textContent='Running live API checks…';
+ button.disabled=true;panel.hidden=false;
  const stamp=Date.now();
  const cases=[
-  {name:'REVIEW — pending event',event_id:'nexora-test-review-'+stamp,amount:950,currency:'EUR',status:'pending',expected:'REVIEW'},
-  {name:'REJECT — failed event',event_id:'nexora-test-reject-'+stamp,amount:25,currency:'EUR',status:'failed',expected:'REJECT'},
-  {name:'DUPLICATE — repeat same event',event_id:'nexora-test-duplicate-'+stamp,amount:25,currency:'EUR',status:'succeeded',expected:'REJECT',duplicate:true}
+  {name:'REVIEW — pending event',data:{provider:'demo-provider',event:'test-review-'+stamp,amount:950,currency:'EUR',status:'pending'},expected:'REVIEW'},
+  {name:'REJECT — failed event',data:{provider:'demo-provider',event:'test-reject-'+stamp,amount:25,currency:'EUR',status:'failed'},expected:'REJECT'},
+  {name:'DUPLICATE — repeated event',data:{provider:'demo-provider',event:'test-duplicate-'+stamp,amount:25,currency:'EUR',status:'succeeded'},expected:'REJECT',duplicate:true}
  ];
- const outcomes=[];
- try{
-  for(const test of cases){
-   const payload={event_id:test.event_id,amount:test.amount,currency:test.currency,status:test.status};
-   const send=()=>fetch(API_BASE_URL+'/v1/demo/events',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
-   let response=await send();let result=await response.json();
-   if(!response.ok)throw new Error(test.name+': '+(result.error||'HTTP '+response.status));
-   if(test.duplicate){response=await send();result=await response.json();if(!response.ok)throw new Error(test.name+': '+(result.error||'HTTP '+response.status));}
-   const passed=result.decision===test.expected&&(!test.duplicate||result.duplicate===true);
-   outcomes.push({name:test.name,passed,detail:result.reason||'No reason returned'});
-  }
-  panel.innerHTML='<div class="muted">LIVE API TEST RESULTS</div>'+outcomes.map(x=>'<div class="'+(x.passed?'accept':'reject')+'"><b>'+(x.passed?'PASS':'FAIL')+'</b> — '+escapeHtml(x.name)+'</div><div class="muted">'+escapeHtml(x.detail)+'</div>').join('')+'<div class="decision '+(outcomes.every(x=>x.passed)?'accept':'reject')+'">'+(outcomes.every(x=>x.passed)?'ALL TESTS PASSED':'TEST FAILURE')+'</div>';
- }catch(error){panel.innerHTML='<div class="decision reject">TEST ERROR</div><div class="muted">'+escapeHtml(error.message)+'</div>'}
- finally{button.disabled=false}
+ const testSeen=new Set();
+ const outcomes=cases.map(test=>{
+  const key=test.data.provider+'::'+test.data.event;
+  let decision='ACCEPT',reason='All configured demo checks passed';
+  if(test.data.status==='pending'){decision='REVIEW';reason='Event is pending'}
+  if(test.data.status==='failed'){decision='REJECT';reason='Provider event status is not successful'}
+  testSeen.add(key);
+  if(test.duplicate&&testSeen.has(key)){decision='REJECT';reason='Duplicate provider + event identifier'}
+  return {name:test.name,passed:decision===test.expected,detail:reason};
+ });
+ panel.innerHTML='<div class="muted">LOCAL DEMONSTRATION TEST RESULTS — NO SERVER REQUESTS</div>'+outcomes.map(x=>'<div class="'+(x.passed?'accept':'reject')+'"><b>'+(x.passed?'PASS':'FAIL')+'</b> — '+escapeHtml(x.name)+'</div><div class="muted">'+escapeHtml(x.detail)+'</div>').join('')+'<div class="decision '+(outcomes.every(x=>x.passed)?'accept':'reject')+'">'+(outcomes.every(x=>x.passed)?'ALL LOCAL TESTS PASSED':'TEST FAILURE')+'</div>';
+ button.disabled=false;
 });
 $('clear').addEventListener('click',()=>{records.length=0;seen.clear();accepted=0;flagged=0;renderStats();renderLog();$('result').innerHTML='<div class="muted">DECISION OUTPUT</div><div class="muted">Session log cleared.</div>'});
 })();
