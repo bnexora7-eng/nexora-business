@@ -14,6 +14,20 @@ Last reviewed: 2026-11-11
 - The demo uses synthetic data and deterministic rules. It is not a bank connection, payment processor, certified payment product or production fraud-detection service.
 - No customer count, revenue, external investment, incorporated entity, or production usage is claimed.
 
+## Public demo API verification — 2026-11-11
+
+The Netlify-hosted Payment Integrity demo endpoint was verified by the project owner using the public browser interface.
+
+Public demo:
+- Website: https://splendid-lokum-02523e.netlify.app/
+- API route: https://splendid-lokum-02523e.netlify.app/v1/demo/events
+- Health check: HTTP GET returned status `ok`, service name `NEXORA Payment Integrity Demo API`, version `0.1.0`.
+- Synthetic event test: ACCEPT — passed.
+- Automated browser-triggered API regression checks: REVIEW (pending event) — PASS; REJECT (failed event) — PASS; DUPLICATE (same provider/event identifier submitted twice) — PASS.
+- Owner-reported result: ALL TESTS PASSED (three regression checks; four decision scenarios including the separately verified ACCEPT).
+
+This verification applies only to the Netlify demo endpoint and its synthetic, deterministic screening rules. The separate Node.js + PostgreSQL backend scaffold described below has not been publicly deployed and is not connected to this Netlify demo. The Netlify demo uses temporary function memory, not persistent PostgreSQL storage. These tests do not establish production readiness, payment-provider integration, fraud-detection accuracy, security certification, customer usage or commercial traction.
+
 ## Current domain and email status
 
 - The planned domain nexora.net.eu.org is not yet confirmed as registered/delegated.
