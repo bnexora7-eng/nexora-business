@@ -1,0 +1,31 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: nexora
+      POSTGRES_USER: nexora
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-local-dev-only-change-me}
+    ports:
+      - "5432:5432"
+    volumes:
+      - nexora_pgdata:/var/lib/postgresql/data
+      - ./src/schema.sql:/docker-entrypoint-initdb.d/001-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nexora -d nexora"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+  api:
+    build: .
+    environment:
+      PORT: 8080
+      DATABASE_URL: postgres://nexora:${POSTGRES_PASSWORD:-local-dev-only-change-me}@db:5432/nexora
+      PROVIDER_SECRETS: '{"demo-provider":"replace-with-a-long-random-secret"}'
+      REVIEW_THRESHOLD: 10000
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+volumes:
+  nexora_pgdata:
