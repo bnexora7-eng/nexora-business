@@ -45,6 +45,7 @@ Reward points have no monetary value. No paid entry, deposits, cash prizes or wi
 - Static HTML, CSS and JavaScript front end.
 - No build step or package installation required.
 - GitHub Actions deploys the repository root to GitHub Pages.
+- The workflow is configured to enable GitHub Pages automatically on its first deployment.
 - Workflow: `.github/workflows/deploy.yml`.
 
 ## Project status
