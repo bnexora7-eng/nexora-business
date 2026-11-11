@@ -13,6 +13,14 @@ The prototype is designed to be published with GitHub Pages from the repository 
 
 https://bnexora7-eng.github.io/nexora-business/
 
+## Payment Integrity sandbox
+
+A separate interactive sandbox is available at:
+
+https://bnexora7-eng.github.io/nexora-business/payment-integrity-demo/
+
+It demonstrates deterministic screening of simulated payment events and a session-only audit log. It is a browser-only prototype, not a live payment service. See [the demo documentation](payment-integrity-demo/README.md) for scope and limitations.
+
 ## What can be demonstrated
 
 - Navigate between the product areas.
