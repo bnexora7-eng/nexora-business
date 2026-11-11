@@ -105,15 +105,19 @@ $('apiTests').addEventListener('click',()=>{
   {name:'DUPLICATE — repeated event',data:{provider:'demo-provider',event:'test-duplicate-'+stamp,amount:25,currency:'EUR',status:'succeeded'},expected:'REJECT',duplicate:true}
  ];
  const testSeen=new Set();
- const outcomes=cases.map(test=>{
-  const key=test.data.provider+'::'+test.data.event;
-  let decision='ACCEPT',reason='All configured demo checks passed';
-  if(test.data.status==='pending'){decision='REVIEW';reason='Event is pending'}
-  if(test.data.status==='failed'){decision='REJECT';reason='Provider event status is not successful'}
+ const evaluate=(data)=>{
+  const key=data.provider+'::'+data.event;
+  if(testSeen.has(key)) return {decision:'REJECT',detail:'Duplicate provider + event identifier'};
   testSeen.add(key);
-  if(test.duplicate&&testSeen.has(key)){decision='REJECT';reason='Duplicate provider + event identifier'}
-  return {name:test.name,passed:decision===test.expected,detail:reason};
- });
+  if(data.status==='pending') return {decision:'REVIEW',detail:'Event is pending'};
+  if(data.status==='failed') return {decision:'REJECT',detail:'Provider event status is not successful'};
+  return {decision:'ACCEPT',detail:'Successful simulated event'};
+ };
+ const outcomes=[
+  (()=>{const r=evaluate(cases[0].data);return {name:cases[0].name,passed:r.decision==='REVIEW',detail:r.detail}})(),
+  (()=>{const r=evaluate(cases[1].data);return {name:cases[1].name,passed:r.decision==='REJECT',detail:r.detail}})(),
+  (()=>{const first=evaluate(cases[2].data);const second=evaluate(cases[2].data);return {name:cases[2].name,passed:first.decision==='ACCEPT'&&second.decision==='REJECT',detail:second.detail}})()
+ ];
  panel.innerHTML='<div class="muted">LOCAL DEMONSTRATION TEST RESULTS — NO SERVER REQUESTS</div>'+outcomes.map(x=>'<div class="'+(x.passed?'accept':'reject')+'"><b>'+(x.passed?'PASS':'FAIL')+'</b> — '+escapeHtml(x.name)+'</div><div class="muted">'+escapeHtml(x.detail)+'</div>').join('')+'<div class="decision '+(outcomes.every(x=>x.passed)?'accept':'reject')+'">'+(outcomes.every(x=>x.passed)?'ALL LOCAL TESTS PASSED':'TEST FAILURE')+'</div>';
  button.disabled=false;
 });
