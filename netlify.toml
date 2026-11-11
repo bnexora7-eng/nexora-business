@@ -1,0 +1,9 @@
+[build]
+  publish = "payment-integrity-demo"
+  functions = "netlify/functions"
+
+[[redirects]]
+  from = "/v1/demo/events"
+  to = "/.netlify/functions/demo-events"
+  status = 200
+  force = true
