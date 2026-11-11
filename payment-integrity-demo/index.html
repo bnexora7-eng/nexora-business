@@ -86,10 +86,10 @@ const data={provider:$('provider').value.trim(),event:$('event').value.trim(),am
 if(!API_BASE_URL){evaluate(data);return}
 const button=$('eventForm').querySelector('button[type="submit"]');button.disabled=true;button.textContent='Sending to API…';
 try{
-const response=await fetch(API_BASE_URL+'/v1/demo/events',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({event_id:data.event,amount:data.amount,currency:data.currency,status:data.status})});
+const response=await fetch(API_BASE_URL+'/v1/demo/events',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({provider_id:data.provider,event_id:data.event,amount:data.amount,currency:data.currency,status:data.status})});
 const result=await response.json();
 if(!response.ok)throw new Error(result.error||'API request failed');
-const reasons=[result.reason];const row={time:new Date().toLocaleTimeString(),...data,provider:'demo-provider',decision:result.decision,reason:result.reason};
+const reasons=[result.reason];const row={time:new Date().toLocaleTimeString(),...data,provider:result.reference?.provider_id||data.provider,decision:result.decision,reason:result.reason};
 records.unshift(row);if(row.decision==='ACCEPT')accepted++;else flagged++;renderStats();renderLog();showResult(row,reasons);
 }catch(error){$('result').innerHTML='<div class="muted">API ERROR</div><div class="decision reject">NOT PROCESSED</div><div class="muted">'+escapeHtml(error.message)+'</div>'}
 finally{button.disabled=false;button.textContent='Evaluate event'}
