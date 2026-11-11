@@ -107,7 +107,7 @@ $('apiTests').addEventListener('click',async()=>{
   {name:'REJECT — failed event',event:'nexora-test-reject-'+stamp,status:'failed',expected:'REJECT'}
  ];
  const send=async item=>{
-  const response=await fetch(API_BASE_URL+'/v1/demo/events',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({event_id:item.event,amount:25,currency:'EUR',status:item.status})});
+  const response=await fetch(API_BASE_URL+'/v1/demo/events',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({provider_id:'nexora-api-test',event_id:item.event,amount:25,currency:'EUR',status:item.status})});
   const body=await response.json().catch(()=>({error:'API returned invalid JSON'}));
   if(!response.ok)throw new Error(body.error||('HTTP '+response.status));
   return body;
