@@ -1,12 +1,13 @@
 import { screenEvent } from "../../payment-integrity-api/src/screening.js";
 
-const allowedOrigin = "https://bnexora7-eng.github.io";
+const siteOrigin = (request) => new URL(request.url).origin;
 const requests = new Map();
 const events = new Map();
 const threshold = 10000;
 
 export default async (request) => {
   const origin = request.headers.get("origin") || "";
+  const allowedOrigin = siteOrigin(request);
   const headers = {
     "content-type": "application/json; charset=utf-8",
     "cache-control": "no-store",
