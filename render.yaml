@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: nexora-payment-integrity-api
+    runtime: docker
+    plan: free
+    region: frankfurt
+    dockerfilePath: ./payment-integrity-api/Dockerfile
+    dockerContext: ./payment-integrity-api
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: PROVIDER_SECRETS
+        sync: false
+      - key: PGSSL
+        value: "true"
+      - key: REVIEW_THRESHOLD
+        value: "10000"
+      - key: ENABLE_PUBLIC_DEMO
+        value: "true"
+      - key: DEMO_ORIGIN
+        value: "https://bnexora7-eng.github.io"
