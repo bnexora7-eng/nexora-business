@@ -30,7 +30,7 @@ button{border:0;border-radius:9px;background:var(--mint);color:#061923;font-weig
 <div class="field"><label for="amount">Amount</label><input id="amount" type="number" min="0" step="0.01" value="25.00" required></div>
 <div class="field"><label for="currency">Currency</label><select id="currency"><option>EUR</option><option>USD</option><option>GBP</option></select></div>
 <div class="field"><label for="status">Event status</label><select id="status"><option value="succeeded">Succeeded</option><option value="pending">Pending</option><option value="failed">Failed</option></select></div>
-<div class="actions"><button type="submit">Evaluate event</button><button type="button" class="secondary" id="sample">Load and run review example</button><button type="button" class="secondary" id="apiTests">Run local checks: REVIEW / REJECT / DUPLICATE</button></div><div id="apiTestResults" class="result" aria-live="polite" hidden></div>
+<div class="actions"><button type="submit">Evaluate event</button><button type="button" class="secondary" id="sample">Load and run review example</button><button type="button" class="secondary" id="apiTests">Run local checks: ACCEPT / REVIEW / REJECT / DUPLICATE</button></div><div id="apiTestResults" class="result" aria-live="polite" hidden></div>
 </form>
 <div id="result" class="result" aria-live="polite"><div class="muted">DECISION OUTPUT</div><div class="muted">Submit an event to see the screening result.</div></div>
 </section>
@@ -100,6 +100,7 @@ $('apiTests').addEventListener('click',()=>{
  button.disabled=true;panel.hidden=false;
  const stamp=Date.now();
  const cases=[
+  {name:'ACCEPT — successful event',data:{provider:'demo-provider',event:'test-accept-'+stamp,amount:25,currency:'EUR',status:'succeeded'},expected:'ACCEPT'},
   {name:'REVIEW — pending event',data:{provider:'demo-provider',event:'test-review-'+stamp,amount:950,currency:'EUR',status:'pending'},expected:'REVIEW'},
   {name:'REJECT — failed event',data:{provider:'demo-provider',event:'test-reject-'+stamp,amount:25,currency:'EUR',status:'failed'},expected:'REJECT'},
   {name:'DUPLICATE — repeated event',data:{provider:'demo-provider',event:'test-duplicate-'+stamp,amount:25,currency:'EUR',status:'succeeded'},expected:'REJECT',duplicate:true}
@@ -114,9 +115,10 @@ $('apiTests').addEventListener('click',()=>{
   return {decision:'ACCEPT',detail:'Successful simulated event'};
  };
  const outcomes=[
-  (()=>{const r=evaluate(cases[0].data);return {name:cases[0].name,passed:r.decision==='REVIEW',detail:r.detail}})(),
-  (()=>{const r=evaluate(cases[1].data);return {name:cases[1].name,passed:r.decision==='REJECT',detail:r.detail}})(),
-  (()=>{const first=evaluate(cases[2].data);const second=evaluate(cases[2].data);return {name:cases[2].name,passed:first.decision==='ACCEPT'&&second.decision==='REJECT',detail:second.detail}})()
+  (()=>{const r=evaluate(cases[0].data);return {name:cases[0].name,passed:r.decision==='ACCEPT',detail:r.detail}})(),
+  (()=>{const r=evaluate(cases[1].data);return {name:cases[1].name,passed:r.decision==='REVIEW',detail:r.detail}})(),
+  (()=>{const r=evaluate(cases[2].data);return {name:cases[2].name,passed:r.decision==='REJECT',detail:r.detail}})(),
+  (()=>{const first=evaluate(cases[3].data);const second=evaluate(cases[3].data);return {name:cases[3].name,passed:first.decision==='ACCEPT'&&second.decision==='REJECT',detail:'First submission: '+first.decision+'; replay: '+second.detail}})()
  ];
  panel.innerHTML='<div class="muted">LOCAL DEMONSTRATION TEST RESULTS — NO SERVER REQUESTS</div>'+outcomes.map(x=>'<div class="'+(x.passed?'accept':'reject')+'"><b>'+(x.passed?'PASS':'FAIL')+'</b> — '+escapeHtml(x.name)+'</div><div class="muted">'+escapeHtml(x.detail)+'</div>').join('')+'<div class="decision '+(outcomes.every(x=>x.passed)?'accept':'reject')+'">'+(outcomes.every(x=>x.passed)?'ALL LOCAL TESTS PASSED':'TEST FAILURE')+'</div>';
  button.disabled=false;
