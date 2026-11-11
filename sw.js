@@ -1,4 +1,4 @@
-const CACHE_NAME = "aurvynt-shell-v3";
+const CACHE_NAME = "nexora-shell-v4";
 const BASE_URL = new URL("./", self.location).href;
 const APP_FILES = [
   BASE_URL,
