@@ -30,7 +30,59 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
     } catch {}
     await new Promise(resolve => setTimeout(resolve, 200));
   }
+
   assert.equal(healthy, true, "API should start and connect to PostgreSQL");
+
+  const accountEmail = "nexora-auth-" + Date.now() + "@example.invalid";
+  const accountPassword = "NEXORA-test-password-2026!";
+  const register = await fetch(`http://127.0.0.1:${port}/v1/auth/register`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ email: accountEmail, password: accountPassword })
+  });
+  assert.equal(register.status, 201);
+  const registered = await register.json();
+  assert.equal(registered.user.email, accountEmail);
+  assert.equal(typeof registered.token, "string");
+  assert.equal(registered.token.length >= 40, true);
+
+  const profile = await fetch(`http://127.0.0.1:${port}/v1/auth/me`, {
+    headers: { authorization: "Bearer " + registered.token }
+  });
+  assert.equal(profile.status, 200);
+  assert.equal((await profile.json()).user.email, accountEmail);
+
+  const duplicateAccount = await fetch(`http://127.0.0.1:${port}/v1/auth/register`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ email: accountEmail, password: accountPassword })
+  });
+  assert.equal(duplicateAccount.status, 409);
+
+  const badLogin = await fetch(`http://127.0.0.1:${port}/v1/auth/login`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ email: accountEmail, password: "incorrect-password" })
+  });
+  assert.equal(badLogin.status, 401);
+
+  const login = await fetch(`http://127.0.0.1:${port}/v1/auth/login`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ email: accountEmail, password: accountPassword })
+  });
+  assert.equal(login.status, 200);
+  const loggedIn = await login.json();
+
+  const logout = await fetch(`http://127.0.0.1:${port}/v1/auth/logout`, {
+    method: "POST",
+    headers: { authorization: "Bearer " + loggedIn.token }
+  });
+  assert.equal(logout.status, 200);
+  const revokedProfile = await fetch(`http://127.0.0.1:${port}/v1/auth/me`, {
+    headers: { authorization: "Bearer " + loggedIn.token }
+  });
+  assert.equal(revokedProfile.status, 401);
 
   async function submit(event, tamper = false) {
     const rawBody = Buffer.from(JSON.stringify(event));
@@ -114,6 +166,7 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
     [providerId, "evt-integration-001", "evt-integration-002"]
   );
   assert.equal(counts.rows[0].events, 2);
+  await pool.query("DELETE FROM app_users WHERE email=$1", [accountEmail]);
   await pool.query("DELETE FROM screening_audit WHERE provider_id=$1", [providerId]);
   await pool.query("DELETE FROM screened_events WHERE provider_id=$1", [providerId]);
 });
