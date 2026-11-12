@@ -22,7 +22,7 @@ if (DATABASE_URL) {
   // DATABASE_URL is wired by Render fromDatabase to the same-region internal URL.
   // Render's internal Postgres endpoint uses private networking; do not force TLS
   // against its self-signed internal certificate. External DB URLs must use TLS.
-  pool = new Pool({ connectionString: DATABASE_URL, ssl: false });
+  pool = new Pool({ connectionString: DATABASE_URL });
   await pool.query(await readFile(new URL("./schema.sql", import.meta.url), "utf8"));
   console.log("NEXORA database schema is ready");
 } else {
