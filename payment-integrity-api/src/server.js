@@ -2,6 +2,7 @@ import { createServer } from "node:http";
 import pg from "pg";
 import { readFile } from "node:fs/promises";
 import { screenEvent, verifySignature } from "./screening.js";
+import { createSessionToken, hashPassword, hashSessionToken, verifyPassword } from "./auth.js";
 const { Pool } = pg;
 const PORT = Number(process.env.PORT || 8080);
 const DATABASE_URL = process.env.DATABASE_URL;
@@ -12,6 +13,7 @@ const MAX_BODY_BYTES = 65536;
 const DEMO_ORIGIN = process.env.DEMO_ORIGIN || "https://bnexora7-eng.github.io";
 const demoRequests = new Map();
 const demoEvents = new Map();
+const authAttempts = new Map();
 let pool = null;
 
 // The public demo is deliberately self-contained and can run without PostgreSQL.
@@ -37,7 +39,7 @@ function cors(req, res) {
     res.setHeader("access-control-allow-origin", DEMO_ORIGIN);
     res.setHeader("vary", "Origin");
     res.setHeader("access-control-allow-methods", "GET, POST, OPTIONS");
-    res.setHeader("access-control-allow-headers", "content-type, x-nexora-timestamp, x-nexora-signature");
+    res.setHeader("access-control-allow-headers", "content-type, authorization, x-nexora-timestamp, x-nexora-signature");
     res.setHeader("access-control-max-age", "600");
   }
 }
@@ -135,6 +137,95 @@ async function handleDemoEvent(req, res) {
   return send(res, 200, { ...result, duplicate: false,
     reference: { provider_id: event.provider_id, event_id: event.event_id }, storage: "temporary-demo-memory" });
 }
+
+function authRateLimited(req) {
+  const ip = String(req.headers["x-forwarded-for"] || req.socket.remoteAddress || "unknown").split(",")[0].trim();
+  const now = Date.now();
+  const bucket = authAttempts.get(ip);
+  if (!bucket || now - bucket.startedAt >= 15 * 60 * 1000) {
+    authAttempts.set(ip, { startedAt: now, count: 1 });
+    return false;
+  }
+  if (bucket.count >= 10) return true;
+  bucket.count++;
+  return false;
+}
+function bearerToken(req) {
+  const header = String(req.headers.authorization || "");
+  const match = /^Bearer ([A-Za-z0-9_-]{40,})$/.exec(header);
+  return match ? match[1] : null;
+}
+async function createUserSession(userId) {
+  const token = createSessionToken();
+  await pool.query(
+    "INSERT INTO app_sessions (user_id, token_hash, expires_at) VALUES ($1,$2,NOW() + INTERVAL '30 days')",
+    [userId, hashSessionToken(token)]
+  );
+  return token;
+}
+async function handleRegister(req, res) {
+  if (!pool) return send(res, 503, { error: "Account service is not configured; database is required" });
+  if (authRateLimited(req)) return send(res, 429, { error: "Too many account attempts; try again in 15 minutes" });
+  const rawBody = await readBody(req);
+  let input;
+  try { input = JSON.parse(rawBody.toString("utf8")); } catch { return send(res, 400, { error: "Invalid JSON" }); }
+  const email = typeof input?.email === "string" ? input.email.trim().toLowerCase() : "";
+  const password = typeof input?.password === "string" ? input.password : "";
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) return send(res, 422, { error: "Enter a valid email address" });
+  if (password.length < 12 || password.length > 128) return send(res, 422, { error: "Password must contain 12 to 128 characters" });
+  try {
+    const passwordHash = await hashPassword(password);
+    const created = await pool.query(
+      "INSERT INTO app_users (email, password_hash) VALUES ($1,$2) RETURNING id, email, created_at",
+      [email, passwordHash]
+    );
+    const user = created.rows[0];
+    const token = await createUserSession(user.id);
+    return send(res, 201, { token, token_type: "Bearer", expires_in: 2592000, user: { id: String(user.id), email: user.email, created_at: user.created_at } });
+  } catch (error) {
+    if (error.code === "23505") return send(res, 409, { error: "An account with this email already exists" });
+    throw error;
+  }
+}
+async function handleLogin(req, res) {
+  if (!pool) return send(res, 503, { error: "Account service is not configured; database is required" });
+  if (authRateLimited(req)) return send(res, 429, { error: "Too many account attempts; try again in 15 minutes" });
+  const rawBody = await readBody(req);
+  let input;
+  try { input = JSON.parse(rawBody.toString("utf8")); } catch { return send(res, 400, { error: "Invalid JSON" }); }
+  const email = typeof input?.email === "string" ? input.email.trim().toLowerCase() : "";
+  const password = typeof input?.password === "string" ? input.password : "";
+  if (!email || email.length > 254 || !password || password.length > 128) return send(res, 401, { error: "Email or password is incorrect" });
+  const found = await pool.query("SELECT id, email, password_hash, created_at FROM app_users WHERE email=$1", [email]);
+  if (!found.rowCount || !(await verifyPassword(password, found.rows[0].password_hash))) {
+    return send(res, 401, { error: "Email or password is incorrect" });
+  }
+  const user = found.rows[0];
+  const token = await createUserSession(user.id);
+  return send(res, 200, { token, token_type: "Bearer", expires_in: 2592000, user: { id: String(user.id), email: user.email, created_at: user.created_at } });
+}
+async function handleMe(req, res) {
+  if (!pool) return send(res, 503, { error: "Account service is not configured; database is required" });
+  const token = bearerToken(req);
+  if (!token) return send(res, 401, { error: "Authentication required" });
+  const result = await pool.query(
+    `SELECT u.id, u.email, u.created_at
+     FROM app_sessions s JOIN app_users u ON u.id=s.user_id
+     WHERE s.token_hash=$1 AND s.revoked_at IS NULL AND s.expires_at > NOW()`,
+    [hashSessionToken(token)]
+  );
+  if (!result.rowCount) return send(res, 401, { error: "Session is invalid or expired" });
+  const user = result.rows[0];
+  return send(res, 200, { user: { id: String(user.id), email: user.email, created_at: user.created_at } });
+}
+async function handleLogout(req, res) {
+  if (!pool) return send(res, 503, { error: "Account service is not configured; database is required" });
+  const token = bearerToken(req);
+  if (!token) return send(res, 401, { error: "Authentication required" });
+  await pool.query("UPDATE app_sessions SET revoked_at=NOW() WHERE token_hash=$1 AND revoked_at IS NULL", [hashSessionToken(token)]);
+  return send(res, 200, { status: "signed_out" });
+}
+
 const server = createServer(async (req, res) => {
   try {
     cors(req, res);
@@ -143,6 +234,10 @@ const server = createServer(async (req, res) => {
       if (pool) await pool.query("SELECT 1");
       return send(res, 200, { status: "ok", service: "nexora-payment-integrity-api", mode: pool ? "database" : "demo-only" });
     }
+    if (req.method === "POST" && req.url === "/v1/auth/register") return await handleRegister(req, res);
+    if (req.method === "POST" && req.url === "/v1/auth/login") return await handleLogin(req, res);
+    if (req.method === "GET" && req.url === "/v1/auth/me") return await handleMe(req, res);
+    if (req.method === "POST" && req.url === "/v1/auth/logout") return await handleLogout(req, res);
     if (req.method === "POST" && req.url === "/v1/events") return await handleEvent(req, res);
     if (req.method === "POST" && req.url === "/v1/demo/events") return await handleDemoEvent(req, res);
     return send(res, 404, { error: "Not found" });

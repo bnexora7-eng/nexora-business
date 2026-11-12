@@ -1,0 +1,55 @@
+name: NEXORA Android release
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [nexora-mobile-app]
+    paths:
+      - "mobile/**"
+      - ".github/workflows/android-apk.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build-android-release:
+    runs-on: ubuntu-latest
+    env:
+      EXPO_PUBLIC_NEXORA_API_URL: ${{ vars.EXPO_PUBLIC_NEXORA_API_URL }}
+    timeout-minutes: 35
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package.json
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Install dependencies
+        working-directory: mobile
+        run: npm install
+      - name: Check TypeScript
+        working-directory: mobile
+        run: npm run typecheck
+      - name: Generate Android project
+        working-directory: mobile
+        run: npx expo prebuild --platform android --non-interactive
+      - name: Build installable APK and Google Play AAB
+        working-directory: mobile/android
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon --console=plain assembleRelease bundleRelease
+      - name: Upload Android release files
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexora-android-release
+          path: |
+            mobile/android/app/build/outputs/apk/release/app-release.apk
+            mobile/android/app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error

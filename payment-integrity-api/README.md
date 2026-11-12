@@ -4,6 +4,11 @@ This pre-production API includes server-side screening, HMAC webhook authenticat
 
 ## Endpoints
 - GET /health checks API and database connectivity.
+- POST /v1/auth/register creates an account using a valid email and a 12–128 character password.
+- POST /v1/auth/login verifies credentials and issues a 30-day bearer session.
+- GET /v1/auth/me returns the authenticated account profile.
+- POST /v1/auth/logout revokes the current bearer session.
+- Passwords are stored as salted scrypt hashes; session tokens are stored only as SHA-256 hashes. Authentication requires PostgreSQL and has a basic per-IP attempt limit.
 - POST /v1/events accepts authenticated provider events as JSON.
 - POST /v1/demo/events accepts simulated browser-demo events only when ENABLE_PUBLIC_DEMO=true and only from DEMO_ORIGIN.
 - HMAC-SHA256 signature headers for provider events: x-nexora-timestamp and x-nexora-signature (sha256=<hex>).
