@@ -18,6 +18,10 @@ services:
         sync: false
       - key: MOLLIE_API_KEY
         sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: "gpt-4.1-mini"
       - key: ENABLE_LIVE_PAYMENTS
         value: "false"
       - key: PUBLIC_API_URL
