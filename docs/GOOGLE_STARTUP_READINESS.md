@@ -1,94 +1,104 @@
-# NEXORA — Google for Startups readiness file
+# NEXORA — Google for Startups readiness
 
-Last reviewed: 2026-11-11
+**Reviewed:** 12 November 2026  
+**Status:** preparation only — no application submitted by this update.
 
-## Verified project status
+## 1. Target route
 
-- Public GitHub repository: https://github.com/bnexora7-eng/nexora-business
-- Public GitHub Pages deployment workflow completed successfully on 2026-11-11.
-- Canonical interactive Payment Integrity browser demo: https://splendid-lokum-02523e.netlify.app/ (Netlify-hosted; GitHub Pages mirror remains available).
-- Public project information page: https://bnexora7-eng.github.io/nexora-business/company/
-- Payment Integrity backend scaffold: Node.js HTTP API, PostgreSQL schema, HMAC-SHA256 request authentication, five-minute timestamp tolerance, database uniqueness on provider_id + event_id, audit table, Docker Compose and automated tests.
-- GitHub Actions integration workflow against PostgreSQL completed successfully.
-- The backend has not been deployed to a public endpoint and is not connected to a real payment provider.
-- The demo uses synthetic data and deterministic rules. It is not a bank connection, payment processor, certified payment product or production fraud-detection service.
-- No customer count, revenue, external investment, incorporated entity, or production usage is claimed.
+The first route to assess is the **Google for Startups Cloud Program — Start tier**. Google's current FAQ describes Start as intended for digital-native startups founded within the past two years, with a working MVP, a clear business model and plans to seek venture funding soon. The current program page also describes separate Scale tiers for funded startups. Do not apply for a funded Scale tier without verifiable qualifying venture funding.
 
-## Public demo API verification — 2026-11-11
-
-The Netlify-hosted Payment Integrity demo endpoint was verified by the project owner using the public browser interface.
-
-Public demo:
-- Website: https://splendid-lokum-02523e.netlify.app/
-- API route: https://splendid-lokum-02523e.netlify.app/v1/demo/events
-- Health check: HTTP GET returned status `ok`, service name `NEXORA Payment Integrity Demo API`, version `0.1.0`.
-- Synthetic event test: ACCEPT — passed.
-- Automated browser-triggered API regression checks: REVIEW (pending event) — PASS; REJECT (failed event) — PASS; DUPLICATE (same provider/event identifier submitted twice) — PASS.
-- Owner-reported result: ALL TESTS PASSED (three regression checks; four decision scenarios including the separately verified ACCEPT).
-
-This verification applies only to the Netlify demo endpoint and its synthetic, deterministic screening rules. The separate Node.js + PostgreSQL backend scaffold described below has not been publicly deployed and is not connected to this Netlify demo. The Netlify demo uses temporary function memory, not persistent PostgreSQL storage. These tests do not establish production readiness, payment-provider integration, fraud-detection accuracy, security certification, customer usage or commercial traction.
-
-## Current domain and email status
-
-- The planned domain nexora.net.eu.org is not yet confirmed as registered/delegated.
-- EU.org contact handles were created, but a contact record is not proof that a domain request was approved.
-- Hostry Free DNS ticket #28673 was acknowledged on 2026-11-11. Hostry has not yet confirmed correction of the incorrectly named DNS zones.
-- A domain-based business mailbox is not yet configured.
-- Do not submit a Google application using the personal Gmail address. Google states that the business email must match the public website domain.
-
-## Google Start tier criteria to verify before applying
-
-According to the current Google for Startups Cloud Program pages, the Start tier is intended for digital-native technology startups that:
-- have a working MVP;
-- have a clear business model;
-- plan to seek venture funding soon;
-- were founded within the last 24 months;
-- have not received Google Cloud credits beyond the free trial.
-
-The application preparation checklist also requires:
-- an active business website describing the company, founder/team and products;
-- a business email matching the public website domain;
-- an active 18-character Google Cloud Billing Account ID, owned/administered by a user with the same business email domain.
-
-Google reviews applications at its discretion. Credits are not cash investment. The current Start tier benefit is up to USD 2,000 in Google Cloud credits, subject to eligibility and approval.
-
-Official sources:
+Official sources (re-check immediately before submission):
 - https://cloud.google.com/startup
-- https://cloud.google.com/startup/pre-funded
 - https://cloud.google.com/startup/faq
-- https://cloud.google.com/startup/onboarding
+- https://startup.google.com/cloud/
 
-## Application readiness — do not submit until gaps are resolved
+Google's stated Start benefit is up to USD 2,000 in Google Cloud credits, subject to approval and terms. These credits are **not cash, a loan, equity investment or a sponsorship payment**. Acceptance is discretionary.
 
-| Requirement | Current status | Next action |
+## 2. Verified NEXORA facts
+
+- Project: NEXORA BUSINESS; Netherlands-based, founder-led digital product project.
+- Repository: https://github.com/bnexora7-eng/nexora-business
+- Project information page: https://bnexora7-eng.github.io/nexora-business/company/
+- Payment Integrity demonstration: https://splendid-lokum-02523e.netlify.app/
+- First focused product: Payment Integrity, a provider-neutral prototype for screening synthetic payment-event notifications.
+- Demonstrated deterministic outcomes: ACCEPT, REVIEW, REJECT and duplicate-event detection.
+- A separate Node.js/PostgreSQL backend scaffold includes HMAC-SHA256 request-signature verification, timestamp-window checks, database uniqueness for provider/event idempotency, audit records and automated tests.
+- The public browser demo/API and the separate PostgreSQL backend scaffold are **not yet connected**.
+- The backend scaffold is **not publicly deployed**.
+- No live bank or payment-provider integration, real payment processing, production fraud detection, machine learning, regulatory certification, paying customers, revenue, production usage, external investment or incorporated legal entity is claimed.
+- Demo data is synthetic. Do not submit real personal, banking or payment data.
+
+## 3. Proposed initial customer and business model — hypothesis to validate
+
+**Initial customer segment:** software businesses and online merchants that receive payment-status notifications/webhooks from one or more payment providers and need a consistent way to validate events, flag uncertain events and prevent duplicate processing.
+
+**Problem hypothesis:** teams may have to implement provider-specific checks repeatedly and may lack a single auditable decision layer for incoming payment events. This is not yet validated by customer interviews or quantified evidence.
+
+**Proposed product:** a hosted B2B software service/API that normalizes selected payment-event fields, applies configurable deterministic validation rules, identifies duplicate provider/event identifiers and returns an explainable ACCEPT / REVIEW / REJECT result with an audit record.
+
+**Revenue hypothesis:** recurring SaaS subscription priced by monthly event volume and feature tier; optional one-time onboarding for a supported integration. Pricing, willingness to pay and unit economics are not validated. Do not present this as current revenue or a proven model.
+
+**Validation required before application:** conduct documented discovery interviews, select one narrow provider/use case, record the buyer's workflow and pain, test willingness to pay, and define a measurable pilot outcome.
+
+## 4. Founding-date evidence — unresolved
+
+A detailed evidence-based chronology is recorded in [PROJECT_HISTORY_AND_DATE_EVIDENCE.md](PROJECT_HISTORY_AND_DATE_EVIDENCE.md).
+
+- The earliest located evidence shows NEXORA BUSINESS already existed by **5 November 2026** (earlier project conversation record). This is a verified latest-by date in the available records, not the definitive founding date.
+- Conversation records dated **6 November 2026** document ongoing interactive project/demo work.
+- GitHub commit history documents focused Payment Integrity and investor-demo engineering on **11 November 2026**.
+- The current record does **not** establish the exact original conception/founding date or a legal incorporation date.
+- November 2026 is also the documented period for work on the current Payment Integrity prototype; that technical milestone must not be substituted for the original project founding date.
+- Before applying, the founder must establish the truthful project/company start date from contemporaneous evidence (for example, the earliest dated repository commit, project files, domain/account records or earlier planning notes).
+- If the date cannot be substantiated, do not invent one or claim Start-tier age eligibility. Ask Google how to represent the applicant's actual status before submission.
+
+## 5. Technical readiness
+
+| Requirement | Current evidence | Gap / action |
 |---|---|---|
-| Working MVP | Partial: browser demo plus tested backend scaffold; backend not deployed | Deploy secured API and demonstrate end-to-end operation |
-| Clear business model | Needs founder validation and customer definition | Define initial paying customer, problem, buyer and pricing |
-| Venture funding plan | Not documented | Prepare a truthful, specific funding plan |
-| Founded within 24 months | Not verified | Confirm legal/project founding date and entity status |
-| Website | Published, describes founder/project/product and limitations | Founder must review and personalize factual copy |
-| Matching business email | Missing | Obtain confirmed domain, configure mail hosting and mailbox |
-| Google Cloud Billing ID | Missing | Create billing account only when ready; check payment method and potential charges |
-| Domain ownership / DNS | Pending | Resolve EU.org delegation and Hostry zone setup |
+| Working MVP | Public synthetic-data demo and API checks | Demo and separate backend are not one deployed product |
+| Backend foundation | Node.js/PostgreSQL scaffold and tests | Deploy securely; connect demo to API; verify end-to-end |
+| Security | HMAC verification and replay-window logic in scaffold | Key rotation, rate limiting, secrets management, monitoring, threat model and independent review |
+| Customer validation | None documented | Interviews and a design partner |
+| Business model | Subscription hypothesis documented | Validate buyer, pricing and unit economics |
+| Public website | Project information page on GitHub Pages | Move to a controlled company domain; add final founder details and contact |
+| Matching business email | Not configured | Create mailbox on the same verified domain as public website |
+| Google Cloud Billing | No verified 18-character Billing Account ID recorded | Create/check only when ready; review payment method and potential charges |
+| Founding date / age | Not verified | Establish the original project/company date from evidence; do not substitute the prototype build date |
+| Legal entity | No incorporated entity claimed | Confirm whether Google accepts the actual applicant structure; do not invent a company registration |
 
-## Truthful product description — draft, not a submitted application
+## 6. Application blockers — must be resolved by founder
 
-NEXORA is an early-stage digital product project. Its initial technical workstream, Payment Integrity, explores provider-neutral screening of payment event notifications. The prototype applies deterministic validation rules and returns ACCEPT, REVIEW or REJECT decisions. The backend scaffold adds signed request authentication, replay-window checks, database-backed duplicate prevention and an audit record.
+1. **Domain:** nexora.net.eu.org is the previously proposed candidate only; EU.org approval, registration/delegation and ownership are not verified. Hostry ticket #28673 was acknowledged, but DNS correction was not confirmed. Do not publish it as the company domain or create mailboxes on it until ownership and delegation are confirmed.
+2. **Business email:** current project email is bnexora7@gmail.com; it does not match a company website domain. Google says the business email must match the public website domain.
+3. **Website:** the existing page is on github.io, not a controlled NEXORA domain. Google requires an active website describing the company, founder/team and product; placeholder or empty sites are not accepted.
+4. **Billing:** no verified 18-character Google Cloud Billing Account ID and matching-domain billing owner are recorded.
+5. **Age / eligibility:** NEXORA is evidenced as already existing by 5 November 2026, but exact founding date is unresolved. The Start tier currently states a 24-month founding window; do not submit a guessed date.
+6. **Founder details:** add accurate founder name/profile, role, relevant experience and team status. No biography should be invented.
+7. **Business model:** validate the subscription hypothesis with potential buyers.
+8. **Funding plan:** document a realistic plan to seek venture funding soon, if that is genuinely the founder's intention.
 
-The current implementation is a pre-production prototype. It has passed automated unit and PostgreSQL-backed integration tests in GitHub Actions, but it is not deployed, does not connect to real payment providers, and has not been used with customers or live payment data.
+## 7. Billing safety
 
-## Required next milestones
+Google Cloud credits are not cash and do not make all Google products free. Before creating a Billing Account or enabling paid services:
+- review the billing account's payment method and billing settings;
+- set budgets and alert thresholds;
+- use least-privilege access;
+- do not deploy paid resources until the founder understands potential charges;
+- never assume a budget automatically stops usage.
 
-1. Resolve the domain request and verify authoritative DNS.
-2. Configure a domain-matching business mailbox.
-3. Validate founder/project age and legal status against Start tier criteria.
-4. Define the first customer segment and evidence-based business model.
-5. Deploy the API securely and run a public synthetic-data demonstration.
-6. Create the Google Cloud Billing account and verify its 18-character ID and owner email domain.
-7. Re-check all current eligibility requirements and submit only when every required fact is accurate.
+## 8. Submission decision
 
-## Security rules
+**Do not submit yet.** The materials can be prepared, but the current record does not establish all Start-tier requirements. In particular, the matching domain/email, billing ID, founder details, founding-date eligibility and validated business model remain open.
 
-- Never put production secrets, API keys, private credentials or personal payment data in this repository.
-- Never use real payment data in the demo.
-- Do not claim production readiness, bank integrations, fraud-model accuracy, customer traction, revenue, incorporation or funding unless independently verified.
+When these are resolved, re-check Google's live criteria, complete the application using the founder's verified facts, and submit only after the founder reviews every answer.
+
+## 9. Truthful short description
+
+NEXORA Payment Integrity is an early-stage, pre-production prototype exploring a provider-neutral decision layer for incoming payment-event notifications. Its current synthetic-data demonstration applies deterministic rules to produce ACCEPT, REVIEW or REJECT outcomes and identify duplicate events. A separate Node.js/PostgreSQL backend scaffold explores signed event ingestion, replay-window checks, idempotency and audit records. The public demo and backend scaffold are not yet connected as one deployed service, and NEXORA has not processed live transactions or claimed customers, revenue or production usage.
+
+## 10. Security rules
+
+- Never commit API keys, passwords, private credentials, billing details or real customer/payment data.
+- Never test with real banking or payment data.
+- Do not claim production readiness, bank integrations, fraud-model accuracy, certification, customers, revenue, funding or incorporation unless independently verified.
