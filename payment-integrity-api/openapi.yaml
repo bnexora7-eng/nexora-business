@@ -5,6 +5,11 @@ info:
   description: Pre-production API scaffold for authenticated synthetic payment-event screening. Not a production payment service.
 servers:
   - url: http://localhost:8080
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
 paths:
   /health:
     get:
@@ -19,6 +24,61 @@ paths:
                 properties:
                   status: { type: string, const: ok }
                   service: { type: string }
+  /v1/auth/register:
+    post:
+      summary: Create a NEXORA account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email, maxLength: 254 }
+                password: { type: string, minLength: 12, maxLength: 128 }
+      responses:
+        "201": { description: Account created and bearer session issued }
+        "409": { description: Email is already registered }
+        "422": { description: Invalid email or password length }
+        "429": { description: Too many account attempts }
+        "503": { description: Account database is not configured }
+  /v1/auth/login:
+    post:
+      summary: Sign in to a NEXORA account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string }
+      responses:
+        "200": { description: Bearer session issued }
+        "401": { description: Invalid credentials }
+        "429": { description: Too many account attempts }
+        "503": { description: Account database is not configured }
+  /v1/auth/me:
+    get:
+      summary: Get the signed-in account profile
+      security:
+        - bearerAuth: []
+      responses:
+        "200": { description: Current account profile }
+        "401": { description: Missing, invalid or expired session }
+        "503": { description: Account database is not configured }
+  /v1/auth/logout:
+    post:
+      summary: Revoke the current account session
+      security:
+        - bearerAuth: []
+      responses:
+        "200": { description: Session revoked }
+        "401": { description: Missing or invalid session }
+        "503": { description: Account database is not configured }
   /v1/events:
     post:
       summary: Authenticate and screen a provider event
