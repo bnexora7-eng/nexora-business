@@ -47,7 +47,7 @@ export default function NexoraModules({screen,signedIn}:{screen:"Community"|"Mar
     {screen==="Community"&&<>
       <View style={styles.card}><Text style={styles.title}>NEXORA Community</Text><Text style={styles.text}>Share updates with members. Posts are saved in the NEXORA database.</Text>{field("YOUR UPDATE",post,setPost,"Write something for the community...",true)}{button("PUBLISH UPDATE",publishPost)}{!!message&&<Text style={styles.note}>{message}</Text>}</View>
       <Text style={styles.title}>Latest updates ({posts.length})</Text>
-      {posts.map(p=><View key={p.id} style={styles.card}><Text style={styles.note}>{p.email}</Text><Text style={styles.text}>{new Date(p.created_at).toLocaleString()}</Text><Text style={[styles.title,{fontSize:16,marginTop:8}]}>{p.body}</Text></View>)}
+      {posts.map(p=><View key={p.id} style={styles.card}><Text style={styles.note}>COMMUNITY MEMBER</Text><Text style={styles.text}>{new Date(p.created_at).toLocaleString()}</Text><Text style={[styles.title,{fontSize:16,marginTop:8}]}>{p.body}</Text></View>)}
       {!posts.length&&<Text style={styles.text}>No posts yet.</Text>}
     </>}
     {screen==="Marketplace"&&<>
@@ -55,7 +55,7 @@ export default function NexoraModules({screen,signedIn}:{screen:"Community"|"Mar
       <Text style={styles.label}>CATEGORY</Text><View style={{flexDirection:"row",gap:8}}>{["service","product","digital"].map(c=><TouchableOpacity key={c} onPress={()=>setCategory(c)} style={{padding:9,borderRadius:8,borderWidth:1,borderColor:category===c?C.cyan:C.line}}><Text style={{color:category===c?C.cyan:C.text}}>{c}</Text></TouchableOpacity>)}</View>
       {field("DESCRIPTION",description,setDescription,"Describe your offer...",true)}{field("PRICE (EUR)",price,setPrice,"0.00")}{button("PUBLISH OFFER",publishOffer)}{!!message&&<Text style={styles.note}>{message}</Text>}</View>
       <Text style={styles.title}>Active offers ({offers.length})</Text>
-      {offers.map(o=><View key={o.id} style={styles.card}><Text style={styles.note}>{String(o.category).toUpperCase()} · {o.email}</Text><Text style={[styles.title,{fontSize:17}]}>{o.title}</Text><Text style={styles.text}>{o.description}</Text><Text style={styles.title}>€{Number(o.price).toFixed(2)}</Text></View>)}
+      {offers.map(o=><View key={o.id} style={styles.card}><Text style={styles.note}>{String(o.category).toUpperCase()} · NEXORA SELLER</Text><Text style={[styles.title,{fontSize:17}]}>{o.title}</Text><Text style={styles.text}>{o.description}</Text><Text style={styles.title}>€{Number(o.price).toFixed(2)}</Text></View>)}
       {!offers.length&&<Text style={styles.text}>No offers published yet.</Text>}
     </>}
     {screen==="Business"&&<BusinessStudio signedIn={signedIn}/>}
