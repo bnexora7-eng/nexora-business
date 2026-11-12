@@ -1,4 +1,4 @@
-name: NEXORA Android APK
+name: NEXORA Android release
 
 on:
   workflow_dispatch:
@@ -12,9 +12,9 @@ permissions:
   contents: read
 
 jobs:
-  build-debug-apk:
+  build-android-release:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -32,15 +32,22 @@ jobs:
       - name: Install dependencies
         working-directory: mobile
         run: npm install
+      - name: Check TypeScript
+        working-directory: mobile
+        run: npm run typecheck
       - name: Generate Android project
         working-directory: mobile
         run: npx expo prebuild --platform android --non-interactive
-      - name: Build standalone release APK
+      - name: Build installable APK and Google Play AAB
         working-directory: mobile/android
-        run: chmod +x gradlew && ./gradlew --no-daemon --console=plain assembleRelease
-      - name: Upload APK
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon --console=plain assembleRelease bundleRelease
+      - name: Upload Android release files
         uses: actions/upload-artifact@v4
         with:
           name: nexora-android-release
-          path: mobile/android/app/build/outputs/apk/release/app-release.apk
+          path: |
+            mobile/android/app/build/outputs/apk/release/app-release.apk
+            mobile/android/app/build/outputs/bundle/release/app-release.aab
           if-no-files-found: error
