@@ -372,6 +372,94 @@ async function handleLogout(req, res) {
   return send(res, 200, { status: "signed_out" });
 }
 
+
+async function requireUser(req, res) {
+  if (!pool) { send(res, 503, { error: "Database is not configured" }); return null; }
+  const user = await getAuthenticatedUser(req);
+  if (!user) { send(res, 401, { error: "Sign in to use this feature" }); return null; }
+  return user;
+}
+async function handleCommunity(req, res) {
+  if (req.method === "GET") {
+    if (!pool) return send(res, 503, { error: "Community database is not configured" });
+    const result = await pool.query(
+      `SELECT p.id,p.body,p.created_at,u.email FROM community_posts p JOIN app_users u ON u.id=p.user_id ORDER BY p.created_at DESC LIMIT 50`
+    );
+    return send(res, 200, { posts: result.rows });
+  }
+  if (req.method === "POST") {
+    const user = await requireUser(req,res); if (!user) return;
+    const raw = await readBody(req); let input;
+    try { input = JSON.parse(raw.toString("utf8")); } catch { return send(res,400,{error:"Invalid JSON"}); }
+    const body = typeof input?.body === "string" ? input.body.trim() : "";
+    if (!body || body.length > 1000) return send(res,422,{error:"Post must contain 1 to 1000 characters"});
+    const result = await pool.query(
+      "INSERT INTO community_posts (user_id,body) VALUES ($1,$2) RETURNING id,body,created_at",
+      [user.id,body]
+    );
+    return send(res,201,{post:{...result.rows[0],email:user.email}});
+  }
+  return send(res,405,{error:"Method not allowed"});
+}
+async function handleMarketplace(req, res) {
+  if (req.method === "GET") {
+    if (!pool) return send(res,503,{error:"Marketplace database is not configured"});
+    const result = await pool.query(
+      `SELECT l.id,l.title,l.description,l.category,l.price,l.currency,l.created_at,u.email
+       FROM marketplace_listings l JOIN app_users u ON u.id=l.user_id
+       WHERE l.status='active' ORDER BY l.created_at DESC LIMIT 100`
+    );
+    return send(res,200,{listings:result.rows});
+  }
+  if (req.method === "POST") {
+    const user = await requireUser(req,res); if (!user) return;
+    const raw=await readBody(req); let input;
+    try { input=JSON.parse(raw.toString("utf8")); } catch { return send(res,400,{error:"Invalid JSON"}); }
+    const title=typeof input?.title==="string"?input.title.trim():"";
+    const description=typeof input?.description==="string"?input.description.trim():"";
+    const category=typeof input?.category==="string"?input.category.trim():"";
+    const priceText=String(input?.price??"").trim().replace(",",".");
+    const price=Number(priceText);
+    if (!title||title.length>100||description.length<5||description.length>1000||!["service","product","digital"].includes(category)||!/^\d{1,7}(?:\.\d{1,2})?$/.test(priceText)||!Number.isFinite(price)||price<0||price>1000000) {
+      return send(res,422,{error:"Check title, description, category and EUR price"});
+    }
+    const result=await pool.query(
+      `INSERT INTO marketplace_listings (user_id,title,description,category,price)
+       VALUES ($1,$2,$3,$4,$5) RETURNING id,title,description,category,price,currency,created_at`,
+      [user.id,title,description,category,price]
+    );
+    return send(res,201,{listing:{...result.rows[0],email:user.email}});
+  }
+  return send(res,405,{error:"Method not allowed"});
+}
+async function handleBusinessWorkspace(req,res) {
+  const user=await requireUser(req,res); if(!user) return;
+  if(req.method==="GET") {
+    const result=await pool.query(
+      "SELECT business_name,tagline,goals,updated_at FROM business_workspaces WHERE user_id=$1",
+      [user.id]
+    );
+    return send(res,200,{workspace:result.rows[0]||{business_name:"",tagline:"",goals:""}});
+  }
+  if(req.method==="PUT") {
+    const raw=await readBody(req); let input;
+    try { input=JSON.parse(raw.toString("utf8")); } catch { return send(res,400,{error:"Invalid JSON"}); }
+    const businessName=typeof input?.business_name==="string"?input.business_name.trim():"";
+    const tagline=typeof input?.tagline==="string"?input.tagline.trim():"";
+    const goals=typeof input?.goals==="string"?input.goals.trim():"";
+    if(businessName.length>100||tagline.length>180||goals.length>4000) return send(res,422,{error:"Workspace fields exceed allowed length"});
+    const result=await pool.query(
+      `INSERT INTO business_workspaces (user_id,business_name,tagline,goals)
+       VALUES ($1,$2,$3,$4)
+       ON CONFLICT (user_id) DO UPDATE SET business_name=EXCLUDED.business_name,tagline=EXCLUDED.tagline,goals=EXCLUDED.goals,updated_at=NOW()
+       RETURNING business_name,tagline,goals,updated_at`,
+      [user.id,businessName,tagline,goals]
+    );
+    return send(res,200,{workspace:result.rows[0]});
+  }
+  return send(res,405,{error:"Method not allowed"});
+}
+
 const server = createServer(async (req, res) => {
   try {
     cors(req, res);
@@ -389,6 +477,9 @@ const server = createServer(async (req, res) => {
     if (req.method === "POST" && req.url === "/v1/auth/login") return await handleLogin(req, res);
     if (req.method === "GET" && req.url === "/v1/auth/me") return await handleMe(req, res);
     if (req.method === "POST" && req.url === "/v1/auth/logout") return await handleLogout(req, res);
+    if (req.url === "/v1/community/posts") return await handleCommunity(req,res);
+    if (req.url === "/v1/marketplace/listings") return await handleMarketplace(req,res);
+    if (req.url === "/v1/business/workspace") return await handleBusinessWorkspace(req,res);
     if (req.method === "POST" && req.url === "/v1/payments") return await handleCreatePayment(req, res);
     if (req.method === "POST" && req.url === "/v1/payments/mollie-webhook") return await handleMollieWebhook(req, res);
     const paymentStatusMatch = /^\/v1\/payments\/([0-9a-f-]{36})$/.exec(req.url || "");
