@@ -25,6 +25,9 @@ const DEMO_ORIGIN = process.env.DEMO_ORIGIN || "https://bnexora7-eng.github.io";
 const demoRequests = new Map();
 const demoEvents = new Map();
 const authAttempts = new Map();
+const MOLLIE_API_BASE = "https://api.mollie.com/v2";
+const PUBLIC_API_URL = (process.env.PUBLIC_API_URL || "https://nexora-payment-integrity-api.onrender.com").replace(/\\/$/, "");
+const PAYMENT_RETURN_URL = process.env.NEXORA_PAYMENT_RETURN_URL || "https://bnexora7-eng.github.io/nexora-business/";
 let pool = null;
 
 // The public demo is deliberately self-contained and can run without PostgreSQL.
@@ -177,6 +180,133 @@ async function createUserSession(userId) {
   );
   return token;
 }
+async function getAuthenticatedUser(req) {
+  if (!pool) return null;
+  const token = bearerToken(req);
+  if (!token) return null;
+  const result = await pool.query(
+    `SELECT u.id, u.email FROM app_sessions s JOIN app_users u ON u.id=s.user_id
+     WHERE s.token_hash=$1 AND s.revoked_at IS NULL AND s.expires_at > NOW()`,
+    [hashSessionToken(token)]
+  );
+  return result.rows[0] || null;
+}
+async function mollieRequest(path, options = {}) {
+  const apiKey = process.env.MOLLIE_API_KEY;
+  if (!apiKey) throw Object.assign(new Error("Mollie is not configured"), { statusCode: 503 });
+  const response = await fetch(MOLLIE_API_BASE + path, {
+    ...options,
+    headers: {
+      Authorization: "Bearer " + apiKey,
+      Accept: "application/hal+json",
+      ...(options.body ? { "Content-Type": "application/json" } : {}),
+      ...(options.headers || {})
+    }
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    console.error("Mollie API error", response.status, data?.title || data?.detail || "unknown");
+    throw Object.assign(new Error("Payment provider could not create or retrieve the payment"), { statusCode: 502 });
+  }
+  return data;
+}
+async function handleCreatePayment(req, res) {
+  if (!pool) return send(res, 503, { error: "Payment service requires the database" });
+  const user = await getAuthenticatedUser(req);
+  if (!user) return send(res, 401, { error: "Sign in to create a payment" });
+  if (!process.env.MOLLIE_API_KEY) return send(res, 503, { error: "Payment provider is not configured yet" });
+  const rawBody = await readBody(req);
+  let input;
+  try { input = JSON.parse(rawBody.toString("utf8")); } catch { return send(res, 400, { error: "Invalid JSON" }); }
+  const amountText = String(input?.amount ?? "").trim().replace(",", ".");
+  if (!/^\\d{1,5}(?:\\.\\d{1,2})?$/.test(amountText)) return send(res, 422, { error: "Enter an amount in EUR, for example 19.90" });
+  const amountNumber = Number(amountText);
+  if (!Number.isFinite(amountNumber) || amountNumber < 1 || amountNumber > 5000) return send(res, 422, { error: "Payment amount must be between €1.00 and €5,000.00" });
+  const description = typeof input?.description === "string" ? input.description.trim().replace(/[<>]/g, "") : "";
+  if (description.length < 3 || description.length > 100) return send(res, 422, { error: "Description must contain 3 to 100 characters" });
+  const orderId = crypto.randomUUID();
+  const amount = amountNumber.toFixed(2);
+  await pool.query(
+    `INSERT INTO own_payments (order_id,user_id,amount,currency,description,status)
+     VALUES ($1,$2,$3,'EUR',$4,'creating')`,
+    [orderId, user.id, amount, description]
+  );
+  try {
+    const payment = await mollieRequest("/payments", {
+      method: "POST",
+      body: JSON.stringify({
+        amount: { currency: "EUR", value: amount },
+        description: "NEXORA " + description,
+        redirectUrl: PAYMENT_RETURN_URL + "?payment_id=" + encodeURIComponent(orderId),
+        webhookUrl: PUBLIC_API_URL + "/v1/payments/mollie-webhook",
+        metadata: { order_id: orderId, user_id: String(user.id) }
+      })
+    });
+    const checkoutUrl = payment?._links?.checkout?.href;
+    if (!payment?.id || !checkoutUrl) throw new Error("Payment provider returned an incomplete checkout response");
+    await pool.query(
+      `UPDATE own_payments SET mollie_payment_id=$1,status=$2,checkout_url=$3,updated_at=NOW()
+       WHERE order_id=$4`,
+      [payment.id, payment.status || "open", checkoutUrl, orderId]
+    );
+    return send(res, 201, {
+      order_id: orderId,
+      payment_id: payment.id,
+      status: payment.status || "open",
+      amount: { currency: "EUR", value: amount },
+      checkout_url: checkoutUrl,
+      mode: payment.mode || "unknown"
+    });
+  } catch (error) {
+    await pool.query("UPDATE own_payments SET status='creation_failed',updated_at=NOW() WHERE order_id=$1", [orderId]);
+    throw error;
+  }
+}
+async function handleMollieWebhook(req, res) {
+  if (!pool || !process.env.MOLLIE_API_KEY) return send(res, 503, { error: "Payment webhook is not configured" });
+  const rawBody = await readBody(req);
+  const params = new URLSearchParams(rawBody.toString("utf8"));
+  const molliePaymentId = params.get("id");
+  if (!molliePaymentId || !/^tr_[A-Za-z0-9]+$/.test(molliePaymentId)) return send(res, 400, { error: "Invalid payment identifier" });
+  const payment = await mollieRequest("/payments/" + encodeURIComponent(molliePaymentId));
+  const orderId = payment?.metadata?.order_id;
+  if (payment?.resource !== "payment" || typeof orderId !== "string") return send(res, 400, { error: "Payment metadata is invalid" });
+  const existing = await pool.query(
+    "SELECT order_id,amount,currency,mollie_payment_id FROM own_payments WHERE order_id=$1",
+    [orderId]
+  );
+  if (!existing.rowCount || existing.rows[0].mollie_payment_id !== molliePaymentId) return send(res, 404, { error: "Payment order not found" });
+  const expectedAmount = Number(existing.rows[0].amount).toFixed(2);
+  if (payment.amount?.currency !== existing.rows[0].currency || payment.amount?.value !== expectedAmount) {
+    console.error("Mollie payment amount mismatch", molliePaymentId);
+    return send(res, 409, { error: "Payment amount mismatch" });
+  }
+  const allowed = new Set(["open","pending","authorized","paid","canceled","expired","failed"]);
+  if (!allowed.has(payment.status)) return send(res, 422, { error: "Unsupported payment status" });
+  await pool.query(
+    "UPDATE own_payments SET status=$1,updated_at=NOW() WHERE order_id=$2",
+    [payment.status, orderId]
+  );
+  return send(res, 200, { received: true });
+}
+async function handleGetPayment(req, res, orderId) {
+  if (!pool) return send(res, 503, { error: "Payment service requires the database" });
+  const user = await getAuthenticatedUser(req);
+  if (!user) return send(res, 401, { error: "Authentication required" });
+  const result = await pool.query(
+    `SELECT order_id,amount,currency,description,status,created_at,updated_at
+     FROM own_payments WHERE order_id=$1 AND user_id=$2`,
+    [orderId,user.id]
+  );
+  if (!result.rowCount) return send(res, 404, { error: "Payment not found" });
+  const p = result.rows[0];
+  return send(res, 200, {
+    order_id: p.order_id, amount: { currency: p.currency, value: Number(p.amount).toFixed(2) },
+    description: p.description, status: p.status, created_at: p.created_at, updated_at: p.updated_at,
+    paid: p.status === "paid"
+  });
+}
+
 async function handleRegister(req, res) {
   if (!pool) return send(res, 503, { error: "Account service is not configured; database is required" });
   if (authRateLimited(req)) return send(res, 429, { error: "Too many account attempts; try again in 15 minutes" });
@@ -257,6 +387,10 @@ const server = createServer(async (req, res) => {
     if (req.method === "POST" && req.url === "/v1/auth/login") return await handleLogin(req, res);
     if (req.method === "GET" && req.url === "/v1/auth/me") return await handleMe(req, res);
     if (req.method === "POST" && req.url === "/v1/auth/logout") return await handleLogout(req, res);
+    if (req.method === "POST" && req.url === "/v1/payments") return await handleCreatePayment(req, res);
+    if (req.method === "POST" && req.url === "/v1/payments/mollie-webhook") return await handleMollieWebhook(req, res);
+    const paymentStatusMatch = /^\\/v1\\/payments\\/([0-9a-f-]{36})$/.exec(req.url || "");
+    if (req.method === "GET" && paymentStatusMatch) return await handleGetPayment(req, res, paymentStatusMatch[1]);
     if (req.method === "POST" && req.url === "/v1/events") return await handleEvent(req, res);
     if (req.method === "POST" && req.url === "/v1/demo/events") return await handleDemoEvent(req, res);
     return send(res, 404, { error: "Not found" });
