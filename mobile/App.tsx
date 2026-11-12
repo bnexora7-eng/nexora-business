@@ -1,8 +1,10 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import * as SecureStore from "expo-secure-store";
 import { SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 type Tab = "Home" | "Community" | "Marketplace" | "Business" | "Integrity" | "Profile";
 type Decision = "ACCEPT" | "REVIEW" | "REJECT";
+type Account = { id: string; email: string; created_at: string };\nconst API_BASE = (process.env.EXPO_PUBLIC_NEXORA_API_URL || "").replace(/\\/$/, "");
 
 const C = { bg:"#08111F", panel:"#111E30", panel2:"#17263B", line:"#263A53", text:"#F3F7FC", muted:"#91A4BA", cyan:"#4DE1D2", blue:"#6EA8FF", green:"#43D19E", amber:"#F5BD58", red:"#FF7777" };
 
@@ -19,10 +21,67 @@ export default function App() {
   const [amount,setAmount] = useState("950");
   const [reference,setReference] = useState("NX-2026-001");
   const [email,setEmail] = useState("");
+  const [password,setPassword] = useState("");
+  const [authMode,setAuthMode] = useState<"login"|"register">("register");
+  const [authBusy,setAuthBusy] = useState(false);
+  const [authMessage,setAuthMessage] = useState("");
+  const [account,setAccount] = useState<Account|null>(null);
   const [decision,setDecision] = useState<Decision|null>(null);
   const [plan,setPlan] = useState("Free");
 
-  const screening = useMemo(():Decision => {
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      if (!API_BASE) { if (active) setAuthMessage("Serwer konta nie jest jeszcze podłączony."); return; }
+      try {
+        const token = await SecureStore.getItemAsync("nexora_session");
+        if (!token) return;
+        const response = await fetch(API_BASE + "/v1/auth/me", { headers: { Authorization: "Bearer " + token } });
+        if (!response.ok) { await SecureStore.deleteItemAsync("nexora_session"); return; }
+        const data = await response.json();
+        if (active) setAccount(data.user);
+      } catch {
+        if (active) setAuthMessage("Nie można połączyć się z serwerem konta.");
+      }
+    })();
+    return () => { active = false; };
+  }, []);
+
+  const submitAuth = async () => {
+    setAuthMessage("");
+    if (!API_BASE) { setAuthMessage("Logowanie będzie dostępne po podłączeniu serwera NEXORA."); return; }
+    if (!email.trim() || !password) { setAuthMessage("Wpisz adres e-mail i hasło."); return; }
+    setAuthBusy(true);
+    try {
+      const response = await fetch(API_BASE + (authMode === "register" ? "/v1/auth/register" : "/v1/auth/login"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), password })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Nie udało się zalogować.");
+      await SecureStore.setItemAsync("nexora_session", data.token);
+      setAccount(data.user);
+      setPassword("");
+      setAuthMessage(authMode === "register" ? "Konto zostało utworzone." : "Zalogowano pomyślnie.");
+    } catch (error) {
+      setAuthMessage(error instanceof Error ? error.message : "Błąd połączenia.");
+    } finally {
+      setAuthBusy(false);
+    }
+  };
+
+  const signOut = async () => {
+    try {
+      const token = await SecureStore.getItemAsync("nexora_session");
+      if (token && API_BASE) await fetch(API_BASE + "/v1/auth/logout", { method: "POST", headers: { Authorization: "Bearer " + token } });
+    } catch {}
+    await SecureStore.deleteItemAsync("nexora_session");
+    setAccount(null);
+    setAuthMessage("Wylogowano.");
+  };
+\n  const screening = useMemo(():Decision => {
     const n = Number(amount.replace(",","."));
     if (!Number.isFinite(n) || n <= 0) return "REJECT";
     if (n > 5000) return "REVIEW";
@@ -93,10 +152,32 @@ export default function App() {
         <Text style={styles.note}>Duplicate-event protection and the separate API prototype remain part of the existing project. This mobile demo is not a regulated payment service.</Text>
       </>}
       {tab==="Profile" && <>
-        <Card><Text style={styles.kicker}>ACCOUNT & ACCESS</Text><Text style={styles.hero}>Choose how you grow with NEXORA.</Text><Text style={styles.muted}>Plan selection here is a preview only. No subscription is charged in this prototype.</Text></Card>
+        <Card>
+          <Text style={styles.kicker}>NEXORA ACCOUNT</Text>
+          {account ? <>
+            <Text style={styles.hero}>You are signed in.</Text>
+            <Text style={styles.muted}>{account.email}</Text>
+            <TouchableOpacity style={styles.primary} onPress={signOut}><Text style={styles.primaryText}>SIGN OUT</Text></TouchableOpacity>
+          </> : <>
+            <Text style={styles.hero}>{authMode==="register"?"Create your NEXORA account.":"Welcome back."}</Text>
+            <Text style={styles.muted}>An account will give you a personal profile across NEXORA services.</Text>
+            <View style={{flexDirection:"row",gap:8,marginTop:16}}>
+              <Pill label="Create account" active={authMode==="register"} onPress={()=>{setAuthMode("register");setAuthMessage("");}}/>
+              <Pill label="Sign in" active={authMode==="login"} onPress={()=>{setAuthMode("login");setAuthMessage("");}}/>
+            </View>
+            <Text style={styles.label}>EMAIL ADDRESS</Text>
+            <TextInput value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} placeholder="you@example.com" placeholderTextColor={C.muted} style={styles.input}/>
+            <Text style={styles.label}>PASSWORD</Text>
+            <TextInput value={password} onChangeText={setPassword} secureTextEntry placeholder="At least 12 characters" placeholderTextColor={C.muted} style={styles.input}/>
+            {authMode==="register"&&<Text style={styles.note}>Use at least 12 characters. Your password is stored as a salted secure hash, not as plain text.</Text>}
+            <TouchableOpacity style={[styles.primary,authBusy&&{opacity:0.6}]} disabled={authBusy} onPress={submitAuth}><Text style={styles.primaryText}>{authBusy?"PLEASE WAIT":authMode==="register"?"CREATE ACCOUNT":"SIGN IN"}</Text></TouchableOpacity>
+            {!!authMessage&&<Text style={[styles.note,{marginBottom:0}]}>{authMessage}</Text>}
+            {!API_BASE&&<Text style={styles.note}>The account server must be deployed and connected before registration can work.</Text>}
+          </>}
+        </Card>
+        <Card><Text style={styles.kicker}>MEMBERSHIP</Text><Text style={styles.hero}>Choose how you grow with NEXORA.</Text><Text style={styles.muted}>These plans are previews only. No subscription is charged in this build.</Text></Card>
         {["Free","Premium","Business"].map(p=><TouchableOpacity key={p} style={[styles.plan,plan===p&&styles.planSelected]} onPress={()=>setPlan(p)}><View style={{flex:1}}><Text style={styles.actionTitle}>{p}</Text><Text style={styles.muted}>{p==="Free"?"Core platform access":p==="Premium"?"Enhanced personal features":"Tools for companies and sellers"}</Text></View><Text style={{color:plan===p?C.cyan:C.muted,fontWeight:"800"}}>{plan===p?"SELECTED":"SELECT"}</Text></TouchableOpacity>)}
-        <Text style={styles.note}>Payment setup will be added only after selecting the correct legal payment model and provider. Bank details are not stored in the app.</Text>
-        <Text style={styles.label}>CONTACT EMAIL (OPTIONAL)</Text><TextInput value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" placeholder="you@example.com" placeholderTextColor={C.muted} style={styles.input}/>
+        <Text style={styles.note}>Paid memberships will be activated only after a compliant payment provider and subscription management are integrated. No bank details are requested here.</Text>
       </>}
     </ScrollView>
     <View style={styles.nav}>{(["Home","Community","Marketplace","Business","Integrity","Profile"] as Tab[]).map(t=><TouchableOpacity key={t} onPress={()=>go(t)} style={styles.navItem}><View style={[styles.navMark,tab===t&&styles.navMarkActive]}/><Text numberOfLines={1} style={[styles.navText,tab===t&&{color:C.cyan}]}>{t==="Marketplace"?"Market":t==="Community"?"Social":t==="Integrity"?"Pay":t}</Text></TouchableOpacity>)}</View>
