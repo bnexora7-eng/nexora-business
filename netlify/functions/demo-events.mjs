@@ -1,17 +1,21 @@
 import { screenEvent } from "../../payment-integrity-api/src/screening.js";
 
-const siteOrigin = (request) => new URL(request.url).origin;
 const requests = new Map();
 const events = new Map();
 const threshold = 10000;
 
 export default async (request) => {
   const origin = request.headers.get("origin") || "";
-  const allowedOrigin = "https://bnexora7-eng.github.io";
+  const allowedOrigins = new Set([
+  "https://bnexora7-eng.github.io",
+  "https://splendid-lokum-02523e.netlify.app",
+  ...(process.env.DEMO_ORIGINS || "").split(",").map(value => value.trim()).filter(Boolean)
+]);
+  const responseOrigin = allowedOrigins.has(origin) ? origin : "https://bnexora7-eng.github.io";
   const headers = {
     "content-type": "application/json; charset=utf-8",
     "cache-control": "no-store",
-    "access-control-allow-origin": allowedOrigin,
+    "access-control-allow-origin": responseOrigin,
     "access-control-allow-methods": "GET, POST, OPTIONS",
     "access-control-allow-headers": "content-type",
     "vary": "Origin"
@@ -23,13 +27,13 @@ export default async (request) => {
     return reply(200, {
       status: "ok",
       service: "NEXORA Payment Integrity Demo API",
-      version: "0.1.0",
+      version: "0.1.1",
       storage: "temporary-demo-memory",
       supported_methods: ["GET", "POST", "OPTIONS"]
     });
   }
 
-  if (origin && origin !== allowedOrigin) return reply(403, { error: "Origin not allowed" });
+  if (origin && !allowedOrigins.has(origin)) return reply(403, { error: "Origin not allowed" });
   if (request.method === "OPTIONS") return new Response(null, { status: 204, headers });
   if (request.method !== "POST") return reply(405, { error: "Method not allowed" });
 
