@@ -19,7 +19,10 @@ let pool = null;
 // The public demo is deliberately self-contained and can run without PostgreSQL.
 // Authenticated provider webhooks still require DATABASE_URL and persistent storage.
 if (DATABASE_URL) {
-  pool = new Pool({ connectionString: DATABASE_URL, ssl: process.env.PGSSL === "true" ? { rejectUnauthorized: true } : undefined });
+  // DATABASE_URL is wired by Render fromDatabase to the same-region internal URL.
+  // Render's internal Postgres endpoint uses private networking; do not force TLS
+  // against its self-signed internal certificate. External DB URLs must use TLS.
+  pool = new Pool({ connectionString: DATABASE_URL, ssl: false });
   await pool.query(await readFile(new URL("./schema.sql", import.meta.url), "utf8"));
   console.log("NEXORA database schema is ready");
 } else {
