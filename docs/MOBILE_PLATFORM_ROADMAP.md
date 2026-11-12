@@ -84,3 +84,49 @@ NEXORA is the parent product and mobile application. The first mobile release sh
 ## Current verified starting point
 
 The repository currently contains a static HTML/CSS/JavaScript interactive concept prototype and a separate pre-production Node.js/PostgreSQL Payment Integrity backend scaffold. The browser prototype and backend are not connected as one deployed service. This roadmap does not imply that a native Android application has already been built or published.
+
+
+## Revenue model and founder payouts
+
+The product must be designed to generate sustainable revenue. Revenue is a core product requirement, not an afterthought.
+
+### Proposed revenue streams
+
+1. **Free tier:** basic discovery and community participation to reduce adoption friction.
+2. **NEXORA Premium:** recurring subscription for clearly defined additional digital features, subject to Google Play billing rules and any eligible EEA alternative-billing programme requirements.
+3. **NEXORA Business:** paid business plans for enhanced listings, business tools, analytics or workflow features.
+4. **Marketplace fees:** a disclosed commission or service fee on eligible marketplace transactions, introduced only after marketplace, seller, consumer-protection, tax and payment-provider requirements are reviewed.
+5. **Payment Integrity:** separate B2B subscription/API pricing only after the backend is deployed, secured, tested and validated with customers.
+
+### Payment and payout architecture
+
+- Customer payments must be processed by an established payment provider or, for Play-distributed digital features, Google Play Billing unless a valid policy exception or enrolled EEA programme applies.
+- The platform must record orders, subscription status, refunds, chargebacks, provider fees and payout reconciliation server-side.
+- Net proceeds should be paid to a verified bank account controlled by the legally entitled payee, after processor/platform fees, refunds, taxes and other liabilities.
+- Founder payouts are not the same as gross sales. The legal recipient and payout route must match the actual legal/tax structure and the provider's verification requirements.
+- Marketplace seller proceeds must be kept distinct from NEXORA's own revenue. Do not route customer funds or seller balances through the founder's personal account.
+- Never store card details or payment-provider secret keys in the mobile app or public repository.
+
+### Legal and operational prerequisite
+
+NEXORA is currently an independent project and is not represented as an incorporated company. Before accepting customer payments or receiving business revenue, confirm the correct Dutch legal/tax structure, invoicing/VAT obligations, business bank-account requirements and payment-provider onboarding rules. Do not assume a personal bank account is an acceptable business payout account. No payment processor, paid service or bank account is to be opened or charged without the founder's explicit approval.
+
+### Google Play compliance
+
+Digital subscriptions and paid app features normally require Google Play Billing for Play-distributed apps, unless a documented exception or applicable enrolled programme applies. Google provides EEA alternative-billing and external-offer programmes, but they carry additional eligibility, user-disclosure, API and service-fee requirements. Physical goods and physical services are treated differently. Confirm the policy and programme terms immediately before implementation and release.
+
+Official references:
+- https://support.google.com/googleplay/android-developer/answer/10281818
+- https://support.google.com/googleplay/android-developer/answer/9858738
+- https://support.google.com/googleplay/android-developer/answer/6112435
+
+### Revenue release gates
+
+- [ ] Define the exact Premium and Business features users will pay for.
+- [ ] Confirm pricing, renewal, cancellation, refund and support terms.
+- [ ] Choose the legal payee and verify Dutch registration/tax requirements.
+- [ ] Select a payment provider and confirm payout eligibility and fees.
+- [ ] Implement server-side payment verification and reconciliation.
+- [ ] Test refunds, failed renewals, chargebacks and subscription entitlement changes.
+- [ ] Confirm Google Play billing / EEA programme compliance for every digital SKU.
+- [ ] Confirm the founder's lawful route for receiving net proceeds into an appropriate bank account.
