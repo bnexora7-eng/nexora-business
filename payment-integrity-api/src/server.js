@@ -171,7 +171,7 @@ async function handleRegister(req, res) {
   try { input = JSON.parse(rawBody.toString("utf8")); } catch { return send(res, 400, { error: "Invalid JSON" }); }
   const email = typeof input?.email === "string" ? input.email.trim().toLowerCase() : "";
   const password = typeof input?.password === "string" ? input.password : "";
-  if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email) || email.length > 254) return send(res, 422, { error: "Enter a valid email address" });
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) return send(res, 422, { error: "Enter a valid email address" });
   if (password.length < 12 || password.length > 128) return send(res, 422, { error: "Password must contain 12 to 128 characters" });
   try {
     const passwordHash = await hashPassword(password);
