@@ -5,7 +5,7 @@ import { SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, Touch
 type Tab = "Home" | "Community" | "Marketplace" | "Business" | "Integrity" | "Profile";
 type Decision = "ACCEPT" | "REVIEW" | "REJECT";
 type Account = { id: string; email: string; created_at: string };
-const API_RAW = process.env.EXPO_PUBLIC_NEXORA_API_URL || "";
+const API_RAW = process.env.EXPO_PUBLIC_NEXORA_API_URL || "https://nexora-payment-integrity-api.onrender.com";
 const API_BASE = API_RAW.endsWith("/") ? API_RAW.slice(0, -1) : API_RAW;
 
 const C = { bg:"#08111F", panel:"#111E30", panel2:"#17263B", line:"#263A53", text:"#F3F7FC", muted:"#91A4BA", cyan:"#4DE1D2", blue:"#6EA8FF", green:"#43D19E", amber:"#F5BD58", red:"#FF7777" };
