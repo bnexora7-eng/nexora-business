@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import * as SecureStore from "expo-secure-store";
+import NexoraModules from "./NexoraModules";
 import { SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View, Linking } from "react-native";
 
 type Tab = "Home" | "Community" | "Marketplace" | "Business" | "Integrity" | "Payments" | "Profile";
@@ -159,25 +160,7 @@ export default function App() {
         <Action title="Business Tools" subtitle="Tools for growing businesses" onPress={()=>go("Business")}/>
         <Action title="Payment Integrity" subtitle="A decision-support payment screening module" onPress={()=>go("Integrity")}/>
       </>}
-      {tab==="Community" && <>
-        <Card><Text style={styles.kicker}>CONNECT</Text><Text style={styles.hero}>A place to build meaningful connections.</Text><Text style={styles.muted}>Community profiles, interest groups and updates are planned for the next development stage.</Text></Card>
-        <Action title="Member profiles" subtitle="Personal and business profiles — planned" onPress={()=>{}}/>
-        <Action title="Groups & discussions" subtitle="Interest-based communities — planned" onPress={()=>{}}/>
-        <Action title="Events" subtitle="Discover and promote activities — planned" onPress={()=>{}}/>
-      </>}
-      {tab==="Marketplace" && <>
-        <Card><Text style={styles.kicker}>BUY • SELL • GROW</Text><Text style={styles.hero}>A marketplace built into the NEXORA ecosystem.</Text><Text style={styles.muted}>The prototype shows the planned structure. Live listings, checkout, refunds and seller payouts are not enabled.</Text></Card>
-        <Action title="Products" subtitle="Browse product listings — planned" onPress={()=>{}}/>
-        <Action title="Services" subtitle="Find professional services — planned" onPress={()=>{}}/>
-        <Action title="Seller centre" subtitle="Manage offers and orders — planned" onPress={()=>go("Business")}/>
-        <Text style={styles.note}>Revenue model under consideration: a disclosed transaction commission after a compliant payment provider is integrated.</Text>
-      </>}
-      {tab==="Business" && <>
-        <Card><Text style={styles.kicker}>TOOLS FOR BUSINESS</Text><Text style={styles.hero}>Make your next business move with NEXORA.</Text><Text style={styles.muted}>A future workspace for business profiles, analytics, promotion and workflow tools.</Text></Card>
-        <Action title="Business profile" subtitle="Company identity and public presence — planned" onPress={()=>{}}/>
-        <Action title="Insights & analytics" subtitle="Performance overview — planned" onPress={()=>{}}/>
-        <Action title="Premium & Business plans" subtitle="Plan structure and benefits" onPress={()=>go("Profile")}/>
-      </>}
+      {(tab==="Community"||tab==="Marketplace"||tab==="Business")&&<NexoraModules screen={tab} signedIn={!!account}/>}
       {tab==="Integrity" && <>
         <Card><Text style={styles.kicker}>PAYMENT INTEGRITY • DEMO</Text><Text style={styles.hero}>Screen a payment event.</Text><Text style={styles.muted}>Local demonstration only. This does not connect to a bank, move money or approve a real payment.</Text>
           <Text style={styles.label}>AMOUNT (EUR)</Text><TextInput value={amount} onChangeText={setAmount} keyboardType="decimal-pad" placeholder="950.00" placeholderTextColor={C.muted} style={styles.input}/>
