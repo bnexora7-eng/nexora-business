@@ -56,7 +56,7 @@ function cors(req, res) {
   if (origin === DEMO_ORIGIN) {
     res.setHeader("access-control-allow-origin", DEMO_ORIGIN);
     res.setHeader("vary", "Origin");
-    res.setHeader("access-control-allow-methods", "GET, POST, OPTIONS");
+    res.setHeader("access-control-allow-methods", "GET, POST, PUT, OPTIONS");
     res.setHeader("access-control-allow-headers", "content-type, authorization, x-nexora-timestamp, x-nexora-signature");
     res.setHeader("access-control-max-age", "600");
   }
