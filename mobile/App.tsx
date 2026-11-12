@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import * as SecureStore from "expo-secure-store";
-import { SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View, Linking } from "react-native";
 
-type Tab = "Home" | "Community" | "Marketplace" | "Business" | "Integrity" | "Profile";
+type Tab = "Home" | "Community" | "Marketplace" | "Business" | "Integrity" | "Payments" | "Profile";
 type Decision = "ACCEPT" | "REVIEW" | "REJECT";
 type Account = { id: string; email: string; created_at: string };
 const API_RAW = process.env.EXPO_PUBLIC_NEXORA_API_URL || "https://nexora-payment-integrity-api.onrender.com";
@@ -30,6 +30,12 @@ export default function App() {
   const [account,setAccount] = useState<Account|null>(null);
   const [decision,setDecision] = useState<Decision|null>(null);
   const [plan,setPlan] = useState("Free");
+  const [paymentAmount,setPaymentAmount] = useState("19.90");
+  const [paymentDescription,setPaymentDescription] = useState("NEXORA service");
+  const [paymentBusy,setPaymentBusy] = useState(false);
+  const [paymentMessage,setPaymentMessage] = useState("");
+  const [paymentOrderId,setPaymentOrderId] = useState("");
+  const [paymentStatus,setPaymentStatus] = useState("");
 
 
   useEffect(() => {
@@ -74,6 +80,34 @@ export default function App() {
     }
   };
 
+  const startPayment = async () => {
+    setPaymentMessage("");
+    if (!account) { setPaymentMessage("Najpierw zaloguj się na konto NEXORA w zakładce Profil."); return; }
+    setPaymentBusy(true);
+    try {
+      const token = await SecureStore.getItemAsync("nexora_session");
+      const response = await fetch(API_BASE + "/v1/payments", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + token }, body: JSON.stringify({ amount: paymentAmount, description: paymentDescription }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Nie udało się utworzyć płatności.");
+      setPaymentOrderId(data.order_id); setPaymentStatus(data.status);
+      await Linking.openURL(data.checkout_url);
+      setPaymentMessage(data.mode === "test" ? "Otworzono testową płatność Mollie. Nie są pobierane prawdziwe pieniądze." : "Otworzono stronę płatności. Po powrocie sprawdź status.");
+    } catch (error) { setPaymentMessage(error instanceof Error ? error.message : "Błąd połączenia z płatnościami."); }
+    finally { setPaymentBusy(false); }
+  };
+
+  const refreshPayment = async () => {
+    if (!paymentOrderId) return;
+    setPaymentBusy(true);
+    try {
+      const token = await SecureStore.getItemAsync("nexora_session");
+      const response = await fetch(API_BASE + "/v1/payments/" + paymentOrderId, { headers: { Authorization: "Bearer " + token } });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Nie można sprawdzić płatności.");
+      setPaymentStatus(data.status); setPaymentMessage(data.paid ? "Płatność potwierdzona przez operatora." : "Aktualny status: " + data.status);
+    } catch (error) { setPaymentMessage(error instanceof Error ? error.message : "Nie udało się sprawdzić statusu."); }
+    finally { setPaymentBusy(false); }
+  };
   const signOut = async () => {
     try {
       const token = await SecureStore.getItemAsync("nexora_session");
@@ -99,6 +133,7 @@ export default function App() {
     Marketplace:"NEXORA Marketplace",
     Business:"Business Tools",
     Integrity:"Payment Integrity",
+    Payments:"Pay for NEXORA services",
     Profile:"Your NEXORA account"
   };
 
@@ -154,6 +189,21 @@ export default function App() {
         <View style={styles.outcomes}><Text style={{color:C.green,fontWeight:"800"}}>ACCEPT</Text><Text style={{color:C.amber,fontWeight:"800"}}>REVIEW</Text><Text style={{color:C.red,fontWeight:"800"}}>REJECT</Text></View>
         <Text style={styles.note}>Duplicate-event protection and the separate API prototype remain part of the existing project. This mobile demo is not a regulated payment service.</Text>
       </>}
+      {tab==="Payments" && <>
+        <Card>
+          <Text style={styles.kicker}>NEXORA PAYMENTS • MOLLIE</Text>
+          <Text style={styles.hero}>Secure checkout for NEXORA services.</Text>
+          <Text style={styles.muted}>Payments are handled on a secure provider checkout page. NEXORA never stores card or bank login details.</Text>
+          <Text style={styles.label}>AMOUNT (EUR)</Text>
+          <TextInput value={paymentAmount} onChangeText={setPaymentAmount} keyboardType="decimal-pad" placeholder="19.90" placeholderTextColor={C.muted} style={styles.input}/>
+          <Text style={styles.label}>SERVICE DESCRIPTION</Text>
+          <TextInput value={paymentDescription} onChangeText={setPaymentDescription} maxLength={100} placeholder="NEXORA service" placeholderTextColor={C.muted} style={styles.input}/>
+          <TouchableOpacity style={[styles.primary,paymentBusy&&{opacity:0.6}]} disabled={paymentBusy} onPress={startPayment}><Text style={styles.primaryText}>{paymentBusy?"PLEASE WAIT":"CONTINUE TO SECURE PAYMENT"}</Text></TouchableOpacity>
+          {!!paymentOrderId && <TouchableOpacity style={styles.action} onPress={refreshPayment} disabled={paymentBusy}><View style={{flex:1}}><Text style={styles.actionTitle}>Check payment status</Text><Text style={styles.muted}>Current status: {paymentStatus || "unknown"}</Text></View><Text style={styles.arrow}>↻</Text></TouchableOpacity>}
+          {!!paymentMessage && <Text style={styles.note}>{paymentMessage}</Text>}
+        </Card>
+        <Text style={styles.note}>This feature is enabled only after the NEXORA server has a Mollie API key and a verified merchant account. Test-mode payments do not transfer real money.</Text>
+      </>}
       {tab==="Profile" && <>
         <Card>
           <Text style={styles.kicker}>NEXORA ACCOUNT</Text>
@@ -183,7 +233,7 @@ export default function App() {
         <Text style={styles.note}>Paid memberships will be activated only after a compliant payment provider and subscription management are integrated. No bank details are requested here.</Text>
       </>}
     </ScrollView>
-    <View style={styles.nav}>{(["Home","Community","Marketplace","Business","Integrity","Profile"] as Tab[]).map(t=><TouchableOpacity key={t} onPress={()=>go(t)} style={styles.navItem}><View style={[styles.navMark,tab===t&&styles.navMarkActive]}/><Text numberOfLines={1} style={[styles.navText,tab===t&&{color:C.cyan}]}>{t==="Marketplace"?"Market":t==="Community"?"Social":t==="Integrity"?"Pay":t}</Text></TouchableOpacity>)}</View>
+    <View style={styles.nav}>{(["Home","Community","Marketplace","Business","Integrity","Payments","Profile"] as Tab[]).map(t=><TouchableOpacity key={t} onPress={()=>go(t)} style={styles.navItem}><View style={[styles.navMark,tab===t&&styles.navMarkActive]}/><Text numberOfLines={1} style={[styles.navText,tab===t&&{color:C.cyan}]}>{t==="Marketplace"?"Market":t==="Community"?"Social":t==="Integrity"?"Check":t==="Payments"?"Pay":t}</Text></TouchableOpacity>)}</View>
   </SafeAreaView>;
 }
 
