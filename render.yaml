@@ -9,7 +9,9 @@ services:
     healthCheckPath: /health
     envVars:
       - key: DATABASE_URL
-        sync: false
+        fromDatabase:
+          name: nexora-business-db
+          property: connectionString
       - key: PROVIDER_SECRETS
         sync: false
       - key: PGSSL
@@ -20,3 +22,8 @@ services:
         value: "true"
       - key: DEMO_ORIGIN
         value: "https://bnexora7-eng.github.io"
+
+databases:
+  - name: nexora-business-db
+    plan: free
+    region: frankfurt
