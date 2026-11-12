@@ -1,0 +1,37 @@
+name: NEXORA Render backend smoke test
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "payment-integrity-api/**"
+      - "render.yaml"
+      - ".github/workflows/render-smoke-test.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  render-readiness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Wait for Render deployment and verify PostgreSQL readiness
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="https://nexora-payment-integrity-api.onrender.com/ready"
+          for attempt in $(seq 1 18); do
+            echo "Render readiness check ${attempt}/18"
+            status="$(curl --silent --show-error --output /tmp/nexora-ready.json --write-out '%{http_code}' --max-time 20 "$URL" || true)"
+            cat /tmp/nexora-ready.json 2>/dev/null || true
+            echo
+            if [ "$status" = "200" ] && grep -q '"status":"ready"' /tmp/nexora-ready.json && grep -q '"database":"connected"' /tmp/nexora-ready.json; then
+              echo "PASS: Render API is ready and PostgreSQL is connected."
+              exit 0
+            fi
+            if [ "$attempt" -lt 18 ]; then sleep 20; fi
+          done
+          echo "FAIL: Render /ready did not confirm a connected PostgreSQL database."
+          exit 1
