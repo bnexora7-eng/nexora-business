@@ -29,6 +29,10 @@ const authAttempts = new Map();
 const MOLLIE_API_BASE = "https://api.mollie.com/v2";
 const PUBLIC_API_URL = (process.env.PUBLIC_API_URL || "https://nexora-payment-integrity-api.onrender.com").replace(/\/$/, "");
 const PAYMENT_RETURN_URL = process.env.NEXORA_PAYMENT_RETURN_URL || "https://bnexora7-eng.github.io/nexora-business/";
+const AI_API_KEY = process.env.OPENAI_API_KEY || "";
+const AI_MODEL = process.env.OPENAI_MODEL || "gpt-4.1-mini";
+const AI_API_URL = process.env.OPENAI_API_URL || "https://api.openai.com/v1/chat/completions";
+const aiRequests = new Map();
 let pool = null;
 
 // The public demo is deliberately self-contained and can run without PostgreSQL.
@@ -460,6 +464,45 @@ async function handleBusinessWorkspace(req,res) {
   return send(res,405,{error:"Method not allowed"});
 }
 
+async function handleBusinessAIPlan(req,res) {
+  const user=await requireUser(req,res); if(!user) return;
+  if(req.method!=="POST") return send(res,405,{error:"Method not allowed"});
+  if(!AI_API_KEY) return send(res,503,{error:"AI planning is not configured yet. The secure model key must be added to the server environment."});
+  const now=Date.now();
+  const recent=(aiRequests.get(user.id)||[]).filter(t=>now-t<60000);
+  if(recent.length>=4) return send(res,429,{error:"AI usage limit reached. Please wait a minute and try again."});
+  recent.push(now); aiRequests.set(user.id,recent);
+  const raw=await readBody(req); let input;
+  try { input=JSON.parse(raw.toString("utf8")); } catch { return send(res,400,{error:"Invalid JSON"}); }
+  const fields=["business_name","industry","customer","problem","offer","budget","duration_days"];
+  const values={};
+  for(const key of fields) {
+    const value=input?.[key];
+    if(value!==undefined && typeof value!=="string" && typeof value!=="number") return send(res,422,{error:"Business plan fields must be text or numbers"});
+    values[key]=String(value??"").trim();
+    if(values[key].length>1200) return send(res,422,{error:"One of the business plan fields is too long"});
+  }
+  if(!values.problem && !values.offer && !values.industry) return send(res,422,{error:"Add at least an industry, customer problem or offer before generating a plan"});
+  const prompt=fields.map(k=>k+": "+(values[k]||"Not provided")).join("\n");
+  const controller=new AbortController();
+  const timeout=setTimeout(()=>controller.abort(),25000);
+  try {
+    const response=await fetch(AI_API_URL,{
+      method:"POST",signal:controller.signal,
+      headers:{"Authorization":"Bearer "+AI_API_KEY,"Content-Type":"application/json"},
+      body:JSON.stringify({model:AI_MODEL,temperature:0.4,max_tokens:1400,messages:[
+        {role:"system",content:"You are NEXORA Business Studio, a practical business-planning assistant. Reply in the same language as the user, or Polish if unclear. Create a concise realistic plan with: positioning, target customer and problem, offer and differentiation, first five validation actions, phased timeline matching requested duration, lean budget allocation not exceeding stated budget, measurable KPIs, top risks and mitigations, and one next action. Distinguish assumptions from facts. Do not invent market research, customers, prices, legal permissions or guaranteed results. Do not provide definitive legal, tax or investment advice. If information is missing, state assumptions and ask focused follow-up questions."},
+        {role:"user",content:"Prepare my business plan using these details:\n"+prompt}
+      ]})
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok) { console.error("AI provider error",response.status); return send(res,502,{error:"The AI provider could not complete the request. Please try again later."}); }
+    const plan=data?.choices?.[0]?.message?.content;
+    if(typeof plan!=="string"||!plan.trim()) return send(res,502,{error:"The AI provider returned an empty plan"});
+    return send(res,200,{plan:plan.trim(),model:AI_MODEL,generated_at:new Date().toISOString()});
+  } catch(error) { console.error("AI request failed",error.name||"Error"); return send(res,504,{error:"AI planning timed out or is temporarily unavailable"}); }
+  finally { clearTimeout(timeout); }
+}
 const server = createServer(async (req, res) => {
   try {
     cors(req, res);
