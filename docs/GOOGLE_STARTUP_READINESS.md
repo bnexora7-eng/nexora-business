@@ -6,7 +6,7 @@ Last reviewed: 2026-11-11
 
 - Public GitHub repository: https://github.com/bnexora7-eng/nexora-business
 - Public GitHub Pages deployment workflow completed successfully on 2026-11-11.
-- Public interactive Payment Integrity browser demo: https://bnexora7-eng.github.io/nexora-business/payment-integrity-demo/
+- Canonical interactive Payment Integrity browser demo: https://splendid-lokum-02523e.netlify.app/ (Netlify-hosted; GitHub Pages mirror remains available).
 - Public project information page: https://bnexora7-eng.github.io/nexora-business/company/
 - Payment Integrity backend scaffold: Node.js HTTP API, PostgreSQL schema, HMAC-SHA256 request authentication, five-minute timestamp tolerance, database uniqueness on provider_id + event_id, audit table, Docker Compose and automated tests.
 - GitHub Actions integration workflow against PostgreSQL completed successfully.
