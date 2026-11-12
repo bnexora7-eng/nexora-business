@@ -2,12 +2,11 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { readFile } from "node:fs/promises";
-import pg from "pg";
 import { signPayload } from "../src/screening.js";
 
 const enabled = process.env.RUN_INTEGRATION === "1";
 test("HTTP API persists minimized event data and rejects duplicates", { skip: !enabled, timeout: 30000 }, async (t) => {
-  const { Pool } = pg;
+  const { Pool } = (await import("pg")).default;
   const pool = new Pool({ connectionString: process.env.DATABASE_URL });
   const port = 8081;
   const secret = "integration-test-secret-please-change";
