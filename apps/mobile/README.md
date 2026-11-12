@@ -1,26 +1,28 @@
 # NEXORA Mobile
 
-This directory is reserved for the Android-first NEXORA mobile application.
+Android-first React Native application scaffold using Expo SDK 58, Expo Router and TypeScript.
 
-## Product decision
+## Run locally
 
-Build one NEXORA app, with Community, Marketplace, Business Tools and Payment Integrity as modules. Payment Integrity is not a separate consumer app.
+Use Node.js LTS, then from this directory run:
+
+    npm install
+    npx expo install --check
+    npx expo start
+
+For a physical Android device, use a compatible Expo Go or development build and scan the QR code shown by the Expo CLI. SDK 58 may require a matching development build while the store version of Expo Go catches up.
+
+## Included in this scaffold
+
+- Home and tab navigation
+- Community, Marketplace, Business Tools and Account screens
+- Payment Integrity demo information screen
+- Billing architecture notes and typed billing contracts
+
+## Important status
+
+This is an initial source scaffold committed to GitHub. It has NOT yet been installed, compiled, run on a device, or tested. No APK/AAB is attached. Screens use demonstration copy and do not connect to authentication, a production backend, banks or payment providers. No real payment can be taken.
 
 ## Planned stack
 
-React Native + Expo + TypeScript, with an Android-first release and an iOS path from the same codebase.
-
-## Planned first screens
-
-- Home / Discover
-- Community
-- Marketplace
-- Business Tools
-- Payment Integrity
-- Account & Settings
-
-## Current status
-
-**Planning only — native app scaffold not yet created.** The repository's existing web prototype is not a native Android application. See [the mobile platform roadmap](../../docs/MOBILE_PLATFORM_ROADMAP.md) for release phases, security gates and next engineering tasks.
-
-Do not add production credentials, API secrets or real personal/payment data to this repository.
+React Native 0.88 + Expo SDK 58 + TypeScript. See the [mobile platform roadmap](../../docs/MOBILE_PLATFORM_ROADMAP.md).
