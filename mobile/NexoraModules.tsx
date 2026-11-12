@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
 import * as SecureStore from "expo-secure-store";
+import BusinessStudio from "./BusinessStudio";
 
 const API = "https://nexora-payment-integrity-api.onrender.com";
 const C = { bg:"#08111F", panel:"#111E30", line:"#263A53", text:"#F3F7FC", muted:"#91A4BA", cyan:"#4DE1D2" };
@@ -57,6 +58,7 @@ export default function NexoraModules({screen,signedIn}:{screen:"Community"|"Mar
       {offers.map(o=><View key={o.id} style={styles.card}><Text style={styles.note}>{String(o.category).toUpperCase()} · {o.email}</Text><Text style={[styles.title,{fontSize:17}]}>{o.title}</Text><Text style={styles.text}>{o.description}</Text><Text style={styles.title}>€{Number(o.price).toFixed(2)}</Text></View>)}
       {!offers.length&&<Text style={styles.text}>No offers published yet.</Text>}
     </>}
-    {screen==="Business"&&<View style={styles.card}><Text style={styles.title}>Business Workspace</Text><Text style={styles.text}>Keep your business identity, positioning and goals in your private NEXORA account.</Text>{signedIn?<>{field("BUSINESS / PROJECT NAME",businessName,setBusinessName,"Business name")}{field("POSITIONING",tagline,setTagline,"What do you offer?")}{field("GOALS AND NEXT STEPS",goals,setGoals,"Customers, targets and next actions...",true)}{button("SAVE WORKSPACE",saveWorkspace)}</>:<Text style={styles.note}>Sign in in Profile to use your private workspace.</Text>}{!!message&&<Text style={styles.note}>{message}</Text>}</View>}
+    {screen==="Business"&&<BusinessStudio signedIn={signedIn}/>}
+
   </ScrollView>;
 }
