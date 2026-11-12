@@ -41,7 +41,7 @@ Then set `window.NEXORA_API_BASE_URL` in `payment-integrity-demo/config.js` to t
 4. Keep database credentials and all provider secrets exclusively in Render environment variables. Never place them in the Android app or GitHub source.
 
 ## Free-tier limitations
-Render free web services can sleep after 15 minutes without traffic and may take about a minute to wake. Render's free PostgreSQL databases expire after 30 days, so this plan uses Neon Free for the database instead. Neon Free currently has usage/storage quotas and can suspend compute when quotas are exhausted. These free services are suitable for a limited prototype demonstration, not production payment workloads.
+Render free web services can sleep after 15 minutes without traffic and may take about a minute to wake. Render free PostgreSQL databases expire after 30 days; this Blueprint is therefore temporary and the database must be migrated to a persistent managed PostgreSQL plan before any ongoing pilot. The free services are suitable only for a limited prototype demonstration, not production payment workloads.
 
 ## Security and product scope
 The public demo endpoint is intentionally separate from the signed provider webhook endpoint. It accepts simulated event fields only, has a small in-memory per-IP rate limit, and is not a production-grade abuse-prevention system. Do not submit real payment, customer, bank, or personal data. The API is not a payment processor, bank integration, certified fraud system, or production financial control.
