@@ -1,3 +1,7 @@
+## Project status and handover
+
+For the current verified state, key links, limitations and next steps, see [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md). For an external-facing overview, see [docs/PROJECT_BRIEF.md](docs/PROJECT_BRIEF.md).
+
 # NEXORA Business — Interactive Concept Prototype
 
 NEXORA is a proposed digital ecosystem bringing four connected experiences into one place:
