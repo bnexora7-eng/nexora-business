@@ -1,6 +1,6 @@
 # NEXORA Monetization & Payout Architecture
 
-Status: design specification only — no live payment processing is enabled.
+Status: Mollie checkout scaffold implemented in code; not activated. No live payment processing is enabled.
 
 ## 1. Revenue streams
 
@@ -57,7 +57,11 @@ No bank account details are needed for the current prototype. Do not attempt rea
 
 ## 6. Current implementation status
 
-- App screens and plan-selection preview: prototype only.
-- Payment Integrity: separate illustrative screening module; it does not process money.
-- Checkout, Google Play Billing, seller accounts, live commissions and payouts: not implemented.
-- No real payment or payout is currently possible.
+- NEXORA mobile app now contains an own-service checkout screen.
+- Backend creates Mollie-hosted one-off EUR payments for an authenticated NEXORA account, stores an order record, and retrieves the payment from Mollie when the webhook arrives before updating status.
+- The payment screen supports checking the stored payment status after returning from checkout.
+- Required server configuration: `MOLLIE_API_KEY` (start with a test key), `PUBLIC_API_URL`, and a reachable `NEXORA_PAYMENT_RETURN_URL`. The API key must remain in Render environment variables and must never be placed in the APK or GitHub.
+- This is an integration scaffold, not a verified live payment flow. It has not yet been deployed, exercised against Mollie test mode, or independently security-reviewed.
+- A Mollie merchant account and provider verification are required before live payouts. The operating business and payout bank account must pass Mollie onboarding.
+- Google Play Billing remains separate for applicable in-app digital subscriptions. Seller accounts, marketplace split payments, refunds and disputes are not implemented.
+- No real payment or payout is currently possible until test verification, business onboarding and live configuration are complete.
