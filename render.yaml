@@ -14,8 +14,6 @@ services:
           property: connectionString
       - key: PROVIDER_SECRETS
         sync: false
-      - key: PGSSL
-        value: "true"
       - key: REVIEW_THRESHOLD
         value: "10000"
       - key: ENABLE_PUBLIC_DEMO
