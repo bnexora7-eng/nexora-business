@@ -49,7 +49,7 @@ jobs:
       - name: Verify deployed API with real POST requests
         env:
           API_BASE_URL: https://splendid-lokum-02523e.netlify.app
-          DEMO_ORIGIN: https://bnexora7-eng.github.io
+          DEMO_ORIGIN: https://splendid-lokum-02523e.netlify.app
         run: |
           node --input-type=module <<'NODE'
           const base = process.env.API_BASE_URL;
