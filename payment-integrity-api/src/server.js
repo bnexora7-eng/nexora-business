@@ -387,7 +387,7 @@ async function handleCommunity(req, res) {
   if (req.method === "GET") {
     if (!pool) return send(res, 503, { error: "Community database is not configured" });
     const result = await pool.query(
-      `SELECT p.id,p.body,p.created_at,u.email FROM community_posts p JOIN app_users u ON u.id=p.user_id ORDER BY p.created_at DESC LIMIT 50`
+      `SELECT p.id,p.body,p.created_at FROM community_posts p ORDER BY p.created_at DESC LIMIT 50`
     );
     return send(res, 200, { posts: result.rows });
   }
@@ -401,7 +401,7 @@ async function handleCommunity(req, res) {
       "INSERT INTO community_posts (user_id,body) VALUES ($1,$2) RETURNING id,body,created_at",
       [user.id,body]
     );
-    return send(res,201,{post:{...result.rows[0],email:user.email}});
+    return send(res,201,{post:result.rows[0]});
   }
   return send(res,405,{error:"Method not allowed"});
 }
@@ -409,8 +409,8 @@ async function handleMarketplace(req, res) {
   if (req.method === "GET") {
     if (!pool) return send(res,503,{error:"Marketplace database is not configured"});
     const result = await pool.query(
-      `SELECT l.id,l.title,l.description,l.category,l.price,l.currency,l.created_at,u.email
-       FROM marketplace_listings l JOIN app_users u ON u.id=l.user_id
+      `SELECT l.id,l.title,l.description,l.category,l.price,l.currency,l.created_at
+       FROM marketplace_listings l
        WHERE l.status='active' ORDER BY l.created_at DESC LIMIT 100`
     );
     return send(res,200,{listings:result.rows});
@@ -432,7 +432,7 @@ async function handleMarketplace(req, res) {
        VALUES ($1,$2,$3,$4,$5) RETURNING id,title,description,category,price,currency,created_at`,
       [user.id,title,description,category,price]
     );
-    return send(res,201,{listing:{...result.rows[0],email:user.email}});
+    return send(res,201,{listing:result.rows[0]});
   }
   return send(res,405,{error:"Method not allowed"});
 }
