@@ -16,6 +16,12 @@ services:
         value: "false"
       - key: PROVIDER_SECRETS
         sync: false
+      - key: MOLLIE_API_KEY
+        sync: false
+      - key: PUBLIC_API_URL
+        value: "https://nexora-payment-integrity-api.onrender.com"
+      - key: NEXORA_PAYMENT_RETURN_URL
+        value: "https://bnexora7-eng.github.io/nexora-business/"
       - key: REVIEW_THRESHOLD
         value: "10000"
       - key: ENABLE_PUBLIC_DEMO
