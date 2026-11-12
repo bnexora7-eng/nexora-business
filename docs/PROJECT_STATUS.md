@@ -13,7 +13,7 @@
 
 ## Current status
 
-NEXORA Payment Integrity is a working **pre-production demonstration prototype**. It is suitable for demonstrations, technical feedback, early partner conversations and customer discovery. It is not a production payment or banking product.
+NEXORA remains a **pre-production prototype**. On 12 November 2026, an own-service Mollie checkout scaffold was added to the mobile app and backend. It is not yet configured with a Mollie API key, deployed, tested against Mollie, or capable of accepting real payments. It is not a production payment or banking product.
 
 ### Verified in the project work on 12 November 2026
 
@@ -33,8 +33,8 @@ The repository also contains a separate backend scaffold with webhook signature 
 
 ## Important limitations — do not overstate readiness
 
-- No live bank or payment-provider connections.
-- No real payment processing.
+- No live bank or payment-provider connections. Mollie checkout code exists but is not yet configured or verified.
+- No real payment processing or payouts.
 - No production fraud-detection service; current decisions are deterministic rules, not a validated machine-learning model.
 - The public demo endpoint and the separate PostgreSQL backend scaffold are not yet connected as one production service.
 - Do not submit real personal, banking or payment data to the demo.
@@ -79,3 +79,11 @@ When resuming work, start with this file, then inspect the current main branch a
 - Requested €10,000 in early-stage development support, preferably sponsorship or pilot-development contribution; also requested referral to the suitable startup/innovation funding route.
 - The message explicitly states that NEXORA is a pre-production prototype, not a live payment/banking product, and that this is not a formal standard-loan application.
 - **Status:** sent; no approval or reply is implied. Await ABN AMRO's response.
+
+
+## Own-service payments — 12 November 2026
+
+- Added a NEXORA mobile checkout screen for one-off EUR payments.
+- Added authenticated backend payment creation, persistent order records, Mollie-hosted checkout, webhook retrieval/verification against Mollie, and payment-status lookup.
+- Added Render environment variable placeholders for `MOLLIE_API_KEY`, `PUBLIC_API_URL` and `NEXORA_PAYMENT_RETURN_URL`; no secret value has been added to GitHub.
+- **Current gate:** configure a Mollie test API key in Render, deploy, and run end-to-end sandbox tests. Only after successful testing and Mollie business verification can live payments and bank payouts be enabled.
