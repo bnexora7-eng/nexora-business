@@ -55,3 +55,34 @@ CREATE TABLE IF NOT EXISTS own_payments (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS own_payments_user_created_idx ON own_payments (user_id, created_at DESC);
+
+
+CREATE TABLE IF NOT EXISTS community_posts (
+  id BIGSERIAL PRIMARY KEY,
+  user_id BIGINT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
+  body VARCHAR(1000) NOT NULL CHECK (length(trim(body)) >= 1),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS community_posts_created_idx ON community_posts (created_at DESC);
+
+CREATE TABLE IF NOT EXISTS marketplace_listings (
+  id BIGSERIAL PRIMARY KEY,
+  user_id BIGINT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
+  title VARCHAR(100) NOT NULL,
+  description VARCHAR(1000) NOT NULL,
+  category VARCHAR(40) NOT NULL,
+  price NUMERIC(12,2) NOT NULL CHECK (price >= 0 AND price <= 1000000),
+  currency CHAR(3) NOT NULL DEFAULT 'EUR',
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','paused')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS marketplace_listings_created_idx ON marketplace_listings (status, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS business_workspaces (
+  user_id BIGINT PRIMARY KEY REFERENCES app_users(id) ON DELETE CASCADE,
+  business_name VARCHAR(100) NOT NULL DEFAULT '',
+  tagline VARCHAR(180) NOT NULL DEFAULT '',
+  goals TEXT NOT NULL DEFAULT '',
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
