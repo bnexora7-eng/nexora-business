@@ -29,10 +29,14 @@ Do not commit database URLs or provider secrets to GitHub, the browser demo, or 
 
 ## 3. Verify the service
 After Render reports a successful deployment, open:
-- `https://YOUR-RENDER-SERVICE.onrender.com/health`
+- `https://YOUR-RENDER-SERVICE.onrender.com/health` — confirms the API process is responding.
+- `https://YOUR-RENDER-SERVICE.onrender.com/ready` — confirms PostgreSQL is configured and reachable.
 
-Expected response:
-`{"status":"ok","service":"nexora-payment-integrity-api"}`
+Expected responses:
+- `/health`: HTTP 200 with `{"status":"ok","service":"nexora-payment-integrity-api","mode":"database"}`.
+- `/ready`: HTTP 200 with `{"status":"ready","database":"connected"}`.
+
+If `/health` reports `"mode":"demo-only"`, the API is running but the database is not configured. If `/ready` returns HTTP 503, account registration and persistent provider-event processing are not ready. Do not treat an HTTP 200 from `/health` alone as proof that PostgreSQL is connected.
 
 Then set `window.NEXORA_API_BASE_URL` in `payment-integrity-demo/config.js` to the Render service origin (no trailing slash), commit the change, and wait for GitHub Pages to deploy.
 

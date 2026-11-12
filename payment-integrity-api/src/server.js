@@ -234,6 +234,11 @@ const server = createServer(async (req, res) => {
       if (pool) await pool.query("SELECT 1");
       return send(res, 200, { status: "ok", service: "nexora-payment-integrity-api", mode: pool ? "database" : "demo-only" });
     }
+    if (req.method === "GET" && req.url === "/ready") {
+      if (!pool) return send(res, 503, { status: "not_ready", reason: "DATABASE_URL is not configured" });
+      await pool.query("SELECT 1");
+      return send(res, 200, { status: "ready", database: "connected" });
+    }
     if (req.method === "POST" && req.url === "/v1/auth/register") return await handleRegister(req, res);
     if (req.method === "POST" && req.url === "/v1/auth/login") return await handleLogin(req, res);
     if (req.method === "GET" && req.url === "/v1/auth/me") return await handleMe(req, res);

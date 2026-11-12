@@ -10,6 +10,8 @@ services:
     envVars:
       - key: DATABASE_URL
         sync: false
+      - key: PROVIDER_SECRETS
+        sync: false
       - key: PGSSL
         value: "true"
       - key: REVIEW_THRESHOLD

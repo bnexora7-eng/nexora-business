@@ -33,6 +33,10 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
 
   assert.equal(healthy, true, "API should start and connect to PostgreSQL");
 
+  const readiness = await fetch(`http://127.0.0.1:${port}/ready`);
+  assert.equal(readiness.status, 200, "readiness must confirm PostgreSQL connectivity");
+  assert.deepEqual(await readiness.json(), { status: "ready", database: "connected" });
+
   const accountEmail = "nexora-auth-" + Date.now() + "@example.invalid";
   const accountPassword = "NEXORA-test-password-2026!";
   const register = await fetch(`http://127.0.0.1:${port}/v1/auth/register`, {
