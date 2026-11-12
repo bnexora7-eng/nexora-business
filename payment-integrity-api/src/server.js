@@ -6,7 +6,18 @@ import { createSessionToken, hashPassword, hashSessionToken, verifyPassword } fr
 const { Pool } = pg;
 const PORT = Number(process.env.PORT || 8080);
 const DATABASE_URL = process.env.DATABASE_URL;
-const PROVIDER_SECRETS = JSON.parse(process.env.PROVIDER_SECRETS || "{}");
+const PGSSL = process.env.PGSSL;
+let PROVIDER_SECRETS = {};
+try {
+  PROVIDER_SECRETS = JSON.parse(process.env.PROVIDER_SECRETS || "{}");
+  if (!PROVIDER_SECRETS || typeof PROVIDER_SECRETS !== "object" || Array.isArray(PROVIDER_SECRETS)) {
+    throw new Error("PROVIDER_SECRETS must be a JSON object");
+  }
+} catch (error) {
+  console.error("Invalid PROVIDER_SECRETS configuration:", error.message);
+  process.exit(1);
+}
+const databaseSsl = PGSSL === "true" ? {} : PGSSL === "false" ? false : undefined;
 const ENABLE_PUBLIC_DEMO = process.env.ENABLE_PUBLIC_DEMO === "true";
 const REVIEW_THRESHOLD = Number(process.env.REVIEW_THRESHOLD || 10000);
 const MAX_BODY_BYTES = 65536;
@@ -19,10 +30,10 @@ let pool = null;
 // The public demo is deliberately self-contained and can run without PostgreSQL.
 // Authenticated provider webhooks still require DATABASE_URL and persistent storage.
 if (DATABASE_URL) {
-  // DATABASE_URL is wired by Render fromDatabase to the same-region internal URL.
-  // Render's internal Postgres endpoint uses private networking; do not force TLS
-  // against its self-signed internal certificate. External DB URLs must use TLS.
-  pool = new Pool({ connectionString: DATABASE_URL });
+  // Set PGSSL=false for Render's private internal PostgreSQL URL.
+  // Set PGSSL=true for an external PostgreSQL provider that requires TLS.
+  // When PGSSL is unset, node-postgres follows the connection URL's SSL settings.
+  pool = new Pool({ connectionString: DATABASE_URL, ...(databaseSsl === undefined ? {} : { ssl: databaseSsl }) });
   await pool.query(await readFile(new URL("./schema.sql", import.meta.url), "utf8"));
   console.log("NEXORA database schema is ready");
 } else {
