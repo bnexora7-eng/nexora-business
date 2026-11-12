@@ -12,6 +12,8 @@ services:
         fromDatabase:
           name: nexora-business-db
           property: connectionString
+      - key: PGSSL
+        value: "false"
       - key: PROVIDER_SECRETS
         sync: false
       - key: REVIEW_THRESHOLD
