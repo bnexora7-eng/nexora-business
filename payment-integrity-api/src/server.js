@@ -27,7 +27,7 @@ const demoRequests = new Map();
 const demoEvents = new Map();
 const authAttempts = new Map();
 const MOLLIE_API_BASE = "https://api.mollie.com/v2";
-const PUBLIC_API_URL = (process.env.PUBLIC_API_URL || "https://nexora-payment-integrity-api.onrender.com").replace(/\\/$/, "");
+const PUBLIC_API_URL = (process.env.PUBLIC_API_URL || "https://nexora-payment-integrity-api.onrender.com").replace(/\/$/, "");
 const PAYMENT_RETURN_URL = process.env.NEXORA_PAYMENT_RETURN_URL || "https://bnexora7-eng.github.io/nexora-business/";
 let pool = null;
 
@@ -220,7 +220,7 @@ async function handleCreatePayment(req, res) {
   let input;
   try { input = JSON.parse(rawBody.toString("utf8")); } catch { return send(res, 400, { error: "Invalid JSON" }); }
   const amountText = String(input?.amount ?? "").trim().replace(",", ".");
-  if (!/^\\d{1,5}(?:\\.\\d{1,2})?$/.test(amountText)) return send(res, 422, { error: "Enter an amount in EUR, for example 19.90" });
+  if (!/^\d{1,5}(?:\.\d{1,2})?$/.test(amountText)) return send(res, 422, { error: "Enter an amount in EUR, for example 19.90" });
   const amountNumber = Number(amountText);
   if (!Number.isFinite(amountNumber) || amountNumber < 1 || amountNumber > 5000) return send(res, 422, { error: "Payment amount must be between €1.00 and €5,000.00" });
   const description = typeof input?.description === "string" ? input.description.trim().replace(/[<>]/g, "") : "";
@@ -390,7 +390,7 @@ const server = createServer(async (req, res) => {
     if (req.method === "POST" && req.url === "/v1/auth/logout") return await handleLogout(req, res);
     if (req.method === "POST" && req.url === "/v1/payments") return await handleCreatePayment(req, res);
     if (req.method === "POST" && req.url === "/v1/payments/mollie-webhook") return await handleMollieWebhook(req, res);
-    const paymentStatusMatch = /^\\/v1\\/payments\\/([0-9a-f-]{36})$/.exec(req.url || "");
+    const paymentStatusMatch = /^\/v1\/payments\/([0-9a-f-]{36})$/.exec(req.url || "");
     if (req.method === "GET" && paymentStatusMatch) return await handleGetPayment(req, res, paymentStatusMatch[1]);
     if (req.method === "POST" && req.url === "/v1/events") return await handleEvent(req, res);
     if (req.method === "POST" && req.url === "/v1/demo/events") return await handleDemoEvent(req, res);
