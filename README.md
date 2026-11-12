@@ -17,7 +17,7 @@ https://bnexora7-eng.github.io/nexora-business/
 
 A separate interactive sandbox is available at:
 
-https://bnexora7-eng.github.io/nexora-business/payment-integrity-demo/
+https://splendid-lokum-02523e.netlify.app/
 
 It demonstrates deterministic screening of simulated payment events and a session-only audit log. It is a browser-only prototype, not a live payment service. See [the demo documentation](payment-integrity-demo/README.md) for scope and limitations.
 
