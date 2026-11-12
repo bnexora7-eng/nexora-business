@@ -54,11 +54,11 @@ This is **not** a request for Google to make an equity investment or provide cas
 
 - Applicant's legal name / entity name (or exact individual applicant structure accepted by Google):
 - Country of registration / legal status:
-- Project or company founding date: **NOT VERIFIED — do not enter a guessed date.** The earliest located conversation record shows NEXORA was already underway by 5 November 2026; this is not proof of its founding date. The November 2026 Payment Integrity prototype build date must not be substituted for the original project start date.
+- Project or company founding date: **NOT VERIFIED.** Earliest located evidence shows NEXORA BUSINESS already existed by 5 November 2026; this is a latest-by evidence date, not a proven founding date. Conversation records on 6 November document demo work; GitHub commits on 11 November document Payment Integrity engineering. See [PROJECT_HISTORY_AND_DATE_EVIDENCE.md](PROJECT_HISTORY_AND_DATE_EVIDENCE.md). Do not enter 5 November as the founding date unless contemporaneous evidence confirms it. Legal incorporation date is also unverified.
 - Founder name and short relevant biography:
 - Team members and roles (or state accurately that this is a solo-founder project):
-- Public company website on a controlled domain:
-- Business email matching that website domain:
+- Public company website on a controlled domain: **NOT READY.** Current project page is hosted on GitHub Pages; proposed nexora.net.eu.org ownership/delegation is unverified.
+- Business email matching that website domain: **NOT READY.** Current recorded project mailbox is bnexora7@gmail.com and does not match a verified company domain.
 - Google Cloud Billing Account ID (18 characters):
 - Previous Google Cloud credits / program participation:
 - Funding history:
