@@ -2,6 +2,10 @@
   publish = "payment-integrity-demo"
   functions = "netlify/functions"
 
+[functions]
+  node_bundler = "esbuild"
+  included_files = ["payment-integrity-api/src/screening.js"]
+
 [[redirects]]
   from = "/v1/demo/events"
   to = "/.netlify/functions/demo-events"
