@@ -523,6 +523,7 @@ const server = createServer(async (req, res) => {
     if (req.url === "/v1/community/posts") return await handleCommunity(req,res);
     if (req.url === "/v1/marketplace/listings") return await handleMarketplace(req,res);
     if (req.url === "/v1/business/workspace") return await handleBusinessWorkspace(req,res);
+    if (req.url === "/v1/business/ai-plan") return await handleBusinessAIPlan(req,res);
     if (req.method === "POST" && req.url === "/v1/payments") return await handleCreatePayment(req, res);
     if (req.method === "POST" && req.url === "/v1/payments/mollie-webhook") return await handleMollieWebhook(req, res);
     const paymentStatusMatch = /^\/v1\/payments\/([0-9a-f-]{36})$/.exec(req.url || "");
