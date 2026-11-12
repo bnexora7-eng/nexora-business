@@ -70,3 +70,12 @@ A prior Google for Startups application/support request received an automated ac
 ## Continuity rule
 
 When resuming work, start with this file, then inspect the current main branch and latest GitHub Actions runs. Do not assume an old deployment, test result, or external application status is still current without rechecking it.
+
+
+## ABN AMRO funding proposal — 12 November 2026
+
+- Created proposal: [docs/ABN_AMRO_FUNDING_PROPOSAL.md](ABN_AMRO_FUNDING_PROPOSAL.md)
+- Sent a follow-up to ABN AMRO Innovation at dareinnovation@nl.abnamro.com in the existing NEXORA email thread.
+- Requested €10,000 in early-stage development support, preferably sponsorship or pilot-development contribution; also requested referral to the suitable startup/innovation funding route.
+- The message explicitly states that NEXORA is a pre-production prototype, not a live payment/banking product, and that this is not a formal standard-loan application.
+- **Status:** sent; no approval or reply is implied. Await ABN AMRO's response.
