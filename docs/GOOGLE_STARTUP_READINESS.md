@@ -42,8 +42,12 @@ Google's stated Start benefit is up to USD 2,000 in Google Cloud credits, subjec
 
 ## 4. Founding-date evidence — unresolved
 
-- The current record does **not** establish the exact date when NEXORA BUSINESS was first conceived or founded.
-- An earlier conversation dated **5 November 2026** shows that the NEXORA project was already underway by that date. This is only an earliest located record in the available conversation history, **not proof that the project was founded on 5 November 2026**.
+A detailed evidence-based chronology is recorded in [PROJECT_HISTORY_AND_DATE_EVIDENCE.md](PROJECT_HISTORY_AND_DATE_EVIDENCE.md).
+
+- The earliest located evidence shows NEXORA BUSINESS already existed by **5 November 2026** (earlier project conversation record). This is a verified latest-by date in the available records, not the definitive founding date.
+- Conversation records dated **6 November 2026** document ongoing interactive project/demo work.
+- GitHub commit history documents focused Payment Integrity and investor-demo engineering on **11 November 2026**.
+- The current record does **not** establish the exact original conception/founding date or a legal incorporation date.
 - November 2026 is also the documented period for work on the current Payment Integrity prototype; that technical milestone must not be substituted for the original project founding date.
 - Before applying, the founder must establish the truthful project/company start date from contemporaneous evidence (for example, the earliest dated repository commit, project files, domain/account records or earlier planning notes).
 - If the date cannot be substantiated, do not invent one or claim Start-tier age eligibility. Ask Google how to represent the applicant's actual status before submission.
@@ -65,11 +69,11 @@ Google's stated Start benefit is up to USD 2,000 in Google Cloud credits, subjec
 
 ## 6. Application blockers — must be resolved by founder
 
-1. **Domain:** nexora.net.eu.org was a proposed domain only; registration/delegation is not confirmed. Hostry ticket #28673 was acknowledged, but DNS correction was not confirmed. Do not treat this domain as owned or active until independently checked.
+1. **Domain:** nexora.net.eu.org is the previously proposed candidate only; EU.org approval, registration/delegation and ownership are not verified. Hostry ticket #28673 was acknowledged, but DNS correction was not confirmed. Do not publish it as the company domain or create mailboxes on it until ownership and delegation are confirmed.
 2. **Business email:** current project email is bnexora7@gmail.com; it does not match a company website domain. Google says the business email must match the public website domain.
 3. **Website:** the existing page is on github.io, not a controlled NEXORA domain. Google requires an active website describing the company, founder/team and product; placeholder or empty sites are not accepted.
 4. **Billing:** no verified 18-character Google Cloud Billing Account ID and matching-domain billing owner are recorded.
-5. **Age / eligibility:** exact founding date is unresolved. The Start tier currently states a 24-month founding window; do not submit a guessed date.
+5. **Age / eligibility:** NEXORA is evidenced as already existing by 5 November 2026, but exact founding date is unresolved. The Start tier currently states a 24-month founding window; do not submit a guessed date.
 6. **Founder details:** add accurate founder name/profile, role, relevant experience and team status. No biography should be invented.
 7. **Business model:** validate the subscription hypothesis with potential buyers.
 8. **Funding plan:** document a realistic plan to seek venture funding soon, if that is genuinely the founder's intention.
