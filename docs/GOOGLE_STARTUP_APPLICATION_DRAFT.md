@@ -54,7 +54,7 @@ This is **not** a request for Google to make an equity investment or provide cas
 
 - Applicant's legal name / entity name (or exact individual applicant structure accepted by Google):
 - Country of registration / legal status:
-- Project or company founding date:
+- Project or company founding date: **NOT VERIFIED — do not enter a guessed date.** The earliest located conversation record shows NEXORA was already underway by 5 November 2026; this is not proof of its founding date. The November 2026 Payment Integrity prototype build date must not be substituted for the original project start date.
 - Founder name and short relevant biography:
 - Team members and roles (or state accurately that this is a solo-founder project):
 - Public company website on a controlled domain:
