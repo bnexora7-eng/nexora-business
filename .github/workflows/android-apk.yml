@@ -35,12 +35,12 @@ jobs:
       - name: Generate Android project
         working-directory: mobile
         run: npx expo prebuild --platform android --non-interactive
-      - name: Build debug APK
+      - name: Build standalone release APK
         working-directory: mobile/android
-        run: chmod +x gradlew && ./gradlew --no-daemon --console=plain assembleDebug
+        run: chmod +x gradlew && ./gradlew --no-daemon --console=plain assembleRelease
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: nexora-android-debug
-          path: mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          name: nexora-android-release
+          path: mobile/android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
