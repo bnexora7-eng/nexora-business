@@ -216,6 +216,7 @@ async function handleCreatePayment(req, res) {
   const user = await getAuthenticatedUser(req);
   if (!user) return send(res, 401, { error: "Sign in to create a payment" });
   if (!process.env.MOLLIE_API_KEY) return send(res, 503, { error: "Payment provider is not configured yet" });
+  if (!process.env.MOLLIE_API_KEY.startsWith("test_") && !(process.env.MOLLIE_API_KEY.startsWith("live_") && process.env.ENABLE_LIVE_PAYMENTS === "true")) return send(res, 503, { error: "Live payments are disabled until explicitly approved; configure a Mollie test key first" });
   const rawBody = await readBody(req);
   let input;
   try { input = JSON.parse(rawBody.toString("utf8")); } catch { return send(res, 400, { error: "Invalid JSON" }); }
