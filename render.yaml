@@ -18,6 +18,8 @@ services:
         sync: false
       - key: MOLLIE_API_KEY
         sync: false
+      - key: ENABLE_LIVE_PAYMENTS
+        value: "false"
       - key: PUBLIC_API_URL
         value: "https://nexora-payment-integrity-api.onrender.com"
       - key: NEXORA_PAYMENT_RETURN_URL
