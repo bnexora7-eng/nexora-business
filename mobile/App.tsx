@@ -30,6 +30,11 @@ export default function App() {
   const [authMessage,setAuthMessage] = useState("");
   const [account,setAccount] = useState<Account|null>(null);
   const [decision,setDecision] = useState<Decision|null>(null);
+  const [integrityBusy,setIntegrityBusy] = useState(false);
+  const [integrityReason,setIntegrityReason] = useState("");
+  const [integrityMessage,setIntegrityMessage] = useState("");
+  const [integrityDuplicate,setIntegrityDuplicate] = useState(false);
+  const [integrityStorage,setIntegrityStorage] = useState("");
   const [plan,setPlan] = useState("Free");
   const [paymentAmount,setPaymentAmount] = useState("19.90");
   const [paymentDescription,setPaymentDescription] = useState("NEXORA service");
@@ -119,13 +124,49 @@ export default function App() {
     setAuthMessage("Wylogowano.");
   };
 
-  const screening = useMemo(():Decision => {
-    const n = Number(amount.replace(",","."));
-    if (!Number.isFinite(n) || n <= 0) return "REJECT";
-    if (n > 5000) return "REVIEW";
-    if (reference.trim().length < 5) return "REVIEW";
-    return "ACCEPT";
-  },[amount,reference]);
+  const runIntegrityScreening = async () => {
+    setDecision(null);
+    setIntegrityMessage("");
+    setIntegrityReason("");
+    setIntegrityDuplicate(false);
+    setIntegrityStorage("");
+    const normalizedAmount = Number(amount.replace(",", "."));
+    const eventId = reference.trim();
+    if (!Number.isFinite(normalizedAmount) || normalizedAmount <= 0) {
+      setIntegrityMessage("Wpisz prawidłową kwotę większą od zera.");
+      return;
+    }
+    if (eventId.length < 5 || eventId.length > 256) {
+      setIntegrityMessage("Numer referencyjny musi mieć od 5 do 256 znaków.");
+      return;
+    }
+    setIntegrityBusy(true);
+    try {
+      const response = await fetch(API_BASE + "/v1/demo/events", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          event_id: eventId,
+          amount: normalizedAmount,
+          currency: "EUR",
+          status: "SUCCESS"
+        })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Serwer NEXORA nie mógł sprawdzić zdarzenia.");
+      if (!["ACCEPT", "REVIEW", "REJECT"].includes(data.decision)) {
+        throw new Error("Serwer zwrócił nieprawidłową decyzję.");
+      }
+      setDecision(data.decision as Decision);
+      setIntegrityReason(data.reason || "Brak dodatkowego uzasadnienia.");
+      setIntegrityDuplicate(Boolean(data.duplicate));
+      setIntegrityStorage(data.storage || "server");
+    } catch (error) {
+      setIntegrityMessage(error instanceof Error ? error.message : "Nie udało się połączyć z API NEXORA.");
+    } finally {
+      setIntegrityBusy(false);
+    }
+  };
 
   const go = (next:Tab) => { setTab(next); setDecision(null); };
   const heading:Record<Tab,string> = {
@@ -162,11 +203,12 @@ export default function App() {
       </>}
       {(tab==="Community"||tab==="Marketplace"||tab==="Business")&&<NexoraModules screen={tab} signedIn={!!account}/>}
       {tab==="Integrity" && <>
-        <Card><Text style={styles.kicker}>PAYMENT INTEGRITY • DEMO</Text><Text style={styles.hero}>Screen a payment event.</Text><Text style={styles.muted}>Local demonstration only. This does not connect to a bank, move money or approve a real payment.</Text>
+        <Card><Text style={styles.kicker}>PAYMENT INTEGRITY • API DEMO</Text><Text style={styles.hero}>Screen a payment event.</Text><Text style={styles.muted}>This request is sent to the NEXORA API. It is a demonstration screening service, not a bank connection or a real payment approval.</Text>
           <Text style={styles.label}>AMOUNT (EUR)</Text><TextInput value={amount} onChangeText={setAmount} keyboardType="decimal-pad" placeholder="950.00" placeholderTextColor={C.muted} style={styles.input}/>
           <Text style={styles.label}>REFERENCE</Text><TextInput value={reference} onChangeText={setReference} autoCapitalize="characters" placeholder="NX-2026-001" placeholderTextColor={C.muted} style={styles.input}/>
-          <TouchableOpacity style={styles.primary} onPress={()=>setDecision(screening)}><Text style={styles.primaryText}>RUN DEMO SCREENING</Text></TouchableOpacity>
-          {decision && <View style={[styles.result,{borderColor:decision==="ACCEPT"?C.green:decision==="REVIEW"?C.amber:C.red}]}><Text style={[styles.resultTitle,{color:decision==="ACCEPT"?C.green:decision==="REVIEW"?C.amber:C.red}]}>{decision}</Text><Text style={styles.muted}>Illustrative rule-based result. Production screening requires validated rules, audit controls and security testing.</Text></View>}
+          <TouchableOpacity style={[styles.primary,integrityBusy&&{opacity:0.6}]} disabled={integrityBusy} onPress={runIntegrityScreening}><Text style={styles.primaryText}>{integrityBusy?"CHECKING WITH NEXORA API":"RUN API SCREENING"}</Text></TouchableOpacity>
+          {!!integrityMessage&&<Text style={styles.note}>{integrityMessage}</Text>}
+          {decision && <View style={[styles.result,{borderColor:decision==="ACCEPT"?C.green:decision==="REVIEW"?C.amber:C.red}]}><Text style={[styles.resultTitle,{color:decision==="ACCEPT"?C.green:decision==="REVIEW"?C.amber:C.red}]}>{decision}</Text><Text style={styles.muted}>{integrityReason}</Text><Text style={styles.note}>{integrityDuplicate?"Duplicate event detected by API.": "Decision returned by NEXORA API."} Storage: {integrityStorage==="temporary-demo-memory"?"temporary demo memory":"API response"}</Text></View>}
         </Card>
         <Text style={styles.section}>Decision outcomes</Text>
         <View style={styles.outcomes}><Text style={{color:C.green,fontWeight:"800"}}>ACCEPT</Text><Text style={{color:C.amber,fontWeight:"800"}}>REVIEW</Text><Text style={{color:C.red,fontWeight:"800"}}>REJECT</Text></View>

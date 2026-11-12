@@ -127,7 +127,7 @@ async function handleEvent(req, res) {
 }
 async function handleDemoEvent(req, res) {
   if (!ENABLE_PUBLIC_DEMO) return send(res, 404, { error: "Demo endpoint disabled" });
-  if (req.headers.origin !== DEMO_ORIGIN) return send(res, 403, { error: "Origin not allowed" });
+  if (req.headers.origin && req.headers.origin !== DEMO_ORIGIN) return send(res, 403, { error: "Origin not allowed" });
   const ip = String(req.headers["x-forwarded-for"] || req.socket.remoteAddress || "unknown").split(",")[0].trim();
   const now = Date.now();
   const bucket = demoRequests.get(ip);

@@ -158,6 +158,15 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   assert.equal(demoDuplicateBody.decision, "REJECT");
   assert.equal(demoDuplicateBody.duplicate, true);
 
+  const nativeDemoEvent = { ...demoEvent, event_id: "evt-native-mobile-001" };
+  const nativeDemo = await fetch(`http://127.0.0.1:${port}/v1/demo/events`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(nativeDemoEvent)
+  });
+  assert.equal(nativeDemo.status, 200, "native mobile clients without an Origin header must be allowed");
+  assert.equal((await nativeDemo.json()).decision, "ACCEPT");
+
   const blockedOrigin = await fetch(`http://127.0.0.1:${port}/v1/demo/events`, {
     method: "POST",
     headers: { "content-type": "application/json", origin: "https://evil.example" },
