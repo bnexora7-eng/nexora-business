@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
 import * as SecureStore from "expo-secure-store";
 const API="https://nexora-payment-integrity-api.onrender.com";
@@ -22,6 +22,7 @@ export default function BusinessStudio({signedIn}:{signedIn:boolean}){
  const [notes,setNotes]=useState("");
  const [message,setMessage]=useState("");
  const [busy,setBusy]=useState(false);
+ useEffect(()=>{if(!signedIn)return;let active=true;(async()=>{try{const token=await SecureStore.getItemAsync("nexora_session");const r=await fetch(API+"/v1/business/workspace",{headers:{Authorization:"Bearer "+token}});const d=await r.json();if(!r.ok)throw new Error(d.error||"Could not load workspace");if(!active)return;setName(d.workspace.business_name||"NEXORA");setTagline(d.workspace.tagline||"");setNotes(d.workspace.goals||"");}catch(e){if(active)setMessage(e instanceof Error?e.message:"Could not load saved workspace.");}})();return()=>{active=false;};},[signedIn]);
  const field=(label:string,value:string,set:(v:string)=>void,placeholder:string,multiline=false)=><><Text style={s.label}>{label}</Text><TextInput value={value} onChangeText={set} placeholder={placeholder} placeholderTextColor={C.muted} multiline={multiline} style={[s.input,multiline?{minHeight:82,textAlignVertical:"top" as const}:{}]}/></>;
  const makePlan=()=>{
   const d=Math.max(7,Math.min(365,Number(days)||30));
