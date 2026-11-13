@@ -16,6 +16,20 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: nexora_test
+          POSTGRES_USER: nexora
+          POSTGRES_PASSWORD: nexora_test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U nexora -d nexora_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -23,8 +37,14 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Run screening unit tests
+      - name: Install API dependencies
         working-directory: payment-integrity-api
+        run: npm install --no-audit --no-fund
+      - name: Run unit and PostgreSQL integration tests
+        working-directory: payment-integrity-api
+        env:
+          RUN_INTEGRATION: "1"
+          DATABASE_URL: postgres://nexora:nexora_test_password@127.0.0.1:5432/nexora_test
         run: node --test
       - name: Configure Pages
         uses: actions/configure-pages@v5
