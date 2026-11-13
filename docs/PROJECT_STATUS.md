@@ -1,6 +1,6 @@
 # NEXORA BUSINESS — Master Project Status
 
-**Last updated:** 12 November 2026  
+**Last updated:** 13 November 2026  
 **Project owner:** NEXORA BUSINESS  
 **Repository:** https://github.com/bnexora7-eng/nexora-business
 
@@ -87,3 +87,18 @@ When resuming work, start with this file, then inspect the current main branch a
 - Added authenticated backend payment creation, persistent order records, Mollie-hosted checkout, webhook retrieval/verification against Mollie, and payment-status lookup.
 - Added Render environment variable placeholders for `MOLLIE_API_KEY`, `PUBLIC_API_URL` and `NEXORA_PAYMENT_RETURN_URL`; no secret value has been added to GitHub.
 - **Current gate:** configure a Mollie test API key in Render, deploy, and run end-to-end sandbox tests. Only after successful testing and Mollie business verification can live payments and bank payouts be enabled.
+
+
+## Android app release preparation — 13 November 2026
+
+- The owner installed the latest test APK and manually confirmed that the main app navigation, module buttons and Home/back navigation work on their Android phone.
+- Added a visible privacy-policy link to the account screen.
+- Added in-app account deletion and a public web account-deletion form.
+- Account deletion removes the app account, sessions, Community posts, Marketplace listings and Business workspace. Payment ledger entries are detached from the account and may be retained only where legally required.
+- Added public privacy policy at `/privacy/` and web deletion page at `/account-deletion/`.
+- Added automated PostgreSQL integration coverage for registration, login, account deletion and deletion of associated user content. The account-deletion integration suite passed in GitHub Actions on commit `9447564b8c8431df8585ce813fd7e4bd35944caa`.
+- Mobile app version advanced to 0.4.0 / Android versionCode 4.
+- Expo SDK 54 targets Android 16 / API 36, meeting the current Google Play target-API requirement for new submissions.
+- Release checklist: [GOOGLE_PLAY_RELEASE_READINESS.md](GOOGLE_PLAY_RELEASE_READINESS.md).
+
+**Still not a production release:** signed AAB and upload-key configuration, latest APK build after account-deletion UI changes, production API verification, full on-device registration/login/deletion test, Play Console setup and declarations, store listing graphics, and any required closed testing remain outstanding. Mollie checkout and AI planning remain unavailable until provider credentials and end-to-end tests are completed.

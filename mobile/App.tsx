@@ -1,13 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
 import * as SecureStore from "expo-secure-store";
 import NexoraModules from "./NexoraModules";
-import { SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View, Linking } from "react-native";
+import { API_BASE } from "./api";
+import { Alert, BackHandler, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View, Linking } from "react-native";
 
 type Tab = "Home" | "Community" | "Marketplace" | "Business" | "Integrity" | "Payments" | "Profile";
 type Decision = "ACCEPT" | "REVIEW" | "REJECT";
 type Account = { id: string; email: string; created_at: string };
-const API_RAW = process.env.EXPO_PUBLIC_NEXORA_API_URL || "https://nexora-payment-integrity-api.onrender.com";
-const API_BASE = API_RAW.endsWith("/") ? API_RAW.slice(0, -1) : API_RAW;
 
 const C = { bg:"#08111F", panel:"#111E30", panel2:"#17263B", line:"#263A53", text:"#F3F7FC", muted:"#91A4BA", cyan:"#4DE1D2", blue:"#6EA8FF", green:"#43D19E", amber:"#F5BD58", red:"#FF7777" };
 
@@ -119,6 +118,29 @@ export default function App() {
     setAuthMessage("Wylogowano.");
   };
 
+  const deleteAccount = () => {
+    Alert.alert(
+      "Delete NEXORA account?",
+      "This permanently deletes your account, posts, marketplace listings and business workspace. Payment records may be retained without your account link where legally required.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Delete account", style: "destructive", onPress: async () => {
+          try {
+            const token = await SecureStore.getItemAsync("nexora_session");
+            const response = await fetch(API_BASE + "/v1/auth/account", { method: "DELETE", headers: { Authorization: "Bearer " + token } });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || "Account deletion failed.");
+            await SecureStore.deleteItemAsync("nexora_session");
+            setAccount(null); setPassword(""); setAuthMessage("Your NEXORA account and associated content have been deleted.");
+            setTab("Home");
+          } catch (error) {
+            Alert.alert("Account not deleted", error instanceof Error ? error.message : "Please try again.");
+          }
+        }}
+      ]
+    );
+  };
+
   const screening = useMemo(():Decision => {
     const n = Number(amount.replace(",","."));
     if (!Number.isFinite(n) || n <= 0) return "REJECT";
@@ -128,6 +150,14 @@ export default function App() {
   },[amount,reference]);
 
   const go = (next:Tab) => { setTab(next); setDecision(null); };
+
+  useEffect(() => {
+    const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
+      if (tab !== "Home") { setTab("Home"); setDecision(null); return true; }
+      return false;
+    });
+    return () => subscription.remove();
+  }, [tab]);
   const heading:Record<Tab,string> = {
     Home:"One platform. More possibilities.",
     Community:"NEXORA Community",
@@ -160,7 +190,7 @@ export default function App() {
         <Action title="Business Tools" subtitle="Tools for growing businesses" onPress={()=>go("Business")}/>
         <Action title="Payment Integrity" subtitle="A decision-support payment screening module" onPress={()=>go("Integrity")}/>
       </>}
-      {(tab==="Community"||tab==="Marketplace"||tab==="Business")&&<NexoraModules screen={tab} signedIn={!!account}/>}
+      {(tab==="Community"||tab==="Marketplace"||tab==="Business")&&<NexoraModules screen={tab} signedIn={!!account} onNavigate={go}/>}
       {tab==="Integrity" && <>
         <Card><Text style={styles.kicker}>PAYMENT INTEGRITY • DEMO</Text><Text style={styles.hero}>Screen a payment event.</Text><Text style={styles.muted}>Local demonstration only. This does not connect to a bank, move money or approve a real payment.</Text>
           <Text style={styles.label}>AMOUNT (EUR)</Text><TextInput value={amount} onChangeText={setAmount} keyboardType="decimal-pad" placeholder="950.00" placeholderTextColor={C.muted} style={styles.input}/>
@@ -194,6 +224,8 @@ export default function App() {
             <Text style={styles.hero}>You are signed in.</Text>
             <Text style={styles.muted}>{account.email}</Text>
             <TouchableOpacity style={styles.primary} onPress={signOut}><Text style={styles.primaryText}>SIGN OUT</Text></TouchableOpacity>
+            <TouchableOpacity style={[styles.action,{marginTop:12,borderColor:C.red}]} onPress={deleteAccount}><Text style={{color:C.red,fontWeight:"800"}}>DELETE ACCOUNT AND DATA</Text></TouchableOpacity>
+            <TouchableOpacity onPress={()=>Linking.openURL("https://bnexora7-eng.github.io/nexora-business/privacy/")}><Text style={styles.note}>Privacy policy</Text></TouchableOpacity>
           </> : <>
             <Text style={styles.hero}>{authMode==="register"?"Create your NEXORA account.":"Welcome back."}</Text>
             <Text style={styles.muted}>An account will give you a personal profile across NEXORA services.</Text>
@@ -208,6 +240,7 @@ export default function App() {
             {authMode==="register"&&<Text style={styles.note}>Use at least 12 characters. Your password is stored as a salted secure hash, not as plain text.</Text>}
             <TouchableOpacity style={[styles.primary,authBusy&&{opacity:0.6}]} disabled={authBusy} onPress={submitAuth}><Text style={styles.primaryText}>{authBusy?"PLEASE WAIT":authMode==="register"?"CREATE ACCOUNT":"SIGN IN"}</Text></TouchableOpacity>
             {!!authMessage&&<Text style={[styles.note,{marginBottom:0}]}>{authMessage}</Text>}
+            <TouchableOpacity onPress={()=>Linking.openURL("https://bnexora7-eng.github.io/nexora-business/privacy/")}><Text style={styles.note}>Read NEXORA Privacy Policy</Text></TouchableOpacity>
             {!API_BASE&&<Text style={styles.note}>The account server must be deployed and connected before registration can work.</Text>}
           </>}
         </Card>

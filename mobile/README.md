@@ -5,7 +5,8 @@ React Native + Expo + TypeScript Android-first application prototype.
 ## Included
 - Home dashboard and custom tab navigation
 - Community, Marketplace and Business Tools module entry points
-- NEXORA account registration, login and logout using the backend API
+- NEXORA account registration, login, logout and account deletion using the backend API
+- Public privacy policy and web account-deletion request page
 - Payment Integrity local demonstration (ACCEPT / REVIEW / REJECT)
 - Own-service EUR checkout interface scaffold with server-side Mollie integration
 - Payment order status lookup
@@ -29,6 +30,8 @@ npx expo start
 
 ## Android package
 `com.nexora.business`
+
+The project uses Expo SDK 54, which targets Android 16 / API 36 by default.
 
 ## Current status
 The mobile app has a working prototype structure and backend account/payment API integration code. The payment provider is not configured, so checkout cannot yet accept money. Android build and TypeScript checks are automated in GitHub Actions; a successful build is a debug APK, not a Play Store release.

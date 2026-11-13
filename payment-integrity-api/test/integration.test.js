@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { signPayload } from "../src/screening.js";
 
@@ -78,15 +79,51 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   assert.equal(login.status, 200);
   const loggedIn = await login.json();
 
-  const logout = await fetch(`http://127.0.0.1:${port}/v1/auth/logout`, {
-    method: "POST",
-    headers: { authorization: "Bearer " + loggedIn.token }
+  // Create user-owned content, then verify account deletion removes it.
+  const createPost = await fetch(`http://127.0.0.1:${port}/v1/community/posts`, {
+    method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + registered.token },
+    body: JSON.stringify({ body: "delete me with my account" })
   });
-  assert.equal(logout.status, 200);
-  const revokedProfile = await fetch(`http://127.0.0.1:${port}/v1/auth/me`, {
-    headers: { authorization: "Bearer " + loggedIn.token }
+  assert.equal(createPost.status, 201);
+  const createWorkspace = await fetch(`http://127.0.0.1:${port}/v1/business/workspace`, {
+    method: "PUT", headers: { "content-type": "application/json", authorization: "Bearer " + registered.token },
+    body: JSON.stringify({ business_name: "Delete test", tagline: "", goals: "private notes" })
   });
-  assert.equal(revokedProfile.status, 401);
+  assert.equal(createWorkspace.status, 200);
+  const paymentOrderId = randomUUID();
+  await pool.query("INSERT INTO own_payments (order_id,user_id,amount,description,status) VALUES ($1,$2,25.00,$3,$4)", [paymentOrderId, registered.user.id, "Integration test payment", "paid"]);
+  const deleteResponse = await fetch(`http://127.0.0.1:${port}/v1/auth/account`, {
+    method: "DELETE", headers: { authorization: "Bearer " + registered.token }
+  });
+  assert.equal(deleteResponse.status, 200);
+  assert.equal((await deleteResponse.json()).status, "account_deleted");
+  const deletedProfile = await fetch(`http://127.0.0.1:${port}/v1/auth/me`, {
+    headers: { authorization: "Bearer " + registered.token }
+  });
+  assert.equal(deletedProfile.status, 401);
+  const deletedRows = await pool.query(
+    "SELECT (SELECT COUNT(*) FROM app_users WHERE email=$1)::int AS users, (SELECT COUNT(*) FROM community_posts WHERE user_id=$2)::int AS posts, (SELECT COUNT(*) FROM business_workspaces WHERE user_id=$2)::int AS workspaces",
+    [accountEmail, registered.user.id]
+  );
+  assert.deepEqual(deletedRows.rows[0], { users: 0, posts: 0, workspaces: 0 });
+  const retainedPayment = await pool.query("SELECT user_id FROM own_payments WHERE order_id=$1", [paymentOrderId]);
+  assert.equal(retainedPayment.rowCount, 1);
+  assert.equal(retainedPayment.rows[0].user_id, null);
+
+  const webDeleteEmail = "nexora-web-delete-" + Date.now() + "@example.invalid";
+  const webDeleteRegister = await fetch(`http://127.0.0.1:${port}/v1/auth/register`, {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ email: webDeleteEmail, password: accountPassword })
+  });
+  assert.equal(webDeleteRegister.status, 201);
+  const webDelete = await fetch(`http://127.0.0.1:${port}/v1/auth/delete-request`, {
+    method: "POST", headers: { "content-type": "application/json", origin: "https://bnexora7-eng.github.io" },
+    body: JSON.stringify({ email: webDeleteEmail, password: accountPassword })
+  });
+  assert.equal(webDelete.status, 200);
+  assert.equal(webDelete.headers.get("access-control-allow-origin"), "https://bnexora7-eng.github.io");
+  const webDeletedUser = await pool.query("SELECT id FROM app_users WHERE email=$1", [webDeleteEmail]);
+  assert.equal(webDeletedUser.rowCount, 0);
 
   async function submit(event, tamper = false) {
     const rawBody = Buffer.from(JSON.stringify(event));

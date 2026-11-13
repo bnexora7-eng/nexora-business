@@ -1,9 +1,14 @@
-name: NEXORA Android debug APK
+name: NEXORA Android installable test APK
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - "mobile/**"
+      - ".github/workflows/android-apk.yml"
   push:
-    branches: [main, nexora-mobile-app]
+    branches: [main, nexora-mobile-app, fix/mobile-api-config]
     paths:
       - "mobile/**"
       - ".github/workflows/android-apk.yml"
@@ -38,15 +43,15 @@ jobs:
       - name: Generate Android project
         working-directory: mobile
         run: npx expo prebuild --platform android --non-interactive
-      - name: Build installable debug APK
+      - name: Build installable test APK
         working-directory: mobile/android
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon --console=plain assembleDebug
+          ./gradlew --no-daemon --console=plain assembleRelease
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: nexora-android-debug-apk
-          path: mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          name: nexora-android-test-apk
+          path: mobile/android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
           retention-days: 14

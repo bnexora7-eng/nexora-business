@@ -44,7 +44,7 @@ CREATE INDEX IF NOT EXISTS app_sessions_expiry_idx ON app_sessions (expires_at);
 
 CREATE TABLE IF NOT EXISTS own_payments (
   order_id UUID PRIMARY KEY,
-  user_id BIGINT NOT NULL REFERENCES app_users(id) ON DELETE RESTRICT,
+  user_id BIGINT REFERENCES app_users(id) ON DELETE SET NULL,
   mollie_payment_id TEXT UNIQUE,
   amount NUMERIC(12,2) NOT NULL CHECK (amount >= 1 AND amount <= 5000),
   currency CHAR(3) NOT NULL DEFAULT 'EUR',
@@ -54,6 +54,13 @@ CREATE TABLE IF NOT EXISTS own_payments (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE own_payments ALTER COLUMN user_id DROP NOT NULL;
+ALTER TABLE own_payments DROP CONSTRAINT IF EXISTS own_payments_user_id_fkey;
+ALTER TABLE own_payments
+  ADD CONSTRAINT own_payments_user_id_fkey
+  FOREIGN KEY (user_id) REFERENCES app_users(id) ON DELETE SET NULL;
+
 CREATE INDEX IF NOT EXISTS own_payments_user_created_idx ON own_payments (user_id, created_at DESC);
 
 
