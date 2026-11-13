@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#07111f">
+<meta name="description" content="Send a project enquiry to NEXORA Business.">
+<title>Project enquiry — NEXORA</title>
+<style>
+:root{color-scheme:dark;--bg:#07111f;--panel:#102238;--line:#29435d;--text:#eff6ff;--muted:#a8b8ca;--mint:#62e6c5}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 80% 0,#173b52 0,transparent 36%),var(--bg);color:var(--text);font:16px/1.6 Inter,system-ui,-apple-system,Segoe UI,sans-serif}.wrap{width:min(760px,calc(100% - 36px));margin:auto}.nav{padding:22px 0;border-bottom:1px solid #20364d}.brand{color:var(--text);text-decoration:none;font-weight:900;letter-spacing:.19em}.brand span{display:block;color:var(--mint);font-size:9px;letter-spacing:.24em}.panel{margin:46px 0;padding:clamp(22px,5vw,42px);background:#102238;border:1px solid var(--line);border-radius:18px;box-shadow:0 24px 80px #0004}.eyebrow{color:var(--mint);font-size:11px;font-weight:800;letter-spacing:.2em;text-transform:uppercase}h1{font-size:clamp(32px,6vw,48px);line-height:1.08;letter-spacing:-.04em;margin:12px 0 14px}.muted,.fine{color:var(--muted)}.muted{margin-bottom:26px}.fields{display:grid;grid-template-columns:1fr 1fr;gap:16px}.field{display:grid;gap:7px}.full{grid-column:1/-1}label{font-size:12px;color:var(--muted);font-weight:700}input,select,textarea{width:100%;background:#071727;color:var(--text);border:1px solid #35516b;border-radius:8px;padding:13px;font:inherit}textarea{min-height:145px;resize:vertical}input:focus,select:focus,textarea:focus{outline:2px solid #62e6c588;border-color:var(--mint)}.check{display:flex;align-items:flex-start;gap:10px;font-weight:400}.check input{width:auto;margin-top:5px}.btn{display:inline-block;border:0;border-radius:9px;padding:14px 20px;background:var(--mint);color:#061923;text-decoration:none;font:inherit;font-weight:800;cursor:pointer}.fine{font-size:12px}.notice{margin:20px 0;padding:14px;border:1px solid #665a3b;background:#29271f;color:#e6d9b8;border-radius:10px;font-size:13px}.result{display:none;margin-top:18px;padding:16px;border:1px solid var(--mint);border-radius:10px}.result a{color:var(--mint)}footer{padding:0 0 35px;color:var(--muted);font-size:12px}a{color:var(--mint)}@media(max-width:620px){.fields{grid-template-columns:1fr}.full{grid-column:auto}}
+</style>
+</head>
+<body>
+<header class="wrap nav"><a class="brand" href="./">NEXORA<span>BUSINESS</span></a></header>
+<main class="wrap">
+<section class="panel">
+<div class="eyebrow">Project enquiry</div>
+<h1>Let's define the right solution.</h1>
+<p class="muted">Tell us what you want to achieve. NEXORA will review the request and discuss scope, delivery and a written price proposal before any commitment.</p>
+<form id="enquiry-form">
+<div class="fields">
+<div class="field"><label for="name">Your name *</label><input id="name" name="name" autocomplete="name" required maxlength="100"></div>
+<div class="field"><label for="email">Your email *</label><input id="email" name="email" type="email" autocomplete="email" required maxlength="180"></div>
+<div class="field"><label for="company">Company (optional)</label><input id="company" name="company" autocomplete="organization" maxlength="140"></div>
+<div class="field"><label for="country">Country *</label><input id="country" name="country" autocomplete="country-name" required maxlength="80"></div>
+<div class="field full"><label for="service">What would you like to discuss? *</label><select id="service" name="service" required><option value="">Choose a project type</option><option>Payment Integrity prototype / pilot discussion</option><option>Business automation or AI workflow</option><option>Custom digital product or prototype</option><option>Other business project</option></select></div>
+<div class="field"><label for="budget">Indicative budget (optional)</label><select id="budget" name="budget"><option value="">Prefer to discuss</option><option>Under €500</option><option>€500–€1,000</option><option>€1,000–€5,000</option><option>€5,000+</option></select></div>
+<div class="field"><label for="timeline">Desired timeline (optional)</label><select id="timeline" name="timeline"><option value="">Flexible</option><option>As soon as practical</option><option>Within 1 month</option><option>Within 3 months</option><option>Longer-term</option></select></div>
+<div class="field full"><label for="details">What do you need built or solved? *</label><textarea id="details" name="details" required maxlength="3000" placeholder="Describe the problem, desired result and any important requirements. Do not include passwords, bank details, card data or real customer payment records."></textarea></div>
+<div class="field full"><label class="check"><input type="checkbox" name="privacy" required><span>I have read the <a href="privacy/">privacy notice</a> and agree to send this enquiry by email.</span></label></div>
+</div>
+<div class="notice"><strong>Important:</strong> This is a non-binding enquiry, not a confirmed order, invoice or payment request. No bank account details are published here. We will agree the scope, price and permitted payment method before any paid work begins.</div>
+<button class="btn" type="submit">Prepare enquiry email</button>
+<p class="fine">After pressing the button, Gmail opens with your message filled in. Review it and press Send. The website does not store or submit the form automatically.</p>
+</form>
+<div class="result" id="result" role="status"><strong>Your email draft is ready.</strong><p>If Gmail did not open, use this link:</p><a id="gmail-link" href="#">Open the enquiry in Gmail</a></div>
+</section>
+</main>
+<footer class="wrap">© 2026 NEXORA BUSINESS · <a href="./">Back to NEXORA</a> · <a href="mailto:bnexora7@gmail.com">Contact by email</a></footer>
+<script>
+(function(){
+ const form=document.getElementById("enquiry-form");
+ const result=document.getElementById("result");
+ const gmailLink=document.getElementById("gmail-link");
+ form.addEventListener("submit",function(event){
+  event.preventDefault();
+  if(!form.reportValidity()) return;
+  const data=new FormData(form);
+  const lines=[
+   "NEXORA BUSINESS — PROJECT ENQUIRY",
+   "",
+   "Name: "+data.get("name"),
+   "Email: "+data.get("email"),
+   "Company: "+(data.get("company")||"Not provided"),
+   "Country: "+data.get("country"),
+   "Project: "+data.get("service"),
+   "Indicative budget: "+(data.get("budget")||"To discuss"),
+   "Timeline: "+(data.get("timeline")||"Flexible"),
+   "",
+   "Requirements:",
+   data.get("details"),
+   "",
+   "Privacy notice acknowledged: Yes"
+  ];
+  const subject=encodeURIComponent("NEXORA project enquiry — "+data.get("service"));
+  const body=encodeURIComponent(lines.join("\n"));
+  const url="https://mail.google.com/mail/?view=cm&fs=1&to=bnexora7@gmail.com&su="+subject+"&body="+body;
+  gmailLink.href=url;
+  result.style.display="block";
+  window.location.href=url;
+ });
+})();
+</script>
+</body>
+</html>
