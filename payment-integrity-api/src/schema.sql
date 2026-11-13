@@ -56,26 +56,10 @@ CREATE TABLE IF NOT EXISTS own_payments (
 );
 
 ALTER TABLE own_payments ALTER COLUMN user_id DROP NOT NULL;
-DO $
-BEGIN
-  IF EXISTS (
-    SELECT 1 FROM pg_constraint
-    WHERE conrelid = 'own_payments'::regclass
-      AND conname = 'own_payments_user_id_fkey'
-      AND confdeltype <> 'n'
-  ) THEN
-    ALTER TABLE own_payments DROP CONSTRAINT own_payments_user_id_fkey;
-  END IF;
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint
-    WHERE conrelid = 'own_payments'::regclass
-      AND conname = 'own_payments_user_id_fkey'
-  ) THEN
-    ALTER TABLE own_payments
-      ADD CONSTRAINT own_payments_user_id_fkey
-      FOREIGN KEY (user_id) REFERENCES app_users(id) ON DELETE SET NULL;
-  END IF;
-END $;
+ALTER TABLE own_payments DROP CONSTRAINT IF EXISTS own_payments_user_id_fkey;
+ALTER TABLE own_payments
+  ADD CONSTRAINT own_payments_user_id_fkey
+  FOREIGN KEY (user_id) REFERENCES app_users(id) ON DELETE SET NULL;
 
 CREATE INDEX IF NOT EXISTS own_payments_user_created_idx ON own_payments (user_id, created_at DESC);
 
