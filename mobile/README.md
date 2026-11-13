@@ -5,7 +5,8 @@ React Native + Expo + TypeScript Android-first application prototype.
 ## Included
 - Home dashboard and custom tab navigation
 - Community, Marketplace and Business Tools module entry points
-- NEXORA account registration, login and logout using the backend API
+- NEXORA account registration, login, logout and account deletion using the backend API
+- Public privacy policy and web account-deletion request page
 - Payment Integrity local demonstration (ACCEPT / REVIEW / REJECT)
 - Own-service EUR checkout interface scaffold with server-side Mollie integration
 - Payment order status lookup
