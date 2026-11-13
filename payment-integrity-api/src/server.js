@@ -206,7 +206,10 @@ async function handleGumroadCheckout(req,res) {
     "SELECT product_id,name,price_amount,currency FROM product_catalog WHERE product_id='payment-integrity' AND active=TRUE AND price_amount IS NOT NULL"
   );
   if(!product.rowCount) return send(res,409,{error:"This product is not available for purchase yet"});
-  let pingConfig;\n  try { pingConfig=new URL(process.env.GUMROAD_PING_URL); } catch { return send(res,503,{error:"Gumroad Ping URL is invalid"}); }\n  if(pingConfig.pathname!=="/v1/payments/gumroad-ping" || pingConfig.searchParams.get("secret")!==process.env.GUMROAD_PING_SECRET) return send(res,503,{error:"Gumroad Ping URL and secret do not match"});\n  const configuredCents=Number(process.env.GUMROAD_EXPECTED_PRICE_CENTS);
+  let pingConfig;
+  try { pingConfig=new URL(process.env.GUMROAD_PING_URL); } catch { return send(res,503,{error:"Gumroad Ping URL is invalid"}); }
+  if(pingConfig.pathname!=="/v1/payments/gumroad-ping" || pingConfig.searchParams.get("secret")!==process.env.GUMROAD_PING_SECRET) return send(res,503,{error:"Gumroad Ping URL and secret do not match"});
+  const configuredCents=Number(process.env.GUMROAD_EXPECTED_PRICE_CENTS);
   const catalogueCents=Math.round(Number(product.rows[0].price_amount)*100);
   if(!Number.isSafeInteger(configuredCents)||configuredCents<100||catalogueCents!==configuredCents) return send(res,503,{error:"The Gumroad checkout price does not match the server catalogue"});
   if(await hasActiveProduct(user.id,"payment-integrity")) return send(res,409,{error:"This account already has access to this product"});
