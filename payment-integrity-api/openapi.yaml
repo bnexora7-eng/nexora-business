@@ -128,3 +128,85 @@ paths:
         "413": { description: Payload too large }
         "422": { description: Missing or invalid event fields }
         "500": { description: Screening could not be completed }
+
+  /v1/catalogue/products:
+    get:
+      summary: List the server-owned product catalogue
+      responses:
+        "200": { description: Catalogue items and current availability }
+        "503": { description: Database unavailable }
+  /v1/account/products:
+    get:
+      summary: List products owned by the authenticated account
+      security:
+        - bearerAuth: []
+      responses:
+        "200": { description: Non-revoked product entitlements for this account }
+        "401": { description: Authentication required }
+  /v1/account/payment-integrity/events:
+    get:
+      summary: List the authenticated customer's recent Payment Integrity events
+      security:
+        - bearerAuth: []
+      responses:
+        "200": { description: Up to 100 private event screening records }
+        "401": { description: Authentication required }
+        "403": { description: Active Payment Integrity entitlement required }
+    post:
+      summary: Screen and persist a synthetic payment event for the authenticated customer
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [provider_id, event_id, amount, currency, status]
+              properties:
+                provider_id: { type: string, maxLength: 128 }
+                event_id: { type: string, maxLength: 256 }
+                amount: { type: number, exclusiveMinimum: 0 }
+                currency: { type: string, pattern: "^[A-Za-z]{3}$" }
+                status: { type: string, enum: [SUCCESS, PENDING, FAILED] }
+      responses:
+        "201": { description: Screening completed and stored }
+        "200": { description: Duplicate event detected }
+        "401": { description: Authentication required }
+        "403": { description: Active Payment Integrity entitlement required }
+        "422": { description: Invalid event fields }
+  /v1/payments/checkout:
+    get:
+      summary: Get the configured Gumroad checkout URL for the active product
+      security:
+        - bearerAuth: []
+      responses:
+        "200": { description: Secure Gumroad checkout URL and the NEXORA account email to use }
+        "401": { description: Authentication required }
+        "409": { description: Product unavailable or already owned }
+        "503": { description: Gumroad checkout is not configured }
+  /v1/payments/gumroad-ping:
+    post:
+      summary: Receive a Gumroad Ping and verify its sale server-to-server
+      parameters:
+        - in: query
+          name: secret
+          required: true
+          schema: { type: string, minLength: 32 }
+          description: Random shared endpoint secret. The Ping body itself is not payment proof.
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [sale_id]
+              properties:
+                sale_id: { type: string, maxLength: 256 }
+                resource_name: { type: string }
+      responses:
+        "200": { description: Sale verified and entitlement state reconciled }
+        "403": { description: Sale seller or product mismatch }
+        "404": { description: Invalid secret or unverified sale }
+        "409": { description: Sale price or account mapping mismatch }
+        "503": { description: Gumroad verification temporarily unavailable }
