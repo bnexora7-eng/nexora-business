@@ -138,11 +138,10 @@ When resuming work, start with this file, then inspect the current main branch a
 - **Verification still required:** wait for the GitHub Pages workflow to complete, then test the landing-page link and Gmail-draft handoff on a real phone. Do not claim that enquiries are automatically stored or that payments are live.
 
 
-## Public enquiry-page verification — 13 November 2026
+## Public enquiry form correction — 13 November 2026
 
-- Added `order.html` as a structured, non-binding project enquiry page. The form collects a name, reply email, country, project category and requirements; budget and timeline are optional.
-- The form prepares a Gmail compose draft addressed to `bnexora7@gmail.com`. The visitor must review and send it. The static site does not persist form submissions, send mail automatically, create a server-side order, issue an invoice or accept payment.
-- The landing page now links to this enquiry page. The previous Netlify Forms markup was removed because the canonical site is hosted on GitHub Pages.
-- The private ABN AMRO IBAN is not present in the public page source.
-- GitHub Actions run `43507913091` completed successfully on 13 November 2026. It verified that the public landing page and `order.html` return successfully, privacy and account-deletion pages are reachable, the API health endpoint returns `status: ok`, and live demo checks pass for ACCEPT, REVIEW, REJECT and DUPLICATE. PostgreSQL integration tests also passed (10 tests, 0 failures).
-- **Remaining limitation:** this is a working enquiry handoff, not an automated order-management or payment system. The Mollie checkout remains unconfigured; no live customer payments or bank-transfer reconciliation are enabled. The email-draft handoff still needs a real-device test by opening the form and sending a test enquiry.
+- Replaced the Gmail-compose redirect on `order.html` with an AJAX submission to FormSubmit, so visitors remain on the NEXORA page and receive a success or error message.
+- Added FormSubmit to the privacy notice as the third-party processor for project enquiries; its documentation states submissions are retained for 30 days.
+- Updated the GitHub Pages deployment check to verify the new “Send project enquiry” button.
+- **Activation and delivery are not yet verified.** FormSubmit requires the NEXORA mailbox owner to confirm the first activation email before the endpoint can deliver live enquiries. The next step is to deploy, submit one controlled test, confirm activation in `bnexora7@gmail.com`, then repeat the test and verify receipt.
+- Do not claim that customer enquiries are working until the activation and end-to-end delivery test pass.
