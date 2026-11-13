@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Text, TextInput, TouchableOpacity, View } from "react-native";
 import * as SecureStore from "expo-secure-store";
 import BusinessStudio from "./BusinessStudio";
 import { API_BASE as API } from "./api";
@@ -43,7 +43,7 @@ export default function NexoraModules({screen,signedIn}:{screen:"Community"|"Mar
   const field=(label:string,value:string,onChange:(v:string)=>void,placeholder:string,multiline=false)=><><Text style={styles.label}>{label}</Text><TextInput value={value} onChangeText={onChange} placeholder={placeholder} placeholderTextColor={C.muted} multiline={multiline} style={[styles.input,multiline?{minHeight:90,textAlignVertical:"top" as const}:{}]}/></>;
   const button=(label:string,onPress:()=>void)=><TouchableOpacity disabled={busy} style={styles.button} onPress={onPress}><Text style={styles.buttonText}>{busy?"PLEASE WAIT":label}</Text></TouchableOpacity>;
 
-  return <ScrollView keyboardShouldPersistTaps="handled">
+  return <View>
     {screen==="Community"&&<>
       <View style={styles.card}><Text style={styles.title}>NEXORA Community</Text><Text style={styles.text}>Share updates with members. Posts are saved in the NEXORA database.</Text>{field("YOUR UPDATE",post,setPost,"Write something for the community...",true)}{button("PUBLISH UPDATE",publishPost)}{!!message&&<Text style={styles.note}>{message}</Text>}</View>
       <Text style={styles.title}>Latest updates ({posts.length})</Text>
@@ -60,5 +60,5 @@ export default function NexoraModules({screen,signedIn}:{screen:"Community"|"Mar
     </>}
     {screen==="Business"&&<BusinessStudio signedIn={signedIn}/>}
 
-  </ScrollView>;
+  </View>;
 }
