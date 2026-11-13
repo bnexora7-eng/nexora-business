@@ -160,6 +160,33 @@ async function handleDemoEvent(req, res) {
     reference: { provider_id: event.provider_id, event_id: event.event_id }, storage: "temporary-demo-memory" });
 }
 
+async function handleIntegrityScreen(req, res) {
+  if (!pool) return send(res, 503, { error: "Payment Integrity requires the database" });
+  const user = await requireUser(req, res);
+  if (!user) return;
+  const rawBody = await readBody(req);
+  let input;
+  try { input = JSON.parse(rawBody.toString("utf8")); }
+  catch { return send(res, 400, { error: "Invalid JSON" }); }
+  const eventId = typeof input?.event_id === "string" ? input.event_id.trim() : "";
+  const amount = Number(input?.amount);
+  const currency = typeof input?.currency === "string" ? input.currency.trim().toUpperCase() : "";
+  const status = typeof input?.status === "string" ? input.status.trim().toUpperCase() : "";
+  if (!eventId || eventId.length > 256 || !Number.isFinite(amount) || amount <= 0 || amount > 1000000 ||
+      !/^[A-Z]{3}$/.test(currency) || !["SUCCESS", "PENDING", "FAILED"].includes(status)) {
+    return send(res, 422, { error: "Provide an event reference, positive amount, ISO currency and supported status" });
+  }
+  const event = {
+    provider_id: "nexora-mobile-" + String(user.id),
+    event_id: eventId,
+    amount,
+    currency,
+    status
+  };
+  const result = await persistEvent(event);
+  return send(res, 200, { ...result, storage: "postgresql" });
+}
+
 function authRateLimited(req) {
   const ip = String(req.headers["x-forwarded-for"] || req.socket.remoteAddress || "unknown").split(",")[0].trim();
   const now = Date.now();
@@ -571,6 +598,7 @@ const server = createServer(async (req, res) => {
     if (req.method === "POST" && req.url === "/v1/payments/mollie-webhook") return await handleMollieWebhook(req, res);
     const paymentStatusMatch = /^\/v1\/payments\/([0-9a-f-]{36})$/.exec(req.url || "");
     if (req.method === "GET" && paymentStatusMatch) return await handleGetPayment(req, res, paymentStatusMatch[1]);
+    if (req.method === "POST" && req.url === "/v1/integrity/screen") return await handleIntegrityScreen(req, res);
     if (req.method === "POST" && req.url === "/v1/events") return await handleEvent(req, res);
     if (req.method === "POST" && req.url === "/v1/demo/events") return await handleDemoEvent(req, res);
     return send(res, 404, { error: "Not found" });
