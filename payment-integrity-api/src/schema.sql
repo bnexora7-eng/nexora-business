@@ -115,6 +115,12 @@ ALTER TABLE own_payments ADD COLUMN IF NOT EXISTS product_id TEXT
   REFERENCES product_catalog(product_id) ON DELETE SET NULL;
 CREATE INDEX IF NOT EXISTS own_payments_product_idx ON own_payments (product_id);
 
+ALTER TABLE own_payments ADD COLUMN IF NOT EXISTS payment_provider TEXT NOT NULL DEFAULT 'legacy';
+ALTER TABLE own_payments ADD COLUMN IF NOT EXISTS provider_payment_id TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS own_payments_provider_payment_idx
+  ON own_payments(payment_provider,provider_payment_id) WHERE provider_payment_id IS NOT NULL;
+
+
 CREATE TABLE IF NOT EXISTS product_entitlements (
   id BIGSERIAL PRIMARY KEY,
   user_id BIGINT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
