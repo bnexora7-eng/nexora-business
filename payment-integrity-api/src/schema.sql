@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS own_payments (
   payment_provider TEXT NOT NULL DEFAULT 'legacy',
   provider_payment_id TEXT,
   amount NUMERIC(12,2) NOT NULL CHECK (amount >= 1 AND amount <= 5000),
-  currency CHAR(3) NOT NULL DEFAULT 'EUR',
+  currency CHAR(3) NOT NULL DEFAULT 'USD',
   description VARCHAR(100) NOT NULL,
   status TEXT NOT NULL,
   checkout_url TEXT,
@@ -108,30 +108,31 @@ CREATE TABLE IF NOT EXISTS product_catalog (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   CHECK (price_amount IS NULL OR price_amount >= 1)
 );
-INSERT INTO product_catalog (product_id,name,description,price_amount,currency,active)
-VALUES ('payment-integrity','NEXORA Payment Integrity','Payment-event screening prototype with explainable ACCEPT, REVIEW and REJECT outcomes and duplicate-event awareness. Synthetic data only; no live bank or payment-provider integrations. ',NULL,'USD',FALSE)
-ON CONFLICT (product_id) DO NOTHING;
-
-DO $$
+DO $migrate$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='product_catalog' AND column_name='price_eur')
      AND NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='product_catalog' AND column_name='price_amount') THEN
     ALTER TABLE product_catalog RENAME COLUMN price_eur TO price_amount;
   END IF;
-END $$;
+END $migrate$;
+INSERT INTO product_catalog (product_id,name,description,price_amount,currency,active)
+VALUES ('payment-integrity','NEXORA Payment Integrity','Payment-event screening prototype with explainable ACCEPT, REVIEW and REJECT outcomes and duplicate-event awareness. Synthetic data only; no live bank or payment-provider integrations. ',NULL,'USD',FALSE)
+ON CONFLICT (product_id) DO NOTHING;
+
+
 
 
 ALTER TABLE own_payments ADD COLUMN IF NOT EXISTS product_id TEXT
   REFERENCES product_catalog(product_id) ON DELETE SET NULL;
 CREATE INDEX IF NOT EXISTS own_payments_product_idx ON own_payments (product_id);
 
-DO $
+DO $migrate$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='own_payments' AND column_name='mollie_payment_id')
      AND NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='own_payments' AND column_name='provider_payment_id') THEN
     ALTER TABLE own_payments RENAME COLUMN mollie_payment_id TO provider_payment_id;
   END IF;
-END $;
+END $migrate$;
 ALTER TABLE own_payments DROP CONSTRAINT IF EXISTS own_payments_mollie_payment_id_key;
 ALTER TABLE own_payments ADD COLUMN IF NOT EXISTS payment_provider TEXT NOT NULL DEFAULT 'legacy';
 ALTER TABLE own_payments ADD COLUMN IF NOT EXISTS provider_payment_id TEXT;
