@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import * as SecureStore from "expo-secure-store";
 import NexoraModules from "./NexoraModules";
 import { API_BASE } from "./api";
@@ -29,6 +29,8 @@ export default function App() {
   const [authMessage,setAuthMessage] = useState("");
   const [account,setAccount] = useState<Account|null>(null);
   const [decision,setDecision] = useState<Decision|null>(null);
+  const [decisionReason,setDecisionReason] = useState("");
+  const [screeningBusy,setScreeningBusy] = useState(false);
   const [plan,setPlan] = useState("Free");
   const [paymentAmount,setPaymentAmount] = useState("19.90");
   const [paymentDescription,setPaymentDescription] = useState("NEXORA service");
@@ -141,15 +143,41 @@ export default function App() {
     );
   };
 
-  const screening = useMemo(():Decision => {
-    const n = Number(amount.replace(",","."));
-    if (!Number.isFinite(n) || n <= 0) return "REJECT";
-    if (n > 5000) return "REVIEW";
-    if (reference.trim().length < 5) return "REVIEW";
-    return "ACCEPT";
-  },[amount,reference]);
+  const runIntegrityScreening = async () => {
+    setDecision(null);
+    setDecisionReason("");
+    if (!account) {
+      setDecisionReason("Sign in to run server-side screening and save the audit result.");
+      setTab("Profile");
+      return;
+    }
+    const normalizedAmount = Number(amount.replace(",", "."));
+    if (!Number.isFinite(normalizedAmount) || normalizedAmount <= 0 || reference.trim().length < 5) {
+      setDecision("REJECT");
+      setDecisionReason("Enter a positive amount and an event reference of at least 5 characters.");
+      return;
+    }
+    setScreeningBusy(true);
+    try {
+      const token = await SecureStore.getItemAsync("nexora_session");
+      if (!token) throw new Error("Your session has expired. Sign in again.");
+      const response = await fetch(API_BASE + "/v1/integrity/screen", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+        body: JSON.stringify({ event_id: reference.trim(), amount: normalizedAmount, currency: "EUR", status: "SUCCESS" })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Payment screening failed.");
+      setDecision(data.decision);
+      setDecisionReason(data.reason || "Screening completed and saved.");
+    } catch (error) {
+      setDecisionReason(error instanceof Error ? error.message : "Could not connect to the NEXORA screening service.");
+    } finally {
+      setScreeningBusy(false);
+    }
+  };
 
-  const go = (next:Tab) => { setTab(next); setDecision(null); };
+  const go = (next:Tab) => { setTab(next); setDecision(null); setDecisionReason(""); };
 
   useEffect(() => {
     const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
@@ -195,8 +223,9 @@ export default function App() {
         <Card><Text style={styles.kicker}>PAYMENT INTEGRITY • DEMO</Text><Text style={styles.hero}>Screen a payment event.</Text><Text style={styles.muted}>Local demonstration only. This does not connect to a bank, move money or approve a real payment.</Text>
           <Text style={styles.label}>AMOUNT (EUR)</Text><TextInput value={amount} onChangeText={setAmount} keyboardType="decimal-pad" placeholder="950.00" placeholderTextColor={C.muted} style={styles.input}/>
           <Text style={styles.label}>REFERENCE</Text><TextInput value={reference} onChangeText={setReference} autoCapitalize="characters" placeholder="NX-2026-001" placeholderTextColor={C.muted} style={styles.input}/>
-          <TouchableOpacity style={styles.primary} onPress={()=>setDecision(screening)}><Text style={styles.primaryText}>RUN DEMO SCREENING</Text></TouchableOpacity>
-          {decision && <View style={[styles.result,{borderColor:decision==="ACCEPT"?C.green:decision==="REVIEW"?C.amber:C.red}]}><Text style={[styles.resultTitle,{color:decision==="ACCEPT"?C.green:decision==="REVIEW"?C.amber:C.red}]}>{decision}</Text><Text style={styles.muted}>Illustrative rule-based result. Production screening requires validated rules, audit controls and security testing.</Text></View>}
+          <TouchableOpacity style={[styles.primary,screeningBusy&&{opacity:0.6}]} disabled={screeningBusy} onPress={runIntegrityScreening}><Text style={styles.primaryText}>{screeningBusy?"SCREENING…":account?"SCREEN WITH NEXORA SERVER":"SIGN IN TO RUN SERVER SCREENING"}</Text></TouchableOpacity>
+          {decision && <View style={[styles.result,{borderColor:decision==="ACCEPT"?C.green:decision==="REVIEW"?C.amber:C.red}]}><Text style={[styles.resultTitle,{color:decision==="ACCEPT"?C.green:decision==="REVIEW"?C.amber:C.red}]}>{decision}</Text><Text style={styles.muted}>{decisionReason}</Text></View>}
+          {!decision && !!decisionReason && <Text style={styles.note}>{decisionReason}</Text>}
         </Card>
         <Text style={styles.section}>Decision outcomes</Text>
         <View style={styles.outcomes}><Text style={{color:C.green,fontWeight:"800"}}>ACCEPT</Text><Text style={{color:C.amber,fontWeight:"800"}}>REVIEW</Text><Text style={{color:C.red,fontWeight:"800"}}>REJECT</Text></View>
