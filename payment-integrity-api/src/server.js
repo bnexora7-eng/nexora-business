@@ -199,14 +199,14 @@ async function handleGumroadCheckout(req,res) {
   const user=await requireUser(req,res); if(!user) return;
   if(!process.env.GUMROAD_PRODUCT_URL || !process.env.GUMROAD_PRODUCT_ID ||
      !process.env.GUMROAD_ACCESS_TOKEN || !process.env.GUMROAD_EXPECTED_SELLER_ID ||
-     !process.env.GUMROAD_EXPECTED_PRICE_CENTS || !process.env.GUMROAD_PING_SECRET) {
+     !process.env.GUMROAD_EXPECTED_PRICE_CENTS || !process.env.GUMROAD_PING_SECRET || !process.env.GUMROAD_PING_URL) {
     return send(res,503,{error:"Gumroad checkout is not configured yet"});
   }
   const product=await pool.query(
     "SELECT product_id,name,price_amount,currency FROM product_catalog WHERE product_id='payment-integrity' AND active=TRUE AND price_amount IS NOT NULL"
   );
   if(!product.rowCount) return send(res,409,{error:"This product is not available for purchase yet"});
-  const configuredCents=Number(process.env.GUMROAD_EXPECTED_PRICE_CENTS);
+  let pingConfig;\n  try { pingConfig=new URL(process.env.GUMROAD_PING_URL); } catch { return send(res,503,{error:"Gumroad Ping URL is invalid"}); }\n  if(pingConfig.pathname!=="/v1/payments/gumroad-ping" || pingConfig.searchParams.get("secret")!==process.env.GUMROAD_PING_SECRET) return send(res,503,{error:"Gumroad Ping URL and secret do not match"});\n  const configuredCents=Number(process.env.GUMROAD_EXPECTED_PRICE_CENTS);
   const catalogueCents=Math.round(Number(product.rows[0].price_amount)*100);
   if(!Number.isSafeInteger(configuredCents)||configuredCents<100||catalogueCents!==configuredCents) return send(res,503,{error:"The Gumroad checkout price does not match the server catalogue"});
   if(await hasActiveProduct(user.id,"payment-integrity")) return send(res,409,{error:"This account already has access to this product"});
@@ -228,7 +228,7 @@ async function handleGumroadPing(req,res) {
   const requestUrl=new URL(req.url,"http://localhost");
   const expected=Buffer.from(process.env.GUMROAD_PING_SECRET);
   const supplied=Buffer.from(requestUrl.searchParams.get("secret")||"");
-  if(!expected.length || expected.length!==supplied.length || !crypto.timingSafeEqual(expected,supplied)) return send(res,404,{error:"Not found"});
+  if(expected.length<32 || expected.length!==supplied.length || !crypto.timingSafeEqual(expected,supplied)) return send(res,404,{error:"Not found"});
   const raw=await readBody(req);
   const ping=new URLSearchParams(raw.toString("utf8"));
   const saleId=ping.get("sale_id")||"";
@@ -237,7 +237,7 @@ async function handleGumroadPing(req,res) {
   try {
     await client.query("BEGIN");
     await client.query("SET LOCAL lock_timeout='1500ms'");
-    await client.query("SELECT pg_advisory_xact_lock(hashtext($1))",[saleId]);
+    await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",[saleId]);
     const controller=new AbortController();
     const timeout=setTimeout(()=>controller.abort(),3000);
     let verified;
