@@ -5,48 +5,58 @@ import { readFile } from "node:fs/promises";
 const server = await readFile(new URL("../src/server.js", import.meta.url), "utf8");
 const schema = await readFile(new URL("../src/schema.sql", import.meta.url), "utf8");
 const account = await readFile(new URL("../../account/index.html", import.meta.url), "utf8");
+const workspace = await readFile(new URL("../../account/payment-integrity.html", import.meta.url), "utf8");
 
-test("orders require an authenticated user before product lookup", () => {
-  const handler = server.slice(server.indexOf("async function handleCreatePayment"), server.indexOf("async function handleProductCatalogue"));
-  assert.ok(handler.indexOf("getAuthenticatedUser(req)") < handler.indexOf("SELECT product_id"));
-  assert.match(handler, /if \(!user\) return send\(res, 401/);
+test("checkout requires an authenticated user and an active server-priced product", () => {
+  const handler = server.slice(server.indexOf("async function handleGumroadCheckout"), server.indexOf("async function handleGumroadPing"));
+  assert.ok(handler.indexOf("requireUser(req,res)") < handler.indexOf("SELECT product_id"));
+  assert.match(handler, /active=TRUE AND price_amount IS NOT NULL/);
+  assert.match(handler, /GUMROAD_PRODUCT_URL/);
+  assert.match(handler, /already has access to this product/);
 });
 
-test("order price and description come from the server-owned catalogue", () => {
-  const handler = server.slice(server.indexOf("async function handleCreatePayment"), server.indexOf("async function handleProductCatalogue"));
-  assert.match(handler, /WHERE product_id=\$1 AND active=TRUE AND price_eur IS NOT NULL/);
-  assert.match(handler, /Number\(product\.price_eur\)\.toFixed\(2\)/);
-  assert.doesNotMatch(handler, /input\?\.amount|input\?\.description/);
+test("Gumroad ping never trusts the submitted sale fields", () => {
+  const handler = server.slice(server.indexOf("async function handleGumroadPing"), server.indexOf("async function handleProductCatalogue"));
+  assert.match(handler, /GUMROAD_PING_SECRET/);
+  assert.match(handler, /timingSafeEqual/);
+  assert.match(handler, /api\.gumroad\.com\/v2\/sales\//);
+  assert.match(handler, /verified\?\.success!==true/);
+  assert.match(handler, /sale\.seller_id/);
+  assert.match(handler, /sale\.product_id/);
+  assert.match(handler, /sale\.email\|\|sale\.purchase_email/);
+  assert.match(handler, /priceCents!==expectedPrice/);
 });
 
-test("only verified paid provider status grants access, idempotently", () => {
-  const handler = server.slice(server.indexOf("async function handleMollieWebhook"), server.indexOf("async function handleGetPayment"));
-  assert.match(handler, /payment\.status==="paid"/);
+test("verified Gumroad sales are idempotent and refund or dispute state revokes access", () => {
+  const handler = server.slice(server.indexOf("async function handleGumroadPing"), server.indexOf("async function handleProductCatalogue"));
+  assert.match(handler, /payment_provider='gumroad'/);
+  assert.match(handler, /provider_payment_id/);
+  assert.match(handler, /sale\.refunded \|\| sale\.chargedback/);
+  assert.match(handler, /sale\.disputed && !sale\.dispute_won/);
+  assert.match(handler, /UPDATE product_entitlements SET revoked_at/);
   assert.match(handler, /INSERT INTO product_entitlements/);
   assert.match(handler, /ON CONFLICT DO NOTHING/);
-  assert.match(handler, /payment\.amount\?\.currency/);
-  assert.match(handler, /payment\.metadata\?\.user_id/);
-  assert.match(handler, /payment\.status==="refunded"\|\|payment\.status==="charged_back"/);
-  assert.match(handler, /UPDATE product_entitlements SET revoked_at/);
 });
 
-test("catalogue starts inactive and entitlement records are unique per order", () => {
-  assert.match(schema, /NULL,'EUR',FALSE/);
+test("catalogue starts inactive and customer grants are unique and revocable", () => {
+  assert.match(schema, /NULL,'USD',FALSE/);
   assert.match(schema, /order_id UUID NOT NULL UNIQUE REFERENCES own_payments/);
   assert.match(schema, /WHERE revoked_at IS NULL/);
+  assert.match(schema, /provider_payment_id TEXT/);
 });
 
-test("customer product endpoint is authenticated and account page requests it", () => {
-  assert.match(server, /GET" && req\.url === "\/v1\/account\/products"[\s\S]*handleMyProducts/);
-  assert.match(server, /WHERE e\.user_id=\$1 AND e\.revoked_at IS NULL/);
-  assert.match(account, /request\("\/v1\/account\/products"/);
-});
-
-test("private workspace requires entitlement and scopes history by user", () => {
+test("private workspace requires an entitlement and scopes history to the user", () => {
   const handler = server.slice(server.indexOf("async function handleCustomerScreenings"), server.indexOf("async function handleMyProducts"));
   assert.match(handler, /hasActiveProduct\(user\.id,"payment-integrity"\)/);
   assert.match(handler, /WHERE user_id=\$1 ORDER BY created_at DESC LIMIT 100/);
   assert.match(server, /\/v1\/account\/payment-integrity\/events/);
   assert.match(schema, /UNIQUE \(user_id,provider_id,event_id\)/);
   assert.match(account, /OPEN YOUR PAYMENT INTEGRITY WORKSPACE/);
+  assert.match(workspace, /active Payment Integrity purchase entitlement/);
+});
+
+test("account dashboard only opens Gumroad checkout when catalogue item is active", () => {
+  assert.match(account, /available\.some\(p=>p\.product_id==="payment-integrity"\)/);
+  assert.match(account, /request\("\/v1\/payments\/checkout"/);
+  assert.match(server, /req\.url === "\/v1\/payments\/checkout"/);
 });
