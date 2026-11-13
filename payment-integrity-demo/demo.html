@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#07111f">
+<title>NEXORA Payment Integrity — Demo</title>
+<style>
+:root{color-scheme:dark;--bg:#07111f;--panel:#102238;--line:#29435d;--text:#eff6ff;--muted:#9db0c5;--mint:#62e6c5;--blue:#78aaff;--gold:#ffd27a;--red:#ff9c9c}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 80% 0,#173b52 0,transparent 38%),var(--bg);color:var(--text);font:15px/1.5 Inter,system-ui,sans-serif}
+main{max-width:1050px;margin:auto;padding:24px}.top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:26px}.brand{font-weight:900;letter-spacing:.16em}.brand small{display:block;color:var(--muted);font-size:10px;letter-spacing:.12em}.tag{border:1px solid #44635d;color:var(--mint);border-radius:30px;padding:6px 10px;font-size:10px;letter-spacing:.12em}
+h1{font-size:clamp(30px,5vw,48px);line-height:1.05;margin:8px 0}.intro{color:var(--muted);max-width:720px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:22px}.card{background:rgba(16,34,56,.96);border:1px solid var(--line);border-radius:16px;padding:20px}.card h2{font-size:18px;margin:0 0 14px}.field{display:grid;gap:6px;margin:12px 0}.field label{font-size:12px;color:var(--muted)}input,select{width:100%;background:#081625;border:1px solid var(--line);border-radius:9px;padding:11px;color:var(--text);font:inherit}input:focus,select:focus{outline:1px solid var(--mint)}
+button{border:0;border-radius:9px;background:var(--mint);color:#061923;font-weight:800;padding:11px 15px;cursor:pointer}button.secondary{background:#203750;color:var(--text);border:1px solid var(--line)}button:disabled{opacity:.45;cursor:not-allowed}
+.result{border:1px solid var(--line);border-radius:13px;padding:17px;margin-top:14px;background:#081625}.decision{font-size:24px;font-weight:900;letter-spacing:.08em}.accept{color:var(--mint)}.review{color:var(--gold)}.reject{color:var(--red)}.muted{color:var(--muted);font-size:12px}.checks{padding-left:18px;margin:10px 0}.checks li{margin:5px 0}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin:12px 0}.stat{background:#0a1929;border:1px solid var(--line);border-radius:10px;padding:12px}.stat b{display:block;font-size:22px}.stat span{font-size:11px;color:var(--muted)}.tablewrap{overflow:auto}table{width:100%;border-collapse:collapse;font-size:12px}th,td{text-align:left;padding:9px;border-bottom:1px solid var(--line);white-space:nowrap}th{color:var(--muted)}.notice{margin-top:18px;padding:13px;border:1px solid #625a40;background:#292a27;border-radius:11px;color:#e7d9b5;font-size:12px}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.footer{color:#71869c;font-size:11px;margin-top:22px;text-align:center}
+@media(max-width:700px){main{padding:15px}.grid{grid-template-columns:1fr}.top{align-items:flex-start}.stats{grid-template-columns:1fr 1fr 1fr}}
+</style>
+</head>
+<body>
+<main>
+<header class="top"><div class="brand">NEXORA<small>PAYMENT INTEGRITY</small></div><span class="tag">INTERACTIVE TECHNICAL DEMO</span></header>
+<div class="muted">RISK DECISION WORKFLOW / SANDBOX</div>
+<h1>Make every payment event accountable.</h1>
+<p class="intro">A browser-based demonstrator for screening simulated payment-event data, flagging duplicate identifiers and recording explainable decisions. The GitHub Pages demo sends simulated payment events to the NEXORA demo API for server-side screening. It does not connect to banks, payment providers or live money.</p>
+<div class="grid">
+<section class="card">
+<h2>Evaluate a payment event</h2>
+<form id="eventForm">
+<div class="field"><label for="provider">Provider identifier</label><input id="provider" value="demo-provider" maxlength="80" required></div>
+<div class="field"><label for="event">Event identifier</label><input id="event" placeholder="evt-10001" maxlength="100" required></div>
+<div class="field"><label for="amount">Amount</label><input id="amount" type="number" min="0" step="0.01" value="25.00" required></div>
+<div class="field"><label for="currency">Currency</label><select id="currency"><option>EUR</option><option>USD</option><option>GBP</option></select></div>
+<div class="field"><label for="status">Event status</label><select id="status"><option value="succeeded">Succeeded</option><option value="pending">Pending</option><option value="failed">Failed</option></select></div>
+<div class="actions"><button type="submit">Evaluate event</button><button type="button" class="secondary" id="sample">Load and run review example</button><button type="button" class="secondary" id="apiTests">Run server checks: ACCEPT / REVIEW / REJECT / DUPLICATE</button></div><div id="apiTestResults" class="result" aria-live="polite" hidden></div>
+</form>
+<div id="result" class="result" aria-live="polite"><div class="muted">DECISION OUTPUT</div><div class="muted">Submit an event to see the screening result.</div></div>
+</section>
+<section class="card">
+<h2>Decision overview</h2>
+<p class="muted">Session-only sample metrics. Refreshing this page clears the demo data.</p>
+<div class="stats"><div class="stat"><b id="total">0</b><span>Events checked</span></div><div class="stat"><b id="accepted">0</b><span>Accepted</span></div><div class="stat"><b id="flagged">0</b><span>Flagged</span></div></div>
+<h2 style="margin-top:22px">Screening logic</h2>
+<ul class="checks">
+<li>Required provider and event identifiers</li>
+<li>Duplicate provider + event identifier detection</li>
+<li>Amount and currency sanity checks</li>
+<li>Event status evaluation</li>
+<li>Explainable ACCEPT / REVIEW / REJECT result</li>
+<li>Local audit entry for each evaluation</li>
+</ul>
+<p class="muted">These are illustrative rules, not a validated fraud model or compliance control.</p>
+</section>
+</div>
+<section class="card" style="margin-top:16px">
+<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><h2 style="margin:0">Session audit log</h2><button class="secondary" id="clear" type="button">Clear session log</button></div>
+<div class="tablewrap"><table><thead><tr><th>Time</th><th>Provider</th><th>Event</th><th>Amount</th><th>Decision</th><th>Reason</th></tr></thead><tbody id="log"><tr><td colspan="6" class="muted">No events evaluated yet.</td></tr></tbody></table></div>
+</section>
+<div class="notice"><b>Sandbox limitation:</b> simulated events are sent to the demo API. API records are stored temporarily in server memory and may be lost when the function restarts. The demo does not connect to banks or payment providers, execute payments, or provide production fraud detection or regulatory certification. The browser audit log is session-only.</div>
+<div class="footer">NEXORA BUSINESS · Product concept and technical sandbox · Not a live financial service</div>
+</main>
+<script src="./config.js"></script>
+<script>
+(function(){
+const $=id=>document.getElementById(id);const records=[];const seen=new Set();let accepted=0,flagged=0;
+const API_BASE_URL=String(window.NEXORA_API_BASE_URL||"").replace(/\/+$/,"");
+function renderStats(){$('total').textContent=records.length;$('accepted').textContent=accepted;$('flagged').textContent=flagged}
+function evaluate(data){
+const key=data.provider+'::'+data.event;const reasons=[];let decision='ACCEPT';
+if(!data.provider.trim()||!data.event.trim()){decision='REJECT';reasons.push('Missing provider or event identifier')}
+if(seen.has(key)){decision='REJECT';reasons.push('Duplicate provider + event identifier')}
+if(!Number.isFinite(data.amount)||data.amount<=0){decision='REJECT';reasons.push('Amount must be greater than zero')}
+if(!['EUR','USD','GBP'].includes(data.currency)){decision='REVIEW';reasons.push('Currency is outside the demo allowlist')}
+if(data.amount>10000&&decision!=='REJECT'){decision='REVIEW';reasons.push('Amount exceeds the illustrative review threshold')}
+if(data.status==='pending'&&decision!=='REJECT'){decision='REVIEW';reasons.push('Event is pending')}
+if(data.status==='failed'){decision='REJECT';reasons.push('Provider event status is failed')}
+if(!reasons.length)reasons.push('All configured demo checks passed');
+if(data.provider.trim()&&data.event.trim())seen.add(key);
+const row={time:new Date().toLocaleTimeString(),...data,decision,reason:reasons.join('; ')};records.unshift(row);
+if(decision==='ACCEPT')accepted++;else flagged++;renderStats();renderLog();showResult(row,reasons);
+}
+function showResult(row,reasons){$('result').innerHTML='<div class="muted">DECISION OUTPUT</div><div class="decision '+row.decision.toLowerCase()+'">'+row.decision+'</div><ul class="checks">'+reasons.map(x=>'<li>'+escapeHtml(x)+'</li>').join('')+'</ul><div class="muted">Demo reference: '+escapeHtml(row.provider)+' / '+escapeHtml(row.event)+'</div>'}
+function renderLog(){$('log').innerHTML=records.length?records.map(r=>'<tr><td>'+escapeHtml(r.time)+'</td><td>'+escapeHtml(r.provider)+'</td><td>'+escapeHtml(r.event)+'</td><td>'+r.amount.toFixed(2)+' '+escapeHtml(r.currency)+'</td><td class="'+r.decision.toLowerCase()+'">'+r.decision+'</td><td>'+escapeHtml(r.reason)+'</td></tr>').join(''):'<tr><td colspan="6" class="muted">No events evaluated yet.</td></tr>'}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+$('eventForm').addEventListener('submit',async e=>{
+e.preventDefault();
+const data={provider:$('provider').value.trim(),event:$('event').value.trim(),amount:Number($('amount').value),currency:$('currency').value,status:$('status').value};
+if(!API_BASE_URL){evaluate(data);return}
+const button=$('eventForm').querySelector('button[type="submit"]');button.disabled=true;button.textContent='Sending to API…';
+try{
+const response=await fetch(API_BASE_URL+'/v1/demo/events',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({provider_id:data.provider,event_id:data.event,amount:data.amount,currency:data.currency,status:data.status})});
+const result=await response.json();
+if(!response.ok)throw new Error(result.error||'API request failed');
+const reasons=[result.reason];const row={time:new Date().toLocaleTimeString(),...data,provider:result.reference?.provider_id||data.provider,decision:result.decision,reason:result.reason};
+records.unshift(row);if(row.decision==='ACCEPT')accepted++;else flagged++;renderStats();renderLog();showResult(row,reasons);
+}catch(error){$('result').innerHTML='<div class="muted">API ERROR</div><div class="decision reject">NOT PROCESSED</div><div class="muted">'+escapeHtml(error.message)+'</div>'}
+finally{button.disabled=false;button.textContent='Evaluate event'}
+});
+$('sample').addEventListener('click',()=>{$('provider').value='demo-provider';$('event').value='evt-review-'+Date.now();$('amount').value='950';$('currency').value='EUR';$('status').value='pending';$('eventForm').requestSubmit();});
+$('apiTests').addEventListener('click',async()=>{
+ const button=$('apiTests'),panel=$('apiTestResults');
+ panel.hidden=false;button.disabled=true;
+ if(!API_BASE_URL){panel.innerHTML='<div class="reject">API URL IS NOT CONFIGURED</div>';button.disabled=false;return}
+ panel.innerHTML='<div class="muted">RUNNING REAL SERVER REQUESTS…</div>';
+ const stamp=Date.now();
+ const cases=[
+  {name:'ACCEPT — successful event',event:'nexora-test-accept-'+stamp,status:'succeeded',expected:'ACCEPT'},
+  {name:'REVIEW — pending event',event:'nexora-test-review-'+stamp,status:'pending',expected:'REVIEW'},
+  {name:'REJECT — failed event',event:'nexora-test-reject-'+stamp,status:'failed',expected:'REJECT'}
+ ];
+ const send=async item=>{
+  const response=await fetch(API_BASE_URL+'/v1/demo/events',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({provider_id:'nexora-api-test',event_id:item.event,amount:25,currency:'EUR',status:item.status})});
+  const body=await response.json().catch(()=>({error:'API returned invalid JSON'}));
+  if(!response.ok)throw new Error(body.error||('HTTP '+response.status));
+  return body;
+ };
+ try{
+  const healthResponse=await fetch(API_BASE_URL+'/v1/demo/events',{method:'GET',cache:'no-store'});
+  const health=await healthResponse.json();
+  if(!healthResponse.ok||health.status!=='ok')throw new Error('API health check failed');
+  const outcomes=[];
+  for(const item of cases){
+   const result=await send(item);
+   outcomes.push({name:item.name,passed:result.decision===item.expected,detail:'Server decision: '+result.decision+' — '+(result.reason||'no reason returned')});
+  }
+  const duplicateEvent='nexora-test-duplicate-'+stamp;
+  const first=await send({event:duplicateEvent,status:'succeeded'});
+  const second=await send({event:duplicateEvent,status:'succeeded'});
+  outcomes.push({name:'DUPLICATE — repeated event',passed:first.decision==='ACCEPT'&&second.decision==='REJECT'&&second.duplicate===true,detail:'First request: '+first.decision+'; replay: '+second.decision+'; duplicate flag: '+String(second.duplicate)});
+  panel.innerHTML='<div class="muted">LIVE SERVER TEST RESULTS — REAL POST REQUESTS</div>'+outcomes.map(x=>'<div class="'+(x.passed?'accept':'reject')+'"><b>'+(x.passed?'PASS':'FAIL')+'</b> — '+escapeHtml(x.name)+'</div><div class="muted">'+escapeHtml(x.detail)+'</div>').join('')+'<div class="decision '+(outcomes.every(x=>x.passed)?'accept':'reject')+'">'+(outcomes.every(x=>x.passed)?'ALL SERVER TESTS PASSED':'SERVER TEST FAILURE')+'</div><div class="muted">API: '+escapeHtml(health.service)+' · '+escapeHtml(health.version)+'</div>';
+ }catch(error){
+  panel.innerHTML='<div class="muted">LIVE SERVER TEST RESULTS</div><div class="decision reject">CONNECTION / API ERROR</div><div class="muted">'+escapeHtml(error.message)+'</div>';
+ }finally{button.disabled=false}
+});
+$('clear').addEventListener('click',()=>{records.length=0;seen.clear();accepted=0;flagged=0;renderStats();renderLog();$('result').innerHTML='<div class="muted">DECISION OUTPUT</div><div class="muted">Session log cleared.</div>'});
+})();
+</script>
+</body></html>
