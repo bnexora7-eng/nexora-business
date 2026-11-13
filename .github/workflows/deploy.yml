@@ -63,7 +63,7 @@ jobs:
           set -euo pipefail
           URL="https://bnexora7-eng.github.io/nexora-business/"
           curl --fail --silent --show-error --location --retry 12 --retry-all-errors --retry-delay 5 "$URL" -o /tmp/nexora-site.html
-          grep -q "Bring clarity to" /tmp/nexora-site.html
+          grep -q "Make payment" /tmp/nexora-site.html
           curl --fail --silent --show-error --location "$URL/order.html" -o /tmp/nexora-order.html
           grep -q "Project enquiry" /tmp/nexora-order.html
           grep -q "Send project enquiry" /tmp/nexora-order.html
