@@ -30,7 +30,7 @@ This checklist distinguishes work completed in the repository from actions that 
 
 ## Play Console declarations and listing
 
-Store listing copy is drafted in [GOOGLE_PLAY_STORE_LISTING_DRAFT.md](GOOGLE_PLAY_STORE_LISTING_DRAFT.md); it must be checked against the exact submitted build before use.
+Store listing copy is drafted in [GOOGLE_PLAY_STORE_LISTING_DRAFT.md](GOOGLE_PLAY_STORE_LISTING_DRAFT.md); a cautious [Data safety form draft](GOOGLE_PLAY_DATA_SAFETY_DRAFT.md) is also prepared. Both must be checked against the exact submitted build before use.
 
 - [ ] Complete the Play Console app record and developer registration, including the one-time developer registration payment.
 - [ ] Upload the signed AAB and verify Play App Signing configuration.
