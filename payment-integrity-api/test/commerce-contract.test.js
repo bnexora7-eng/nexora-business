@@ -12,6 +12,7 @@ test("checkout requires an authenticated user and an active server-priced produc
   assert.ok(handler.indexOf("requireUser(req,res)") < handler.indexOf("SELECT product_id"));
   assert.match(handler, /active=TRUE AND price_amount IS NOT NULL/);
   assert.match(handler, /GUMROAD_PRODUCT_URL/);
+  assert.match(handler, /catalogueCents!==configuredCents/);
   assert.match(handler, /already has access to this product/);
 });
 
@@ -31,8 +32,9 @@ test("verified Gumroad sales are idempotent and refund or dispute state revokes 
   const handler = server.slice(server.indexOf("async function handleGumroadPing"), server.indexOf("async function handleProductCatalogue"));
   assert.match(handler, /payment_provider='gumroad'/);
   assert.match(handler, /provider_payment_id/);
-  assert.match(handler, /sale\.refunded \|\| sale\.chargedback/);
-  assert.match(handler, /sale\.disputed && !sale\.dispute_won/);
+  assert.match(handler, /sale\.refunded \|\| \(\(sale\.chargedback \|\| sale\.disputed\) && !sale\.dispute_won\)/);
+  assert.match(handler, /revoke_reason='disputed'/);
+  assert.match(handler, /sale\.test===true \|\| sale\.is_test===true/);
   assert.match(handler, /UPDATE product_entitlements SET revoked_at/);
   assert.match(handler, /INSERT INTO product_entitlements/);
   assert.match(handler, /ON CONFLICT DO NOTHING/);
