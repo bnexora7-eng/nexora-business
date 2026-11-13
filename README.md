@@ -1,6 +1,6 @@
 ## Project status and handover
 
-For the current verified state, key links, limitations and next steps, see [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md). For an external-facing overview, see [docs/PROJECT_BRIEF.md](docs/PROJECT_BRIEF.md).
+For the current verified state, key links, limitations and next steps, see [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md). For an external-facing overview, see [docs/PROJECT_BRIEF.md](docs/PROJECT_BRIEF.md). The prepared outreach and advertising materials are in [docs/NEXORA_LAUNCH_CAMPAIGN.md](docs/NEXORA_LAUNCH_CAMPAIGN.md).
 
 # NEXORA Business — Interactive Concept Prototype
 
