@@ -232,6 +232,8 @@ async function handleCreatePayment(req, res) {
   );
   if (!productResult.rowCount) return send(res, 409, { error: "This product is not available for purchase yet" });
   const product = productResult.rows[0];
+  const owned = await pool.query("SELECT 1 FROM product_entitlements WHERE user_id=$1 AND product_id=$2 AND revoked_at IS NULL LIMIT 1",[user.id,product.product_id]);
+  if (owned.rowCount) return send(res,409,{error:"This account already has access to this product"});
   const amount = Number(product.price_eur).toFixed(2);
   const orderId = crypto.randomUUID();
   await pool.query(
@@ -316,7 +318,7 @@ async function handleMollieWebhook(req, res) {
     if(payment.status==="paid") {
       await client.query(
         `INSERT INTO product_entitlements (user_id,product_id,order_id)
-         VALUES ($1,$2,$3) ON CONFLICT (order_id) DO NOTHING`,
+         VALUES ($1,$2,$3) ON CONFLICT DO NOTHING`,
         [order.user_id,order.product_id,order.order_id]
       );
     }
