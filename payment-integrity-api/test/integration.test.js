@@ -22,7 +22,9 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
     await pool.end();
   });
 
-  await pool.query(await readFile(new URL("../src/schema.sql", import.meta.url), "utf8"));
+  // The API process initializes the schema before it reports readiness.
+  // Do not run the same DDL concurrently here: parallel CREATE TYPE/enum setup
+  // can race and fail with PostgreSQL duplicate pg_type entries.
   let healthy = false;
   for (let i = 0; i < 50; i++) {
     try {
