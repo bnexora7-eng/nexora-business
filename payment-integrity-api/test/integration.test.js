@@ -104,6 +104,20 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   );
   assert.deepEqual(deletedRows.rows[0], { users: 0, posts: 0, workspaces: 0 });
 
+  const webDeleteEmail = "nexora-web-delete-" + Date.now() + "@example.invalid";
+  const webDeleteRegister = await fetch(`http://127.0.0.1:${port}/v1/auth/register`, {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ email: webDeleteEmail, password: accountPassword })
+  });
+  assert.equal(webDeleteRegister.status, 201);
+  const webDelete = await fetch(`http://127.0.0.1:${port}/v1/auth/delete-request`, {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ email: webDeleteEmail, password: accountPassword })
+  });
+  assert.equal(webDelete.status, 200);
+  const webDeletedUser = await pool.query("SELECT id FROM app_users WHERE email=$1", [webDeleteEmail]);
+  assert.equal(webDeletedUser.rowCount, 0);
+
   async function submit(event, tamper = false) {
     const rawBody = Buffer.from(JSON.stringify(event));
     const timestamp = String(Math.floor(Date.now() / 1000));
