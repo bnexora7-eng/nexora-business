@@ -205,7 +205,7 @@ async function handleGumroadCheckout(req,res) {
     return send(res,503,{error:"Gumroad checkout is not configured yet"});
   }
   const product=await pool.query(
-    "SELECT product_id,name,price_eur,currency FROM product_catalog WHERE product_id='payment-integrity' AND active=TRUE AND price_eur IS NOT NULL"
+    "SELECT product_id,name,price_amount,currency FROM product_catalog WHERE product_id='payment-integrity' AND active=TRUE AND price_amount IS NOT NULL"
   );
   if(!product.rowCount) return send(res,409,{error:"This product is not available for purchase yet"});
   if(await hasActiveProduct(user.id,"payment-integrity")) return send(res,409,{error:"This account already has access to this product"});
@@ -217,7 +217,7 @@ async function handleGumroadCheckout(req,res) {
   }
   return send(res,200,{checkout_url:checkout.toString(),buyer_email:user.email,product:{
     product_id:product.rows[0].product_id,name:product.rows[0].name,
-    display_price:Number(product.rows[0].price_eur).toFixed(2),display_currency:product.rows[0].currency
+    display_price:Number(product.rows[0].price_amount).toFixed(2),display_currency:product.rows[0].currency
   },checkout_note:"Use this exact NEXORA account email at Gumroad checkout: "+user.email});
 }
 async function handleGumroadPing(req,res) {
@@ -313,9 +313,9 @@ async function handleGumroadPing(req,res) {
 async function handleProductCatalogue(req,res) {
   if(!pool) return send(res,503,{error:"Product catalogue requires the database"});
   const result=await pool.query(
-    "SELECT product_id,name,description,price_eur,currency,active FROM product_catalog ORDER BY name"
+    "SELECT product_id,name,description,price_amount,currency,active FROM product_catalog ORDER BY name"
   );
-  return send(res,200,{products:result.rows.map(p=>({...p,price:p.price_eur===null?null:Number(p.price_eur).toFixed(2)}))});
+  return send(res,200,{products:result.rows.map(p=>({...p,price:p.price_amount===null?null:Number(p.price_amount).toFixed(2)}))});
 }
 async function hasActiveProduct(userId,productId) {
   const result=await pool.query(
