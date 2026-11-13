@@ -3,7 +3,7 @@
 **Campaign status:** Prepared for controlled outreach  
 **Market:** International B2B; initial conversations in the Netherlands and Europe  
 **Destination:** https://bnexora7-eng.github.io/nexora-business/  
-**Enquiry form:** https://bnexora7-eng.github.io/nexora-business/order.html  
+**Enquiry form:** mailto:bnexora7@gmail.com?subject=NEXORA%20technical%20walkthrough  
 **Interactive demo:** https://bnexora7-eng.github.io/nexora-business/payment-integrity-demo/demo.html
 
 ## Positioning
@@ -36,7 +36,7 @@ Explore the interactive demonstration and see how explainable outcomes could fit
 **Looking for technical feedback and design partners.**
 
 Explore the demo: https://bnexora7-eng.github.io/nexora-business/payment-integrity-demo/demo.html  
-Discuss a technical walkthrough: https://bnexora7-eng.github.io/nexora-business/order.html
+Discuss a technical walkthrough: mailto:bnexora7@gmail.com?subject=NEXORA%20technical%20walkthrough
 
 *Important: NEXORA is a pre-production prototype. The demo uses synthetic data and deterministic rules. It is not a payment processor, bank integration, production fraud-detection system or certified financial control. It does not move money or process live payment data.*
 
@@ -101,7 +101,7 @@ https://bnexora7-eng.github.io/nexora-business/
 ## Launch sequence
 
 1. Publish the updated landing page and confirm the GitHub Pages workflow passes.
-2. Confirm the enquiry form's FormSubmit activation and end-to-end delivery before using it as the campaign response channel.
+2. Use direct email for initial outreach. Confirm the enquiry form's FormSubmit activation and end-to-end delivery before promoting that form as the campaign response channel.
 3. Test the demo link on a phone and desktop.
 4. Publish the LinkedIn post from the NEXORA account only after the account identity and profile are ready.
 5. Send individual, relevant outreach emails; avoid bulk unsolicited campaigns.
