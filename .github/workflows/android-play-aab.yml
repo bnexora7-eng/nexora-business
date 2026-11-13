@@ -47,8 +47,71 @@ jobs:
       - name: Verify Android target API 36
         working-directory: mobile
         run: |
-          grep -R "targetSdkVersion" android/build.gradle android/app/build.gradle
-          grep -Eq "targetSdkVersion.*36" android/build.gradle
+          cat android/gradle.properties
+          grep -Eq '^android.targetSdkVersion=36
+      - name: Decode upload keystore
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$NEXORA_UPLOAD_KEYSTORE"
+          test -s "$NEXORA_UPLOAD_KEYSTORE"
+          keytool -list -keystore "$NEXORA_UPLOAD_KEYSTORE" -storepass "$NEXORA_UPLOAD_STORE_PASSWORD" -alias "$NEXORA_UPLOAD_KEY_ALIAS"
+      - name: Configure release signing
+        working-directory: mobile
+        run: node ../scripts/configure-android-signing.mjs android/app/build.gradle
+      - name: Build signed Android App Bundle
+        working-directory: mobile/android
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon --console=plain bundleRelease
+      - name: Verify signed App Bundle
+        working-directory: mobile/android
+        run: |
+          test -s app/build/outputs/bundle/release/app-release.aab
+          jarsigner -verify app/build/outputs/bundle/release/app-release.aab
+      - name: Remove temporary keystore
+        if: always()
+        run: rm -f "$NEXORA_UPLOAD_KEYSTORE"
+      - name: Upload signed AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexora-google-play-aab
+          path: mobile/android/app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+          retention-days: 14
+ android/gradle.properties
+          grep -Eq '^android.compileSdkVersion=36
+      - name: Decode upload keystore
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$NEXORA_UPLOAD_KEYSTORE"
+          test -s "$NEXORA_UPLOAD_KEYSTORE"
+          keytool -list -keystore "$NEXORA_UPLOAD_KEYSTORE" -storepass "$NEXORA_UPLOAD_STORE_PASSWORD" -alias "$NEXORA_UPLOAD_KEY_ALIAS"
+      - name: Configure release signing
+        working-directory: mobile
+        run: node ../scripts/configure-android-signing.mjs android/app/build.gradle
+      - name: Build signed Android App Bundle
+        working-directory: mobile/android
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon --console=plain bundleRelease
+      - name: Verify signed App Bundle
+        working-directory: mobile/android
+        run: |
+          test -s app/build/outputs/bundle/release/app-release.aab
+          jarsigner -verify app/build/outputs/bundle/release/app-release.aab
+      - name: Remove temporary keystore
+        if: always()
+        run: rm -f "$NEXORA_UPLOAD_KEYSTORE"
+      - name: Upload signed AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexora-google-play-aab
+          path: mobile/android/app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+          retention-days: 14
+ android/gradle.properties
       - name: Decode upload keystore
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
