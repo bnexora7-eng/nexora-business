@@ -233,38 +233,51 @@ async function handleGumroadPing(req,res) {
   const ping=new URLSearchParams(raw.toString("utf8"));
   const saleId=ping.get("sale_id")||"";
   if(!/^[A-Za-z0-9_=-]{1,256}$/.test(saleId)) return send(res,400,{error:"A valid Gumroad sale_id is required"});
-  const controller=new AbortController();
-  const timeout=setTimeout(()=>controller.abort(),4500);
-  let verified;
-  try {
-    const response=await fetch("https://api.gumroad.com/v2/sales/"+encodeURIComponent(saleId),{
-      method:"GET",signal:controller.signal,
-      headers:{Authorization:"Bearer "+process.env.GUMROAD_ACCESS_TOKEN,Accept:"application/json"}
-    });
-    verified=await response.json().catch(()=>({}));
-    if(!response.ok || verified?.success!==true || verified?.sale?.id!==saleId) return send(res,404,{error:"Gumroad could not verify this sale"});
-  } catch(error) {
-    console.error("Gumroad sale verification failed",error.name||"Error");
-    return send(res,502,{error:"Gumroad verification is temporarily unavailable"});
-  } finally { clearTimeout(timeout); }
-  const sale=verified.sale;
-  if(String(sale.seller_id)!==String(process.env.GUMROAD_EXPECTED_SELLER_ID) ||
-     String(sale.product_id)!==String(process.env.GUMROAD_PRODUCT_ID)) return send(res,403,{error:"Sale seller or product does not match NEXORA configuration"});
-  const email=String(sale.email||sale.purchase_email||"").trim().toLowerCase();
-  if(!email || email.length>254) return send(res,422,{error:"Verified Gumroad sale has no valid buyer email"});
-  const priceCents=Number(sale.price);
-  const expectedPrice=Number(process.env.GUMROAD_EXPECTED_PRICE_CENTS);
-  if(!Number.isSafeInteger(priceCents) || priceCents!==expectedPrice || priceCents<100) return send(res,409,{error:"Verified sale price does not match the configured product price"});
-  const customer=await pool.query("SELECT id FROM app_users WHERE lower(email)=lower($1)",[email]);
-  if(!customer.rowCount) return send(res,409,{error:"Create your NEXORA account with the same email used at Gumroad checkout, then contact support to reconcile this sale"});
-  const userId=customer.rows[0].id;
-  const isRevoked=Boolean(sale.refunded || sale.chargedback || (sale.disputed && !sale.dispute_won));
-  const paymentStatus=sale.refunded?"refunded":sale.chargedback?"charged_back":(sale.disputed&&!sale.dispute_won)?"disputed":"paid";
-  const amount=(priceCents/100).toFixed(2);
-  const currency=typeof sale.currency==="string" && /^[A-Za-z]{3}$/.test(sale.currency) ? sale.currency.toUpperCase() : "USD";
   const client=await pool.connect();
   try {
     await client.query("BEGIN");
+    await client.query("SET LOCAL lock_timeout='1500ms'");
+    await client.query("SELECT pg_advisory_xact_lock(hashtext($1))",[saleId]);
+    const controller=new AbortController();
+    const timeout=setTimeout(()=>controller.abort(),3000);
+    let verified;
+    try {
+      const response=await fetch("https://api.gumroad.com/v2/sales/"+encodeURIComponent(saleId),{
+        method:"GET",signal:controller.signal,
+        headers:{Authorization:"Bearer "+process.env.GUMROAD_ACCESS_TOKEN,Accept:"application/json"}
+      });
+      verified=await response.json().catch(()=>({}));
+      if(!response.ok || verified?.success!==true || verified?.sale?.id!==saleId) {
+        await client.query("ROLLBACK"); return send(res,404,{error:"Gumroad could not verify this sale"});
+      }
+    } catch(error) {
+      await client.query("ROLLBACK");
+      console.error("Gumroad sale verification failed",error.name||"Error");
+      return send(res,503,{error:"Gumroad verification is temporarily unavailable"});
+    } finally { clearTimeout(timeout); }
+    const sale=verified.sale;
+    if(String(sale.seller_id)!==String(process.env.GUMROAD_EXPECTED_SELLER_ID) ||
+       String(sale.product_id)!==String(process.env.GUMROAD_PRODUCT_ID)) {
+      await client.query("ROLLBACK"); return send(res,403,{error:"Sale seller or product does not match NEXORA configuration"});
+    }
+    const email=String(sale.email||sale.purchase_email||"").trim().toLowerCase();
+    if(!email || email.length>254) {
+      await client.query("ROLLBACK"); return send(res,422,{error:"Verified Gumroad sale has no valid buyer email"});
+    }
+    const priceCents=Number(sale.price);
+    const expectedPrice=Number(process.env.GUMROAD_EXPECTED_PRICE_CENTS);
+    if(!Number.isSafeInteger(priceCents) || priceCents!==expectedPrice || priceCents<100) {
+      await client.query("ROLLBACK"); return send(res,409,{error:"Verified sale price does not match the configured product price"});
+    }
+    const customer=await client.query("SELECT id FROM app_users WHERE lower(email)=lower($1)",[email]);
+    if(!customer.rowCount) {
+      await client.query("ROLLBACK"); return send(res,409,{error:"Create your NEXORA account with the same email used at Gumroad checkout, then contact support to reconcile this sale"});
+    }
+    const userId=customer.rows[0].id;
+    const isRevoked=Boolean(sale.refunded || sale.chargedback || (sale.disputed && !sale.dispute_won));
+    const paymentStatus=sale.refunded?"refunded":sale.chargedback?"charged_back":(sale.disputed&&!sale.dispute_won)?"disputed":"paid";
+    const amount=(priceCents/100).toFixed(2);
+    const currency=typeof sale.currency==="string" && /^[A-Za-z]{3}$/.test(sale.currency) ? sale.currency.toUpperCase() : "USD";
     let existing=await client.query(
       "SELECT order_id,user_id,product_id FROM own_payments WHERE payment_provider='gumroad' AND provider_payment_id=$1 FOR UPDATE",
       [saleId]
@@ -292,6 +305,7 @@ async function handleGumroadPing(req,res) {
         await client.query("ROLLBACK"); return send(res,409,{error:"Gumroad sale could not be linked safely"});
       }
       orderId=saved.rows[0].order_id;
+      await client.query("UPDATE own_payments SET status=$1,updated_at=NOW() WHERE order_id=$2",[paymentStatus,orderId]);
     }
     if(isRevoked) {
       await client.query(
@@ -308,7 +322,9 @@ async function handleGumroadPing(req,res) {
     await client.query("COMMIT");
     return send(res,200,{received:true,verified:true,order_status:paymentStatus,access_granted:!isRevoked});
   } catch(error) {
-    await client.query("ROLLBACK"); throw error;
+    await client.query("ROLLBACK");
+    if(error.code==="55P03") return send(res,503,{error:"Gumroad sale is already being processed; retry shortly"});
+    throw error;
   } finally { client.release(); }
 }
 async function handleProductCatalogue(req,res) {
