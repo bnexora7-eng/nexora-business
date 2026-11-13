@@ -47,3 +47,12 @@ The HTTP API contract is documented in [openapi.yaml](openapi.yaml).
 - GET /v1/account/products returns only the signed-in user's non-revoked product access.
 - The initial Payment Integrity catalogue entry is intentionally inactive and has no price. It must remain unavailable until its deliverable, commercial price, payment provider configuration and gated product experience are ready. Do not activate it or enable live payments as a shortcut.
 - The current public demo remains a preview using synthetic events. It is not the paid product and is not a production fraud-prevention service.
+
+## Private customer workspace
+
+- GET and POST /v1/account/payment-integrity/events require a valid NEXORA bearer session and an active `payment-integrity` entitlement.
+- POST accepts normalized synthetic event fields only. Decisions are deterministic ACCEPT / REVIEW / REJECT rules, not machine learning or verified fraud detection.
+- Events are persisted in `customer_screenings`, scoped to the authenticated account, and deduplicated by (user_id, provider_id, event_id).
+- GET returns only the signed-in user's latest 100 events.
+- The static customer workspace is `/account/payment-integrity.html`; its API access is enforced server-side, so opening the URL alone does not grant access.
+- The catalogue item remains inactive and unpriced until the paid deliverable and checkout provider are configured. Do not enable a live product or payments before those steps and end-to-end verification.
