@@ -31,7 +31,7 @@ Alternatively, run docker compose up --build. Replace all example secrets before
 See [docs/API_DEPLOYMENT.md](../docs/API_DEPLOYMENT.md) for the Render + Neon setup and verification steps. The repository-root [render.yaml](../render.yaml) defines the free sandbox web service.
 
 ## Scope and security
-This is a prototype, not a certified payment service or production fraud-detection system. It does not connect to banks, payment processors or real provider accounts. The rule engine is deterministic, not machine learning. Do not use real payment or personal data.
+This is a prototype, not a certified payment service or production fraud-detection system. The Gumroad integration is only for NEXORA product checkout and sale verification; it does not connect to banks or customer payment providers for event screening. The rule engine is deterministic, not machine learning. Use synthetic or non-sensitive event data only.
 Before production: use a managed secret store, secret rotation and revocation, TLS, stronger distributed rate limiting, monitoring, retention controls, versioned database migrations, privacy/legal review and secured deployment. Do not claim this backend is production-ready until it has been independently security-reviewed and load-tested.
 
 ## API contract
