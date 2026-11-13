@@ -46,6 +46,17 @@ jobs:
           grep -q "NEXORA Payment Integrity" /tmp/nexora-demo.html
           grep -q "Run server checks: ACCEPT / REVIEW / REJECT / DUPLICATE" /tmp/nexora-demo.html
           echo "Public demo URL returned the expected NEXORA demo page."
+      - name: Verify public privacy and account-deletion pages
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="https://bnexora7-eng.github.io/nexora-business"
+          curl --fail --silent --show-error --location "$BASE/privacy/" -o /tmp/nexora-privacy.html
+          grep -q "NEXORA Privacy Policy" /tmp/nexora-privacy.html
+          curl --fail --silent --show-error --location "$BASE/account-deletion/" -o /tmp/nexora-delete.html
+          grep -q "Delete your NEXORA account" /tmp/nexora-delete.html
+          grep -q "/v1/auth/delete-request" /tmp/nexora-delete.html
+          echo "PASS: public privacy policy and account-deletion pages are deployed."
       - name: Verify deployed API with real POST requests
         env:
           API_BASE_URL: https://splendid-lokum-02523e.netlify.app
