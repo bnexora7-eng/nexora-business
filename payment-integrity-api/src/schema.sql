@@ -93,3 +93,39 @@ CREATE TABLE IF NOT EXISTS business_workspaces (
   goals TEXT NOT NULL DEFAULT '',
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+
+-- Server-owned product catalogue and access grants.
+CREATE TABLE IF NOT EXISTS product_catalog (
+  product_id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT NOT NULL,
+  price_eur NUMERIC(12,2),
+  currency CHAR(3) NOT NULL DEFAULT 'EUR',
+  active BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CHECK (price_eur IS NULL OR price_eur >= 1)
+);
+INSERT INTO product_catalog (product_id,name,description,price_eur,currency,active)
+VALUES ('payment-integrity','NEXORA Payment Integrity','Payment-event screening prototype with explainable ACCEPT, REVIEW and REJECT outcomes and duplicate-event awareness. Synthetic data only; no live bank or payment-provider integrations. ',NULL,'EUR',FALSE)
+ON CONFLICT (product_id) DO NOTHING;
+
+ALTER TABLE own_payments ADD COLUMN IF NOT EXISTS product_id TEXT
+  REFERENCES product_catalog(product_id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS own_payments_product_idx ON own_payments (product_id);
+
+CREATE TABLE IF NOT EXISTS product_entitlements (
+  id BIGSERIAL PRIMARY KEY,
+  user_id BIGINT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
+  product_id TEXT NOT NULL REFERENCES product_catalog(product_id),
+  order_id UUID NOT NULL UNIQUE REFERENCES own_payments(order_id) ON DELETE CASCADE,
+  granted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  revoked_at TIMESTAMPTZ,
+  revoke_reason TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS product_entitlements_active_user_product_idx
+  ON product_entitlements(user_id,product_id) WHERE revoked_at IS NULL;
+CREATE INDEX IF NOT EXISTS product_entitlements_user_idx
+  ON product_entitlements(user_id,granted_at DESC);
