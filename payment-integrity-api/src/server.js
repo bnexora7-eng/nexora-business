@@ -23,6 +23,8 @@ const ENABLE_PUBLIC_DEMO = process.env.ENABLE_PUBLIC_DEMO === "true";
 const REVIEW_THRESHOLD = Number(process.env.REVIEW_THRESHOLD || 10000);
 const MAX_BODY_BYTES = 65536;
 const DEMO_ORIGIN = process.env.DEMO_ORIGIN || "https://bnexora7-eng.github.io";
+const ALLOWED_ORIGINS = new Set((process.env.ALLOWED_ORIGINS || "https://bnexora7-eng.github.io,https://splendid-lokum-02523e.netlify.app").split(",").map(value => value.trim()).filter(Boolean));
+ALLOWED_ORIGINS.add(DEMO_ORIGIN);
 const demoRequests = new Map();
 const demoEvents = new Map();
 const authAttempts = new Map();
@@ -57,8 +59,8 @@ function send(res, status, body) {
 }
 function cors(req, res) {
   const origin = req.headers.origin;
-  if (origin === DEMO_ORIGIN) {
-    res.setHeader("access-control-allow-origin", DEMO_ORIGIN);
+  if (origin && ALLOWED_ORIGINS.has(origin)) {
+    res.setHeader("access-control-allow-origin", origin);
     res.setHeader("vary", "Origin");
     res.setHeader("access-control-allow-methods", "GET, POST, PUT, OPTIONS");
     res.setHeader("access-control-allow-headers", "content-type, authorization, x-nexora-timestamp, x-nexora-signature");
