@@ -129,3 +129,21 @@ CREATE UNIQUE INDEX IF NOT EXISTS product_entitlements_active_user_product_idx
   ON product_entitlements(user_id,product_id) WHERE revoked_at IS NULL;
 CREATE INDEX IF NOT EXISTS product_entitlements_user_idx
   ON product_entitlements(user_id,granted_at DESC);
+
+
+-- Private customer workbench data; every row is owned by one authenticated account.
+CREATE TABLE IF NOT EXISTS customer_screenings (
+  id BIGSERIAL PRIMARY KEY,
+  user_id BIGINT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
+  provider_id VARCHAR(128) NOT NULL,
+  event_id VARCHAR(256) NOT NULL,
+  amount NUMERIC(20,4) NOT NULL,
+  currency CHAR(3) NOT NULL,
+  event_status VARCHAR(32) NOT NULL,
+  decision TEXT NOT NULL CHECK (decision IN ('ACCEPT','REVIEW','REJECT')),
+  reason TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (user_id,provider_id,event_id)
+);
+CREATE INDEX IF NOT EXISTS customer_screenings_user_created_idx
+  ON customer_screenings(user_id,created_at DESC);
