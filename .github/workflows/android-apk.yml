@@ -46,7 +46,22 @@ jobs:
       - name: Verify Android target API 36
         working-directory: mobile
         run: |
-          TARGET_SDK=$(grep -RhoE 'targetSdkVersion[[:space:]]*=?[[:space:]]*[0-9]+' android/build.gradle android/app/build.gradle | sed -E 's/.*([0-9]+)$/\\1/' | tail -n 1)
+          TARGET_SDK=$(grep -RhoE 'targetSdkVersion[[:space:]]*=?[[:space:]]*[0-9]+' android/build.gradle android/app/build.gradle | grep -oE '[0-9]+
+          echo "Generated Android target SDK: ${TARGET_SDK:-unknown}"
+          test "$TARGET_SDK" = "36"
+      - name: Build installable test APK
+        working-directory: mobile/android
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon --console=plain assembleRelease
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexora-android-test-apk
+          path: mobile/android/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+          retention-days: 14
+ | tail -n 1)
           echo "Generated Android target SDK: ${TARGET_SDK:-unknown}"
           test "$TARGET_SDK" = "36"
       - name: Build installable test APK
