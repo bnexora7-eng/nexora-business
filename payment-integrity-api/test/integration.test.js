@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { signPayload } from "../src/screening.js";
 
@@ -89,6 +90,8 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
     body: JSON.stringify({ business_name: "Delete test", tagline: "", goals: "private notes" })
   });
   assert.equal(createWorkspace.status, 200);
+  const paymentOrderId = randomUUID();
+  await pool.query("INSERT INTO own_payments (order_id,user_id,amount,description,status) VALUES ($1,$2,25.00,$3,$4)", [paymentOrderId, registered.user.id, "Integration test payment", "paid"]);
   const deleteResponse = await fetch(`http://127.0.0.1:${port}/v1/auth/account`, {
     method: "DELETE", headers: { authorization: "Bearer " + registered.token }
   });
@@ -103,6 +106,9 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
     [accountEmail, registered.user.id]
   );
   assert.deepEqual(deletedRows.rows[0], { users: 0, posts: 0, workspaces: 0 });
+  const retainedPayment = await pool.query("SELECT user_id FROM own_payments WHERE order_id=$1", [paymentOrderId]);
+  assert.equal(retainedPayment.rowCount, 1);
+  assert.equal(retainedPayment.rows[0].user_id, null);
 
   const webDeleteEmail = "nexora-web-delete-" + Date.now() + "@example.invalid";
   const webDeleteRegister = await fetch(`http://127.0.0.1:${port}/v1/auth/register`, {
