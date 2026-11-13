@@ -1,6 +1,6 @@
 # NEXORA Android upload key — owner instructions
 
-The signed Google Play workflow is ready, but it cannot run until the repository owner creates and securely retains an Android upload keystore.
+The upload keystore has been generated and verified by the repository owner on 13 November 2026. The private keystore and its backup must remain confidential. The signed Google Play workflow still requires the four GitHub Actions repository secrets listed below before it can run.
 
 ## 1. Generate the upload keystore
 
