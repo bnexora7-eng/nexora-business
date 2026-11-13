@@ -119,3 +119,10 @@ When resuming work, start with this file, then inspect the current main branch a
 - The privacy policy still requires the responsible operator's full legal identity and postal address before public production release.
 
 **Remaining release gates:** physical-device registration/login/account-deletion test against the deployed backend; signed AAB; legal operator details and processor/transfer review; Play Console registration and declarations; listing graphics; and any closed-testing period required by the Play Console account type. Mollie live payments and AI planning remain disabled until configured and end-to-end tested.
+
+## Android validation automation — 13 November 2026
+
+- Added `.github/workflows/android-mobile-check.yml`, which validates the mobile TypeScript, checks the public Expo configuration, generates the Android project, builds a debug APK and uploads it as a short-lived artifact.
+- This validation workflow is independent of the private Play upload-key secrets, so build/type errors can be found before the owner configures release signing.
+- Hardened the signed Play AAB workflow by creating the keystore directory before decoding the private upload key and suppressing nonessential npm audit/fund output.
+- **Verification status:** workflow files committed; the new GitHub Actions run must complete successfully before treating this validation path as passed.
