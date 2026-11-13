@@ -220,7 +220,7 @@ export default function App() {
       </>}
       {(tab==="Community"||tab==="Marketplace"||tab==="Business")&&<NexoraModules screen={tab} signedIn={!!account} onNavigate={go}/>}
       {tab==="Integrity" && <>
-        <Card><Text style={styles.kicker}>PAYMENT INTEGRITY • DEMO</Text><Text style={styles.hero}>Screen a payment event.</Text><Text style={styles.muted}>Local demonstration only. This does not connect to a bank, move money or approve a real payment.</Text>
+        <Card><Text style={styles.kicker}>PAYMENT INTEGRITY • SERVER DEMO</Text><Text style={styles.hero}>Screen a payment event.</Text><Text style={styles.muted}>Server-side demonstration. Results are saved in the NEXORA audit database. This does not connect to a bank, move money or approve a real payment.</Text>
           <Text style={styles.label}>AMOUNT (EUR)</Text><TextInput value={amount} onChangeText={setAmount} keyboardType="decimal-pad" placeholder="950.00" placeholderTextColor={C.muted} style={styles.input}/>
           <Text style={styles.label}>REFERENCE</Text><TextInput value={reference} onChangeText={setReference} autoCapitalize="characters" placeholder="NX-2026-001" placeholderTextColor={C.muted} style={styles.input}/>
           <TouchableOpacity style={[styles.primary,screeningBusy&&{opacity:0.6}]} disabled={screeningBusy} onPress={runIntegrityScreening}><Text style={styles.primaryText}>{screeningBusy?"SCREENING…":account?"SCREEN WITH NEXORA SERVER":"SIGN IN TO RUN SERVER SCREENING"}</Text></TouchableOpacity>
