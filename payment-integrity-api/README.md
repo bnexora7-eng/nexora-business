@@ -40,10 +40,10 @@ The HTTP API contract is documented in [openapi.yaml](openapi.yaml).
 
 ## Product orders and entitlements
 
-- GET /v1/catalogue/products returns the server-owned product catalogue. A product is purchasable only when its database row is explicitly active and has a configured EUR price.
-- POST /v1/payments requires a signed-in account and accepts only `product_id`. The server reads the product name and price from `product_catalog`; client-supplied amounts and descriptions are not accepted.
-- Mollie webhooks are verified by retrieving the payment directly from Mollie. The order ID, provider payment ID, currency and exact amount must match the stored order.
-- A product entitlement is granted only for a verified `paid` payment. The grant is idempotent by order ID.
+- GET /v1/catalogue/products returns the server-owned product catalogue. A product is purchasable only when its database row is explicitly active and has a configured USD price.
+- GET /v1/payments/checkout requires a signed-in account and returns the configured Gumroad product URL only when the server-owned product is active and the catalogue price exactly matches the configured Gumroad price.
+- POST /v1/payments/gumroad-ping?secret=... treats the Ping only as a notification. The server retrieves the sale from Gumroad's Sales API and verifies the sale ID, seller, product, buyer email and exact price before granting access.
+- A product entitlement is granted only for a verified eligible sale. Duplicate notifications are idempotent by provider + sale ID. Full refunds, chargebacks and unresolved disputes revoke access.
 - GET /v1/account/products returns only the signed-in user's non-revoked product access.
 - The initial Payment Integrity catalogue entry is intentionally inactive and has no price. It must remain unavailable until its deliverable, commercial price, payment provider configuration and gated product experience are ready. Do not activate it or enable live payments as a shortcut.
 - The current public demo remains a preview using synthetic events. It is not the paid product and is not a production fraud-prevention service.
@@ -56,3 +56,11 @@ The HTTP API contract is documented in [openapi.yaml](openapi.yaml).
 - GET returns only the signed-in user's latest 100 events.
 - The static customer workspace is `/account/payment-integrity.html`; its API access is enforced server-side, so opening the URL alone does not grant access.
 - The catalogue item remains inactive and unpriced until the paid deliverable and checkout provider are configured. Do not enable a live product or payments before those steps and end-to-end verification.
+
+## Gumroad checkout and verified sales
+
+Required server-only values: `GUMROAD_ACCESS_TOKEN`, `GUMROAD_PRODUCT_ID`, `GUMROAD_PRODUCT_URL`, `GUMROAD_EXPECTED_SELLER_ID`, `GUMROAD_EXPECTED_PRICE_CENTS`, `GUMROAD_PING_SECRET`, and `GUMROAD_PING_URL`. Never put these values in the browser or commit them to Git.
+
+The Gumroad Settings Ping is not payment proof. The receiver uses only the sale ID from the Ping, then retrieves the sale through Gumroad's API and validates the returned record. Configure sale, refund, dispute and dispute_won resource subscriptions by running `npm run gumroad:subscribe` in a private server environment with the access token and final Ping URL. The buyer must use the same email for Gumroad checkout and their NEXORA account.
+
+Full refunds, chargebacks and unresolved disputes revoke access. Partial refunds do not automatically revoke access. Use Gumroad's official test-purchase flow; do not buy your own product with a real card. A test purchase grants no NEXORA access unless the Gumroad Sales API returns a verifiable matching sale record.
