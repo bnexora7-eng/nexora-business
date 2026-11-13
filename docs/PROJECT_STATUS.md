@@ -102,3 +102,20 @@ When resuming work, start with this file, then inspect the current main branch a
 - Release checklist: [GOOGLE_PLAY_RELEASE_READINESS.md](GOOGLE_PLAY_RELEASE_READINESS.md).
 
 **Still not a production release:** signed AAB and upload-key configuration, latest APK build after account-deletion UI changes, production API verification, full on-device registration/login/deletion test, Play Console setup and declarations, store listing graphics, and any required closed testing remain outstanding. Mollie checkout and AI planning remain unavailable until provider credentials and end-to-end tests are completed.
+
+
+## Google Play release-preparation update — 13 November 2026
+
+- PR #6 was merged into `main` as `aa164baf092fcf82a9d47fc98c81cb867feef1cf`.
+- Account deletion is now part of the mobile Profile UI and backend. It removes the account, sessions, Community posts, Marketplace listings and Business workspace; payment ledger entries are detached from the deleted account.
+- The public privacy policy and web account-deletion page were deployed to GitHub Pages and both were verified by the deployment workflow.
+- Render deployment readiness passed: `/ready` returned `{"status":"ready","database":"connected"}`.
+- PostgreSQL-backed API tests passed, including account deletion and payment-record unlinking.
+- Mobile TypeScript checks passed.
+- Installable NEXORA 0.4.0 / versionCode 4 APK was built successfully in GitHub Actions run `43399844079`; the artifact was downloaded and its APK file verified (56,737,535 bytes). The current main-branch APK build is also running separately.
+- Expo SDK 54 targets Android 16 / API 36. Official SDK documentation confirms this target.
+- Signed Play AAB workflow is prepared, but it requires the owner to generate and retain an upload keystore and add the four GitHub Actions secrets listed in the Play release checklist.
+- The Play Store listing text is drafted; NEXORA-specific icon, feature graphic and screenshots are still missing.
+- The privacy policy still requires the responsible operator's full legal identity and postal address before public production release.
+
+**Remaining release gates:** physical-device registration/login/account-deletion test against the deployed backend; signed AAB; legal operator details and processor/transfer review; Play Console registration and declarations; listing graphics; and any closed-testing period required by the Play Console account type. Mollie live payments and AI planning remain disabled until configured and end-to-end tested.
