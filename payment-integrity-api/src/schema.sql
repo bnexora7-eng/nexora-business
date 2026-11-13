@@ -100,16 +100,25 @@ CREATE TABLE IF NOT EXISTS product_catalog (
   product_id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
   description TEXT NOT NULL,
-  price_eur NUMERIC(12,2),
+  price_amount NUMERIC(12,2),
   currency CHAR(3) NOT NULL DEFAULT 'EUR',
   active BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  CHECK (price_eur IS NULL OR price_eur >= 1)
+  CHECK (price_amount IS NULL OR price_amount >= 1)
 );
-INSERT INTO product_catalog (product_id,name,description,price_eur,currency,active)
-VALUES ('payment-integrity','NEXORA Payment Integrity','Payment-event screening prototype with explainable ACCEPT, REVIEW and REJECT outcomes and duplicate-event awareness. Synthetic data only; no live bank or payment-provider integrations. ',NULL,'EUR',FALSE)
+INSERT INTO product_catalog (product_id,name,description,price_amount,currency,active)
+VALUES ('payment-integrity','NEXORA Payment Integrity','Payment-event screening prototype with explainable ACCEPT, REVIEW and REJECT outcomes and duplicate-event awareness. Synthetic data only; no live bank or payment-provider integrations. ',NULL,'USD',FALSE)
 ON CONFLICT (product_id) DO NOTHING;
+
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='product_catalog' AND column_name='price_eur')
+     AND NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='product_catalog' AND column_name='price_amount') THEN
+    ALTER TABLE product_catalog RENAME COLUMN price_eur TO price_amount;
+  END IF;
+END $$;
+
 
 ALTER TABLE own_payments ADD COLUMN IF NOT EXISTS product_id TEXT
   REFERENCES product_catalog(product_id) ON DELETE SET NULL;
