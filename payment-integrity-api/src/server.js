@@ -28,7 +28,6 @@ ALLOWED_ORIGINS.add(DEMO_ORIGIN);
 const demoRequests = new Map();
 const demoEvents = new Map();
 const authAttempts = new Map();
-const MOLLIE_API_BASE = "https://api.mollie.com/v2";
 const PUBLIC_API_URL = (process.env.PUBLIC_API_URL || "https://nexora-payment-integrity-api.onrender.com").replace(/\/$/, "");
 const PAYMENT_RETURN_URL = process.env.NEXORA_PAYMENT_RETURN_URL || "https://bnexora7-eng.github.io/nexora-business/";
 const AI_API_KEY = process.env.OPENAI_API_KEY || "";
@@ -198,75 +197,118 @@ async function getAuthenticatedUser(req) {
   );
   return result.rows[0] || null;
 }
-async function mollieRequest(path, options = {}) {
-  const apiKey = process.env.MOLLIE_API_KEY;
-  if (!apiKey) throw Object.assign(new Error("Mollie is not configured"), { statusCode: 503 });
-  const response = await fetch(MOLLIE_API_BASE + path, {
-    ...options,
-    headers: {
-      Authorization: "Bearer " + apiKey,
-      Accept: "application/hal+json",
-      ...(options.body ? { "Content-Type": "application/json" } : {}),
-      ...(options.headers || {})
-    }
-  });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    console.error("Mollie API error", response.status, data?.title || data?.detail || "unknown");
-    throw Object.assign(new Error("Payment provider could not create or retrieve the payment"), { statusCode: 502 });
+async function handleGumroadCheckout(req,res) {
+  const user=await requireUser(req,res); if(!user) return;
+  if(!process.env.GUMROAD_PRODUCT_URL || !process.env.GUMROAD_PRODUCT_ID ||
+     !process.env.GUMROAD_ACCESS_TOKEN || !process.env.GUMROAD_EXPECTED_SELLER_ID ||
+     !process.env.GUMROAD_EXPECTED_PRICE_CENTS || !process.env.GUMROAD_PING_SECRET) {
+    return send(res,503,{error:"Gumroad checkout is not configured yet"});
   }
-  return data;
+  const product=await pool.query(
+    "SELECT product_id,name,price_eur,currency FROM product_catalog WHERE product_id='payment-integrity' AND active=TRUE AND price_eur IS NOT NULL"
+  );
+  if(!product.rowCount) return send(res,409,{error:"This product is not available for purchase yet"});
+  if(await hasActiveProduct(user.id,"payment-integrity")) return send(res,409,{error:"This account already has access to this product"});
+  let checkout;
+  try { checkout=new URL(process.env.GUMROAD_PRODUCT_URL); }
+  catch { return send(res,503,{error:"Gumroad product URL is invalid"}); }
+  if(checkout.protocol!=="https:" || !(checkout.hostname==="gumroad.com" || checkout.hostname.endsWith(".gumroad.com")) || !checkout.pathname.startsWith("/l/")) {
+    return send(res,503,{error:"Gumroad product URL must be a secure Gumroad product page"});
+  }
+  return send(res,200,{checkout_url:checkout.toString(),buyer_email:user.email,product:{
+    product_id:product.rows[0].product_id,name:product.rows[0].name,
+    display_price:Number(product.rows[0].price_eur).toFixed(2),display_currency:product.rows[0].currency
+  },checkout_note:"Use this exact NEXORA account email at Gumroad checkout: "+user.email});
 }
-async function handleCreatePayment(req, res) {
-  if (!pool) return send(res, 503, { error: "Payment service requires the database" });
-  const user = await getAuthenticatedUser(req);
-  if (!user) return send(res, 401, { error: "Sign in to create an order" });
-  if (!process.env.MOLLIE_API_KEY) return send(res, 503, { error: "Payment provider is not configured yet" });
-  if (!process.env.MOLLIE_API_KEY.startsWith("test_") && !(process.env.MOLLIE_API_KEY.startsWith("live_") && process.env.ENABLE_LIVE_PAYMENTS === "true")) return send(res, 503, { error: "Live payments are disabled; configure a Mollie test key first" });
-  const rawBody = await readBody(req);
-  let input;
-  try { input = JSON.parse(rawBody.toString("utf8")); } catch { return send(res, 400, { error: "Invalid JSON" }); }
-  const productId = typeof input?.product_id === "string" ? input.product_id.trim() : "";
-  if (!productId || productId.length > 80) return send(res, 422, { error: "A valid product_id is required" });
-  const productResult = await pool.query(
-    "SELECT product_id,name,description,price_eur,currency FROM product_catalog WHERE product_id=$1 AND active=TRUE AND price_eur IS NOT NULL",
-    [productId]
-  );
-  if (!productResult.rowCount) return send(res, 409, { error: "This product is not available for purchase yet" });
-  const product = productResult.rows[0];
-  const owned = await pool.query("SELECT 1 FROM product_entitlements WHERE user_id=$1 AND product_id=$2 AND revoked_at IS NULL LIMIT 1",[user.id,product.product_id]);
-  if (owned.rowCount) return send(res,409,{error:"This account already has access to this product"});
-  const amount = Number(product.price_eur).toFixed(2);
-  const orderId = crypto.randomUUID();
-  await pool.query(
-    `INSERT INTO own_payments (order_id,user_id,product_id,amount,currency,description,status)
-     VALUES ($1,$2,$3,$4,$5,$6,'creating')`,
-    [orderId,user.id,product.product_id,amount,product.currency,product.name]
-  );
+async function handleGumroadPing(req,res) {
+  if(!pool || !process.env.GUMROAD_ACCESS_TOKEN || !process.env.GUMROAD_PING_SECRET ||
+     !process.env.GUMROAD_PRODUCT_ID || !process.env.GUMROAD_EXPECTED_SELLER_ID ||
+     !process.env.GUMROAD_EXPECTED_PRICE_CENTS) return send(res,503,{error:"Gumroad verification is not configured"});
+  const requestUrl=new URL(req.url,"http://localhost");
+  const expected=Buffer.from(process.env.GUMROAD_PING_SECRET);
+  const supplied=Buffer.from(requestUrl.searchParams.get("secret")||"");
+  if(!expected.length || expected.length!==supplied.length || !crypto.timingSafeEqual(expected,supplied)) return send(res,404,{error:"Not found"});
+  const raw=await readBody(req);
+  const ping=new URLSearchParams(raw.toString("utf8"));
+  const saleId=ping.get("sale_id")||"";
+  if(!/^[A-Za-z0-9_=-]{1,256}$/.test(saleId)) return send(res,400,{error:"A valid Gumroad sale_id is required"});
+  const controller=new AbortController();
+  const timeout=setTimeout(()=>controller.abort(),4500);
+  let verified;
   try {
-    const payment = await mollieRequest("/payments", {
-      method: "POST",
-      body: JSON.stringify({
-        amount: { currency: product.currency, value: amount },
-        description: "NEXORA " + product.name,
-        redirectUrl: PAYMENT_RETURN_URL + "?payment_id=" + encodeURIComponent(orderId),
-        webhookUrl: PUBLIC_API_URL + "/v1/payments/mollie-webhook",
-        metadata: { order_id: orderId, user_id: String(user.id), product_id: product.product_id }
-      })
+    const response=await fetch("https://api.gumroad.com/v2/sales/"+encodeURIComponent(saleId),{
+      method:"GET",signal:controller.signal,
+      headers:{Authorization:"Bearer "+process.env.GUMROAD_ACCESS_TOKEN,Accept:"application/json"}
     });
-    const checkoutUrl = payment?._links?.checkout?.href;
-    if (!payment?.id || !checkoutUrl) throw new Error("Payment provider returned an incomplete checkout response");
-    await pool.query(
-      `UPDATE own_payments SET mollie_payment_id=$1,status=$2,checkout_url=$3,updated_at=NOW()
-       WHERE order_id=$4`,
-      [payment.id,payment.status||"open",checkoutUrl,orderId]
-    );
-    return send(res,201,{order_id:orderId,product_id:product.product_id,status:payment.status||"open",
-      amount:{currency:product.currency,value:amount},checkout_url:checkoutUrl,mode:payment.mode||"unknown"});
+    verified=await response.json().catch(()=>({}));
+    if(!response.ok || verified?.success!==true || verified?.sale?.id!==saleId) return send(res,404,{error:"Gumroad could not verify this sale"});
   } catch(error) {
-    await pool.query("UPDATE own_payments SET status='creation_failed',updated_at=NOW() WHERE order_id=$1",[orderId]);
-    throw error;
-  }
+    console.error("Gumroad sale verification failed",error.name||"Error");
+    return send(res,502,{error:"Gumroad verification is temporarily unavailable"});
+  } finally { clearTimeout(timeout); }
+  const sale=verified.sale;
+  if(String(sale.seller_id)!==String(process.env.GUMROAD_EXPECTED_SELLER_ID) ||
+     String(sale.product_id)!==String(process.env.GUMROAD_PRODUCT_ID)) return send(res,403,{error:"Sale seller or product does not match NEXORA configuration"});
+  const email=String(sale.email||sale.purchase_email||"").trim().toLowerCase();
+  if(!email || email.length>254) return send(res,422,{error:"Verified Gumroad sale has no valid buyer email"});
+  const priceCents=Number(sale.price);
+  const expectedPrice=Number(process.env.GUMROAD_EXPECTED_PRICE_CENTS);
+  if(!Number.isSafeInteger(priceCents) || priceCents!==expectedPrice || priceCents<100) return send(res,409,{error:"Verified sale price does not match the configured product price"});
+  const customer=await pool.query("SELECT id FROM app_users WHERE lower(email)=lower($1)",[email]);
+  if(!customer.rowCount) return send(res,409,{error:"Create your NEXORA account with the same email used at Gumroad checkout, then contact support to reconcile this sale"});
+  const userId=customer.rows[0].id;
+  const isRevoked=Boolean(sale.refunded || sale.chargedback || (sale.disputed && !sale.dispute_won));
+  const paymentStatus=sale.refunded?"refunded":sale.chargedback?"charged_back":(sale.disputed&&!sale.dispute_won)?"disputed":"paid";
+  const amount=(priceCents/100).toFixed(2);
+  const currency=typeof sale.currency==="string" && /^[A-Za-z]{3}$/.test(sale.currency) ? sale.currency.toUpperCase() : "USD";
+  const client=await pool.connect();
+  try {
+    await client.query("BEGIN");
+    let existing=await client.query(
+      "SELECT order_id,user_id,product_id FROM own_payments WHERE payment_provider='gumroad' AND provider_payment_id=$1 FOR UPDATE",
+      [saleId]
+    );
+    let orderId;
+    if(existing.rowCount) {
+      const row=existing.rows[0];
+      if(String(row.user_id)!==String(userId) || row.product_id!=="payment-integrity") {
+        await client.query("ROLLBACK"); return send(res,409,{error:"Gumroad sale is already linked to a different account or product"});
+      }
+      orderId=row.order_id;
+      await client.query("UPDATE own_payments SET status=$1,updated_at=NOW() WHERE order_id=$2",[paymentStatus,orderId]);
+    } else {
+      orderId=crypto.randomUUID();
+      await client.query(
+        `INSERT INTO own_payments(order_id,user_id,product_id,payment_provider,provider_payment_id,amount,currency,description,status)
+         VALUES($1,$2,'payment-integrity','gumroad',$3,$4,$5,'NEXORA Payment Integrity',$6)
+         ON CONFLICT DO NOTHING`,
+        [orderId,userId,saleId,amount,currency,paymentStatus]
+      );
+      const saved=await client.query(
+        "SELECT order_id,user_id,product_id FROM own_payments WHERE payment_provider='gumroad' AND provider_payment_id=$1 FOR UPDATE",[saleId]
+      );
+      if(!saved.rowCount || String(saved.rows[0].user_id)!==String(userId) || saved.rows[0].product_id!=="payment-integrity") {
+        await client.query("ROLLBACK"); return send(res,409,{error:"Gumroad sale could not be linked safely"});
+      }
+      orderId=saved.rows[0].order_id;
+    }
+    if(isRevoked) {
+      await client.query(
+        "UPDATE product_entitlements SET revoked_at=COALESCE(revoked_at,NOW()),revoke_reason=$1 WHERE order_id=$2",
+        [paymentStatus,orderId]
+      );
+    } else {
+      await client.query(
+        `INSERT INTO product_entitlements(user_id,product_id,order_id) VALUES($1,'payment-integrity',$2)
+         ON CONFLICT DO NOTHING`,
+        [userId,orderId]
+      );
+    }
+    await client.query("COMMIT");
+    return send(res,200,{received:true,verified:true,order_status:paymentStatus,access_granted:!isRevoked});
+  } catch(error) {
+    await client.query("ROLLBACK"); throw error;
+  } finally { client.release(); }
 }
 async function handleProductCatalogue(req,res) {
   if(!pool) return send(res,503,{error:"Product catalogue requires the database"});
@@ -379,24 +421,6 @@ async function handleMollieWebhook(req, res) {
     await client.query("ROLLBACK"); throw error;
   } finally { client.release(); }
 }
-async function handleGetPayment(req, res, orderId) {
-  if (!pool) return send(res, 503, { error: "Payment service requires the database" });
-  const user = await getAuthenticatedUser(req);
-  if (!user) return send(res, 401, { error: "Authentication required" });
-  const result = await pool.query(
-    `SELECT order_id,amount,currency,description,status,created_at,updated_at
-     FROM own_payments WHERE order_id=$1 AND user_id=$2`,
-    [orderId,user.id]
-  );
-  if (!result.rowCount) return send(res, 404, { error: "Payment not found" });
-  const p = result.rows[0];
-  return send(res, 200, {
-    order_id: p.order_id, amount: { currency: p.currency, value: Number(p.amount).toFixed(2) },
-    description: p.description, status: p.status, created_at: p.created_at, updated_at: p.updated_at,
-    paid: p.status === "paid"
-  });
-}
-
 async function handleRegister(req, res) {
   if (!pool) return send(res, 503, { error: "Account service is not configured; database is required" });
   if (authRateLimited(req)) return send(res, 429, { error: "Too many account attempts; try again in 15 minutes" });
@@ -654,10 +678,8 @@ const server = createServer(async (req, res) => {
     if (req.method === "GET" && req.url === "/v1/catalogue/products") return await handleProductCatalogue(req,res);
     if (req.method === "GET" && req.url === "/v1/account/products") return await handleMyProducts(req,res);
     if ((req.method === "GET" || req.method === "POST") && req.url === "/v1/account/payment-integrity/events") return await handleCustomerScreenings(req,res);
-    if (req.method === "POST" && req.url === "/v1/payments") return await handleCreatePayment(req, res);
-    if (req.method === "POST" && req.url === "/v1/payments/mollie-webhook") return await handleMollieWebhook(req, res);
-    const paymentStatusMatch = /^\/v1\/payments\/([0-9a-f-]{36})$/.exec(req.url || "");
-    if (req.method === "GET" && paymentStatusMatch) return await handleGetPayment(req, res, paymentStatusMatch[1]);
+    if (req.method === "GET" && req.url === "/v1/payments/checkout") return await handleGumroadCheckout(req,res);
+    if (req.method === "POST" && req.url.startsWith("/v1/payments/gumroad-ping")) return await handleGumroadPing(req,res);
     if (req.method === "POST" && req.url === "/v1/events") return await handleEvent(req, res);
     if (req.method === "POST" && req.url === "/v1/demo/events") return await handleDemoEvent(req, res);
     return send(res, 404, { error: "Not found" });
