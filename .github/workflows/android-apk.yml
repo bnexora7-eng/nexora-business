@@ -46,8 +46,35 @@ jobs:
       - name: Verify Android target API 36
         working-directory: mobile
         run: |
-          grep -R "targetSdkVersion" android/build.gradle android/app/build.gradle
-          grep -Eq "targetSdkVersion.*36" android/build.gradle
+          cat android/gradle.properties
+          grep -Eq '^android.targetSdkVersion=36
+      - name: Build installable test APK
+        working-directory: mobile/android
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon --console=plain assembleRelease
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexora-android-test-apk
+          path: mobile/android/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+          retention-days: 14
+ android/gradle.properties
+          grep -Eq '^android.compileSdkVersion=36
+      - name: Build installable test APK
+        working-directory: mobile/android
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon --console=plain assembleRelease
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexora-android-test-apk
+          path: mobile/android/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+          retention-days: 14
+ android/gradle.properties
       - name: Build installable test APK
         working-directory: mobile/android
         run: |
