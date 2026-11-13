@@ -38,7 +38,7 @@ jobs:
           java-version: "17"
       - name: Install dependencies
         working-directory: mobile
-        run: npm install
+        run: npm install --no-audit --no-fund
       - name: TypeScript check
         working-directory: mobile
         run: npm run typecheck
@@ -49,6 +49,7 @@ jobs:
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         run: |
+          mkdir -p "$(dirname "$NEXORA_UPLOAD_KEYSTORE")"
           printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$NEXORA_UPLOAD_KEYSTORE"
           test -s "$NEXORA_UPLOAD_KEYSTORE"
           keytool -list -keystore "$NEXORA_UPLOAD_KEYSTORE" -storepass "$NEXORA_UPLOAD_STORE_PASSWORD" -alias "$NEXORA_UPLOAD_KEY_ALIAS"
