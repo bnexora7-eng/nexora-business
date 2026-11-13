@@ -45,7 +45,8 @@ CREATE INDEX IF NOT EXISTS app_sessions_expiry_idx ON app_sessions (expires_at);
 CREATE TABLE IF NOT EXISTS own_payments (
   order_id UUID PRIMARY KEY,
   user_id BIGINT REFERENCES app_users(id) ON DELETE SET NULL,
-  mollie_payment_id TEXT UNIQUE,
+  payment_provider TEXT NOT NULL DEFAULT 'legacy',
+  provider_payment_id TEXT,
   amount NUMERIC(12,2) NOT NULL CHECK (amount >= 1 AND amount <= 5000),
   currency CHAR(3) NOT NULL DEFAULT 'EUR',
   description VARCHAR(100) NOT NULL,
@@ -124,6 +125,14 @@ ALTER TABLE own_payments ADD COLUMN IF NOT EXISTS product_id TEXT
   REFERENCES product_catalog(product_id) ON DELETE SET NULL;
 CREATE INDEX IF NOT EXISTS own_payments_product_idx ON own_payments (product_id);
 
+DO $
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='own_payments' AND column_name='mollie_payment_id')
+     AND NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='own_payments' AND column_name='provider_payment_id') THEN
+    ALTER TABLE own_payments RENAME COLUMN mollie_payment_id TO provider_payment_id;
+  END IF;
+END $;
+ALTER TABLE own_payments DROP CONSTRAINT IF EXISTS own_payments_mollie_payment_id_key;
 ALTER TABLE own_payments ADD COLUMN IF NOT EXISTS payment_provider TEXT NOT NULL DEFAULT 'legacy';
 ALTER TABLE own_payments ADD COLUMN IF NOT EXISTS provider_payment_id TEXT;
 CREATE UNIQUE INDEX IF NOT EXISTS own_payments_provider_payment_idx
