@@ -20,8 +20,8 @@ This checklist distinguishes work completed in the repository from actions that 
 
 ## Mandatory technical release gates
 
-- [ ] Build a **signed Android App Bundle (.aab)** for Play Console. The current CI artifact is an installable APK, not the Play upload bundle.
-- [ ] Configure and securely store the upload keystore and signing credentials. Never commit the keystore or passwords to Git.
+- [ ] Build a **signed Android App Bundle (.aab)** for Play Console. A manual workflow is prepared at `.github/workflows/android-play-aab.yml`; the current CI artifact is an installable APK, not the Play upload bundle.
+- [ ] Generate and securely retain the Android upload keystore, then add GitHub repository Actions secrets: `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` and `ANDROID_KEY_PASSWORD`. The signed-AAB workflow uses these secrets and deletes its temporary keystore after the build. Never commit the keystore or passwords to Git.
 - [ ] Verify the final generated manifest targets **Android 16 / API level 36 or higher**, required for new app submissions from 31 August 2026.
 - [ ] Verify the production API and PostgreSQL readiness, HTTPS, CORS, database backups, monitoring and recovery.
 - [ ] Complete live device tests for registration, login, session restoration, logout, account deletion, Community publish/read, Marketplace publish/read and Business workspace save/load.
@@ -30,9 +30,9 @@ This checklist distinguishes work completed in the repository from actions that 
 
 ## Play Console declarations and listing
 
-- [ ] Complete the Play Console app record and developer registration.
+- [ ] Complete the Play Console app record and developer registration, including the one-time developer registration payment.
 - [ ] Upload the signed AAB and verify Play App Signing configuration.
-- [ ] Provide the store listing: app name, short/full descriptions, support contact, app icon (512×512), feature graphic (1024×500) and phone screenshots.
+- [ ] Provide the store listing: app name, short/full descriptions, support contact, app icon (512×512), feature graphic (1024×500) and phone screenshots. NEXORA-specific Play listing graphics are not yet present in the repository.
 - [ ] Publish the privacy policy URL above and account-deletion URL above; confirm both are publicly reachable after GitHub Pages deployment.
 - [ ] Complete the Data safety form based on the actual production SDKs, server configuration and data flows; do not copy a generic declaration.
 - [ ] Complete content rating, target audience, ads declaration, app access instructions and any financial-features declarations accurately.
