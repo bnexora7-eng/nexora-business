@@ -37,15 +37,14 @@ jobs:
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4
-      - name: Verify public demo URL
+      - name: Verify public GitHub Pages site
         shell: bash
         run: |
           set -euo pipefail
-          URL="https://nexora-business-2026.netlify.app/"
+          URL="https://bnexora7-eng.github.io/nexora-business/"
           curl --fail --silent --show-error --location --retry 12 --retry-all-errors --retry-delay 5 "$URL" -o /tmp/nexora-site.html
           grep -q "Confidence in" /tmp/nexora-site.html
-          grep -q "name=\"nexora-enquiry\"" /tmp/nexora-site.html
-          echo "Public Netlify site and NEXORA enquiry form are reachable."
+          echo "Public NEXORA website is reachable on GitHub Pages."
       - name: Verify public privacy and account-deletion pages
         shell: bash
         run: |
@@ -57,22 +56,34 @@ jobs:
           grep -q "Delete your NEXORA account" /tmp/nexora-delete.html
           grep -q "/v1/auth/delete-request" /tmp/nexora-delete.html
           echo "PASS: public privacy policy and account-deletion pages are deployed."
-      - name: Verify deployed API with real POST requests
+      - name: Verify Render API health and demo decisions
+        shell: bash
         env:
-          API_BASE_URL: https://nexora-business-2026.netlify.app
-          DEMO_ORIGIN: https://nexora-business-2026.netlify.app
+          API_BASE_URL: https://nexora-payment-integrity-api.onrender.com
+          DEMO_ORIGIN: https://bnexora7-eng.github.io
         run: |
+          set -euo pipefail
+          for attempt in $(seq 1 18); do
+            status="$(curl --silent --show-error --output /tmp/nexora-health.json --write-out '%{http_code}' --max-time 20 "$API_BASE_URL/health" || true)"
+            if [ "$status" = "200" ] && grep -q '"status":"ok"' /tmp/nexora-health.json; then
+              cat /tmp/nexora-health.json
+              break
+            fi
+            if [ "$attempt" = "18" ]; then
+              echo "FAIL: Render API health check did not return HTTP 200."
+              cat /tmp/nexora-health.json 2>/dev/null || true
+              exit 1
+            fi
+            sleep 20
+          done
           node --input-type=module <<'NODE'
           const base = process.env.API_BASE_URL;
           const headers = { "content-type": "application/json", origin: process.env.DEMO_ORIGIN };
-          const healthResponse = await fetch(base + "/v1/demo/events", { headers: { origin: process.env.DEMO_ORIGIN } });
-          const health = await healthResponse.json();
-          if (!healthResponse.ok || health.status !== "ok") throw new Error("API health check failed");
           const id = "ci-" + process.env.GITHUB_RUN_ID + "-" + process.env.GITHUB_RUN_ATTEMPT;
           async function post(eventId, status) {
             const response = await fetch(base + "/v1/demo/events", {
               method: "POST", headers,
-              body: JSON.stringify({ provider_id: "nexora-github-ci", event_id: eventId, amount: 25, currency: "EUR", status })
+              body: JSON.stringify({ event_id: eventId, amount: 25, currency: "EUR", status })
             });
             const body = await response.json();
             if (!response.ok) throw new Error("POST " + response.status + ": " + JSON.stringify(body));
@@ -90,6 +101,6 @@ jobs:
           const replay = await post(duplicateId, "succeeded");
           checks.push(["DUPLICATE", first.decision === "ACCEPT" && replay.decision === "REJECT" && replay.duplicate === true]);
           for (const [name, passed] of checks) console.log((passed ? "PASS " : "FAIL ") + name);
-          if (checks.some(([, passed]) => !passed)) throw new Error("One or more live API checks failed");
-          console.log("PASS API health: " + health.service + " " + health.version);
+          if (checks.some(([, passed]) => !passed)) throw new Error("One or more live Render API checks failed");
+          console.log("PASS: live Render API demo checks.");
           NODE
