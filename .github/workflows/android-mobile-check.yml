@@ -1,0 +1,77 @@
+name: NEXORA Android validation
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "mobile/**"
+      - ".github/workflows/android-mobile-check.yml"
+      - "scripts/**"
+  pull_request:
+    paths:
+      - "mobile/**"
+      - ".github/workflows/android-mobile-check.yml"
+      - "scripts/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nexora-android-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      EXPO_PUBLIC_NEXORA_API_URL: ${{ vars.EXPO_PUBLIC_NEXORA_API_URL || 'https://nexora-payment-integrity-api.onrender.com' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install mobile dependencies
+        working-directory: mobile
+        run: npm install --no-audit --no-fund
+
+      - name: TypeScript validation
+        working-directory: mobile
+        run: npm run typecheck
+
+      - name: Validate Expo configuration
+        working-directory: mobile
+        run: npx expo config --type public
+
+      - name: Generate Android project
+        working-directory: mobile
+        run: npx expo prebuild --platform android --non-interactive
+
+      - name: Build debug APK
+        working-directory: mobile/android
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon --console=plain assembleDebug
+
+      - name: Verify APK
+        run: test -s mobile/android/app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Upload validation APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexora-android-validation-apk
+          path: mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 7
