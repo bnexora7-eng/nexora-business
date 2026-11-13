@@ -273,6 +273,47 @@ async function handleProductCatalogue(req,res) {
   );
   return send(res,200,{products:result.rows.map(p=>({...p,price:p.price_eur===null?null:Number(p.price_eur).toFixed(2)}))});
 }
+async function hasActiveProduct(userId,productId) {
+  const result=await pool.query(
+    "SELECT 1 FROM product_entitlements WHERE user_id=$1 AND product_id=$2 AND revoked_at IS NULL LIMIT 1",
+    [userId,productId]
+  );
+  return result.rowCount>0;
+}
+async function handleCustomerScreenings(req,res) {
+  const user=await requireUser(req,res); if(!user) return;
+  if(!await hasActiveProduct(user.id,"payment-integrity")) return send(res,403,{error:"An active Payment Integrity entitlement is required"});
+  if(req.method==="GET") {
+    const result=await pool.query(
+      `SELECT id,provider_id,event_id,amount,currency,event_status,decision,reason,created_at
+       FROM customer_screenings WHERE user_id=$1 ORDER BY created_at DESC LIMIT 100`,
+      [user.id]
+    );
+    return send(res,200,{events:result.rows});
+  }
+  if(req.method!=="POST") return send(res,405,{error:"Method not allowed"});
+  const raw=await readBody(req); let input;
+  try{input=JSON.parse(raw.toString("utf8"));}catch{return send(res,400,{error:"Invalid JSON"});}
+  const providerId=typeof input?.provider_id==="string"?input.provider_id.trim():"";
+  const eventId=typeof input?.event_id==="string"?input.event_id.trim():"";
+  const amount=Number(input?.amount);
+  const currency=typeof input?.currency==="string"?input.currency.trim().toUpperCase():"";
+  const status=typeof input?.status==="string"?input.status.trim().toUpperCase():"";
+  if(!providerId||providerId.length>128||!eventId||eventId.length>256||!Number.isFinite(amount)||amount<=0||amount>100000000||!/^[A-Z]{3}$/.test(currency)||!["SUCCESS","PENDING","FAILED"].includes(status)) {
+    return send(res,422,{error:"Provide provider_id, event_id, a positive amount, ISO currency and SUCCESS, PENDING or FAILED status"});
+  }
+  const event={provider_id:providerId,event_id:eventId,amount,currency,status};
+  const screened=screenEvent(event,{reviewThreshold:REVIEW_THRESHOLD});
+  const result=await pool.query(
+    `INSERT INTO customer_screenings(user_id,provider_id,event_id,amount,currency,event_status,decision,reason)
+     VALUES($1,$2,$3,$4,$5,$6,$7,$8)
+     ON CONFLICT(user_id,provider_id,event_id) DO NOTHING
+     RETURNING id,provider_id,event_id,amount,currency,event_status,decision,reason,created_at`,
+    [user.id,providerId,eventId,amount,currency,status,screened.decision,screened.reason]
+  );
+  if(!result.rowCount) return send(res,200,{duplicate:true,decision:"REJECT",reason:"Duplicate provider + event identifier",reference:{provider_id:providerId,event_id:eventId}});
+  return send(res,201,{duplicate:false,...result.rows[0]});
+}
 async function handleMyProducts(req,res) {
   const user=await requireUser(req,res); if(!user) return;
   const result=await pool.query(
@@ -602,6 +643,7 @@ const server = createServer(async (req, res) => {
     if (req.url === "/v1/business/ai-plan") return await handleBusinessAIPlan(req,res);
     if (req.method === "GET" && req.url === "/v1/catalogue/products") return await handleProductCatalogue(req,res);
     if (req.method === "GET" && req.url === "/v1/account/products") return await handleMyProducts(req,res);
+    if ((req.method === "GET" || req.method === "POST") && req.url === "/v1/account/payment-integrity/events") return await handleCustomerScreenings(req,res);
     if (req.method === "POST" && req.url === "/v1/payments") return await handleCreatePayment(req, res);
     if (req.method === "POST" && req.url === "/v1/payments/mollie-webhook") return await handleMollieWebhook(req, res);
     const paymentStatusMatch = /^\/v1\/payments\/([0-9a-f-]{36})$/.exec(req.url || "");
