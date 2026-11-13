@@ -24,7 +24,10 @@ test("only verified paid provider status grants access, idempotently", () => {
   assert.match(handler, /payment\.status==="paid"/);
   assert.match(handler, /INSERT INTO product_entitlements/);
   assert.match(handler, /ON CONFLICT DO NOTHING/);
-  assert.match(handler, /payment\.amount\?\.currency/);\n  assert.match(handler, /payment\.metadata\?\.user_id/);\n  assert.match(handler, /payment\.status==="refunded"\|\|payment\.status==="charged_back"/);\n  assert.match(handler, /UPDATE product_entitlements SET revoked_at/);
+  assert.match(handler, /payment\.amount\?\.currency/);
+  assert.match(handler, /payment\.metadata\?\.user_id/);
+  assert.match(handler, /payment\.status==="refunded"\|\|payment\.status==="charged_back"/);
+  assert.match(handler, /UPDATE product_entitlements SET revoked_at/);
 });
 
 test("catalogue starts inactive and entitlement records are unique per order", () => {
