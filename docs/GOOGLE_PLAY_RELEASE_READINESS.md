@@ -21,7 +21,7 @@ This checklist distinguishes work completed in the repository from actions that 
 ## Mandatory technical release gates
 
 - [ ] Build a **signed Android App Bundle (.aab)** for Play Console. A manual workflow is prepared at `.github/workflows/android-play-aab.yml`; the current CI artifact is an installable APK, not the Play upload bundle.
-- [ ] Generate and securely retain the Android upload keystore, then add GitHub repository Actions secrets: `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` and `ANDROID_KEY_PASSWORD`. The signed-AAB workflow uses these secrets and deletes its temporary keystore after the build. Never commit the keystore or passwords to Git. Follow [ANDROID_UPLOAD_KEYSTORE.md](ANDROID_UPLOAD_KEYSTORE.md) for the owner-only setup steps.
+- [x] Generate and securely retain the Android upload keystore (owner verified on 13 November 2026). [ ] Add the four GitHub repository Actions secrets: `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` and `ANDROID_KEY_PASSWORD`. The signed-AAB workflow uses these secrets and deletes its temporary keystore after the build. Never commit the keystore or passwords to Git. Follow [ANDROID_UPLOAD_KEYSTORE.md](ANDROID_UPLOAD_KEYSTORE.md) for the owner-only setup steps.
 - [ ] Verify the final generated manifest targets **Android 16 / API level 36 or higher**, required for new app submissions from 31 August 2026.
 - [ ] Verify the production API and PostgreSQL readiness, HTTPS, CORS, database backups, monitoring and recovery.
 - [ ] Complete live device tests for registration, login, session restoration, logout, account deletion, Community publish/read, Marketplace publish/read and Business workspace save/load.
