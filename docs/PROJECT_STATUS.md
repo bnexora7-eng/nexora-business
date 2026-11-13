@@ -145,3 +145,14 @@ When resuming work, start with this file, then inspect the current main branch a
 - Updated the GitHub Pages deployment check to verify the new “Send project enquiry” button.
 - **Activation and delivery are not yet verified.** FormSubmit requires the NEXORA mailbox owner to confirm the first activation email before the endpoint can deliver live enquiries. The next step is to deploy, submit one controlled test, confirm activation in `bnexora7@gmail.com`, then repeat the test and verify receipt.
 - Do not claim that customer enquiries are working until the activation and end-to-end delivery test pass.
+
+
+## Browser account access — 13 November 2026
+
+- Added a responsive public account page at `/account/` with create-account and sign-in modes connected to the deployed NEXORA API.
+- The main landing page now links directly to account registration; the page links signed-in users to the Payment Integrity demo.
+- Browser bearer tokens are held in sessionStorage for the current browser session; the privacy policy now discloses this.
+- The deployment workflow now checks that the account page is publicly served and contains the registration endpoint.
+- **Verification gate:** wait for the latest GitHub Pages workflow to pass, then test registration and sign-in from a separate physical device/browser. The API's existing automated registration/login tests are not a substitute for that device test.
+- Email verification and password reset are not yet implemented in the browser account flow. Do not treat it as a finished public SaaS identity system.
+- Paid subscriptions are not enabled. No private ABN AMRO account details are published; bank-transfer collection and manual order activation still need a secure, tested order workflow.
