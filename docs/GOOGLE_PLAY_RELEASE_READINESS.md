@@ -36,6 +36,7 @@ Store listing copy is drafted in [GOOGLE_PLAY_STORE_LISTING_DRAFT.md](GOOGLE_PLA
 - [ ] Upload the signed AAB and verify Play App Signing configuration.
 - [ ] Provide the store listing: app name, short/full descriptions, support contact, app icon (512×512), feature graphic (1024×500) and phone screenshots. NEXORA-specific Play listing graphics are not yet present in the repository.
 - [ ] Publish the privacy policy URL above and account-deletion URL above; confirm both are publicly reachable after GitHub Pages deployment.
+- [ ] Before public release, replace the privacy-policy project-operator notice with the responsible legal person's/entity's full legal name and postal address; confirm processor agreements and any international-transfer safeguards for Render, Mollie and the AI provider.
 - [ ] Complete the Data safety form based on the actual production SDKs, server configuration and data flows; do not copy a generic declaration.
 - [ ] Complete content rating, target audience, ads declaration, app access instructions and any financial-features declarations accurately.
 - [ ] Review all Google Play Developer Program policies, including User Data, account deletion, payments, impersonation and financial-services requirements where applicable.
