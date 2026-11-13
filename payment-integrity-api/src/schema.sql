@@ -45,9 +45,10 @@ CREATE INDEX IF NOT EXISTS app_sessions_expiry_idx ON app_sessions (expires_at);
 CREATE TABLE IF NOT EXISTS own_payments (
   order_id UUID PRIMARY KEY,
   user_id BIGINT REFERENCES app_users(id) ON DELETE SET NULL,
-  mollie_payment_id TEXT UNIQUE,
+  payment_provider TEXT NOT NULL DEFAULT 'legacy',
+  provider_payment_id TEXT,
   amount NUMERIC(12,2) NOT NULL CHECK (amount >= 1 AND amount <= 5000),
-  currency CHAR(3) NOT NULL DEFAULT 'EUR',
+  currency CHAR(3) NOT NULL DEFAULT 'USD',
   description VARCHAR(100) NOT NULL,
   status TEXT NOT NULL,
   checkout_url TEXT,
@@ -93,3 +94,85 @@ CREATE TABLE IF NOT EXISTS business_workspaces (
   goals TEXT NOT NULL DEFAULT '',
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+
+-- Server-owned product catalogue and access grants.
+CREATE TABLE IF NOT EXISTS product_catalog (
+  product_id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT NOT NULL,
+  price_amount NUMERIC(12,2),
+  currency CHAR(3) NOT NULL DEFAULT 'USD',
+  active BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CHECK (price_amount IS NULL OR price_amount >= 1)
+);
+DO $migrate$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='product_catalog' AND column_name='price_eur')
+     AND NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='product_catalog' AND column_name='price_amount') THEN
+    ALTER TABLE product_catalog RENAME COLUMN price_eur TO price_amount;
+  END IF;
+END $migrate$;
+INSERT INTO product_catalog (product_id,name,description,price_amount,currency,active)
+VALUES ('payment-integrity','NEXORA Payment Integrity','Payment-event screening prototype with explainable ACCEPT, REVIEW and REJECT outcomes and duplicate-event awareness. Synthetic data only; no live bank or payment-provider integrations. ',NULL,'USD',FALSE)
+ON CONFLICT (product_id) DO NOTHING;
+ALTER TABLE product_catalog ALTER COLUMN currency SET DEFAULT 'USD';
+UPDATE product_catalog SET currency='USD' WHERE product_id='payment-integrity' AND price_amount IS NULL AND active=FALSE;
+
+
+
+
+
+ALTER TABLE own_payments ALTER COLUMN currency SET DEFAULT 'USD';
+ALTER TABLE own_payments ADD COLUMN IF NOT EXISTS product_id TEXT
+  REFERENCES product_catalog(product_id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS own_payments_product_idx ON own_payments (product_id);
+
+DO $migrate$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='own_payments' AND column_name='mollie_payment_id')
+     AND NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='own_payments' AND column_name='provider_payment_id') THEN
+    ALTER TABLE own_payments RENAME COLUMN mollie_payment_id TO provider_payment_id;
+  END IF;
+END $migrate$;
+ALTER TABLE own_payments DROP CONSTRAINT IF EXISTS own_payments_mollie_payment_id_key;
+ALTER TABLE own_payments ADD COLUMN IF NOT EXISTS payment_provider TEXT NOT NULL DEFAULT 'legacy';
+ALTER TABLE own_payments ADD COLUMN IF NOT EXISTS provider_payment_id TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS own_payments_provider_payment_idx
+  ON own_payments(payment_provider,provider_payment_id) WHERE provider_payment_id IS NOT NULL;
+
+
+CREATE TABLE IF NOT EXISTS product_entitlements (
+  id BIGSERIAL PRIMARY KEY,
+  user_id BIGINT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
+  product_id TEXT NOT NULL REFERENCES product_catalog(product_id),
+  order_id UUID NOT NULL UNIQUE REFERENCES own_payments(order_id) ON DELETE CASCADE,
+  granted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  revoked_at TIMESTAMPTZ,
+  revoke_reason TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS product_entitlements_active_user_product_idx
+  ON product_entitlements(user_id,product_id) WHERE revoked_at IS NULL;
+CREATE INDEX IF NOT EXISTS product_entitlements_user_idx
+  ON product_entitlements(user_id,granted_at DESC);
+
+
+-- Private customer workbench data; every row is owned by one authenticated account.
+CREATE TABLE IF NOT EXISTS customer_screenings (
+  id BIGSERIAL PRIMARY KEY,
+  user_id BIGINT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
+  provider_id VARCHAR(128) NOT NULL,
+  event_id VARCHAR(256) NOT NULL,
+  amount NUMERIC(20,4) NOT NULL,
+  currency CHAR(3) NOT NULL,
+  event_status VARCHAR(32) NOT NULL,
+  decision TEXT NOT NULL CHECK (decision IN ('ACCEPT','REVIEW','REJECT')),
+  reason TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (user_id,provider_id,event_id)
+);
+CREATE INDEX IF NOT EXISTS customer_screenings_user_created_idx
+  ON customer_screenings(user_id,created_at DESC);

@@ -23,12 +23,11 @@ const ENABLE_PUBLIC_DEMO = process.env.ENABLE_PUBLIC_DEMO === "true";
 const REVIEW_THRESHOLD = Number(process.env.REVIEW_THRESHOLD || 10000);
 const MAX_BODY_BYTES = 65536;
 const DEMO_ORIGIN = process.env.DEMO_ORIGIN || "https://bnexora7-eng.github.io";
+const ALLOWED_ORIGINS = new Set((process.env.ALLOWED_ORIGINS || "https://bnexora7-eng.github.io,https://splendid-lokum-02523e.netlify.app").split(",").map(value => value.trim()).filter(Boolean));
+ALLOWED_ORIGINS.add(DEMO_ORIGIN);
 const demoRequests = new Map();
 const demoEvents = new Map();
 const authAttempts = new Map();
-const MOLLIE_API_BASE = "https://api.mollie.com/v2";
-const PUBLIC_API_URL = (process.env.PUBLIC_API_URL || "https://nexora-payment-integrity-api.onrender.com").replace(/\/$/, "");
-const PAYMENT_RETURN_URL = process.env.NEXORA_PAYMENT_RETURN_URL || "https://bnexora7-eng.github.io/nexora-business/";
 const AI_API_KEY = process.env.OPENAI_API_KEY || "";
 const AI_MODEL = process.env.OPENAI_MODEL || "gpt-4.1-mini";
 const AI_API_URL = process.env.OPENAI_API_URL || "https://api.openai.com/v1/chat/completions";
@@ -57,8 +56,8 @@ function send(res, status, body) {
 }
 function cors(req, res) {
   const origin = req.headers.origin;
-  if (origin === DEMO_ORIGIN) {
-    res.setHeader("access-control-allow-origin", DEMO_ORIGIN);
+  if (origin && ALLOWED_ORIGINS.has(origin)) {
+    res.setHeader("access-control-allow-origin", origin);
     res.setHeader("vary", "Origin");
     res.setHeader("access-control-allow-methods", "GET, POST, PUT, OPTIONS");
     res.setHeader("access-control-allow-headers", "content-type, authorization, x-nexora-timestamp, x-nexora-signature");
@@ -196,123 +195,204 @@ async function getAuthenticatedUser(req) {
   );
   return result.rows[0] || null;
 }
-async function mollieRequest(path, options = {}) {
-  const apiKey = process.env.MOLLIE_API_KEY;
-  if (!apiKey) throw Object.assign(new Error("Mollie is not configured"), { statusCode: 503 });
-  const response = await fetch(MOLLIE_API_BASE + path, {
-    ...options,
-    headers: {
-      Authorization: "Bearer " + apiKey,
-      Accept: "application/hal+json",
-      ...(options.body ? { "Content-Type": "application/json" } : {}),
-      ...(options.headers || {})
-    }
-  });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    console.error("Mollie API error", response.status, data?.title || data?.detail || "unknown");
-    throw Object.assign(new Error("Payment provider could not create or retrieve the payment"), { statusCode: 502 });
+async function handleGumroadCheckout(req,res) {
+  const user=await requireUser(req,res); if(!user) return;
+  if(!process.env.GUMROAD_PRODUCT_URL || !process.env.GUMROAD_PRODUCT_ID ||
+     !process.env.GUMROAD_ACCESS_TOKEN || !process.env.GUMROAD_EXPECTED_SELLER_ID ||
+     !process.env.GUMROAD_EXPECTED_PRICE_CENTS || !process.env.GUMROAD_PING_SECRET || !process.env.GUMROAD_PING_URL) {
+    return send(res,503,{error:"Gumroad checkout is not configured yet"});
   }
-  return data;
-}
-async function handleCreatePayment(req, res) {
-  if (!pool) return send(res, 503, { error: "Payment service requires the database" });
-  const user = await getAuthenticatedUser(req);
-  if (!user) return send(res, 401, { error: "Sign in to create a payment" });
-  if (!process.env.MOLLIE_API_KEY) return send(res, 503, { error: "Payment provider is not configured yet" });
-  if (!process.env.MOLLIE_API_KEY.startsWith("test_") && !(process.env.MOLLIE_API_KEY.startsWith("live_") && process.env.ENABLE_LIVE_PAYMENTS === "true")) return send(res, 503, { error: "Live payments are disabled until explicitly approved; configure a Mollie test key first" });
-  const rawBody = await readBody(req);
-  let input;
-  try { input = JSON.parse(rawBody.toString("utf8")); } catch { return send(res, 400, { error: "Invalid JSON" }); }
-  const amountText = String(input?.amount ?? "").trim().replace(",", ".");
-  if (!/^\d{1,5}(?:\.\d{1,2})?$/.test(amountText)) return send(res, 422, { error: "Enter an amount in EUR, for example 19.90" });
-  const amountNumber = Number(amountText);
-  if (!Number.isFinite(amountNumber) || amountNumber < 1 || amountNumber > 5000) return send(res, 422, { error: "Payment amount must be between €1.00 and €5,000.00" });
-  const description = typeof input?.description === "string" ? input.description.trim().replace(/[<>]/g, "") : "";
-  if (description.length < 3 || description.length > 100) return send(res, 422, { error: "Description must contain 3 to 100 characters" });
-  const orderId = crypto.randomUUID();
-  const amount = amountNumber.toFixed(2);
-  await pool.query(
-    `INSERT INTO own_payments (order_id,user_id,amount,currency,description,status)
-     VALUES ($1,$2,$3,'EUR',$4,'creating')`,
-    [orderId, user.id, amount, description]
+  const product=await pool.query(
+    "SELECT product_id,name,price_amount,currency FROM product_catalog WHERE product_id='payment-integrity' AND active=TRUE AND price_amount IS NOT NULL"
   );
+  if(!product.rowCount) return send(res,409,{error:"This product is not available for purchase yet"});
+  let pingConfig;
+  try { pingConfig=new URL(process.env.GUMROAD_PING_URL); } catch { return send(res,503,{error:"Gumroad Ping URL is invalid"}); }
+  if(pingConfig.pathname!=="/v1/payments/gumroad-ping" || pingConfig.searchParams.get("secret")!==process.env.GUMROAD_PING_SECRET) return send(res,503,{error:"Gumroad Ping URL and secret do not match"});
+  const configuredCents=Number(process.env.GUMROAD_EXPECTED_PRICE_CENTS);
+  const catalogueCents=Math.round(Number(product.rows[0].price_amount)*100);
+  if(!Number.isSafeInteger(configuredCents)||configuredCents<100||catalogueCents!==configuredCents) return send(res,503,{error:"The Gumroad checkout price does not match the server catalogue"});
+  if(await hasActiveProduct(user.id,"payment-integrity")) return send(res,409,{error:"This account already has access to this product"});
+  let checkout;
+  try { checkout=new URL(process.env.GUMROAD_PRODUCT_URL); }
+  catch { return send(res,503,{error:"Gumroad product URL is invalid"}); }
+  if(checkout.protocol!=="https:" || !(checkout.hostname==="gumroad.com" || checkout.hostname.endsWith(".gumroad.com")) || !checkout.pathname.startsWith("/l/")) {
+    return send(res,503,{error:"Gumroad product URL must be a secure Gumroad product page"});
+  }
+  return send(res,200,{checkout_url:checkout.toString(),buyer_email:user.email,product:{
+    product_id:product.rows[0].product_id,name:product.rows[0].name,
+    display_price:Number(product.rows[0].price_amount).toFixed(2),display_currency:product.rows[0].currency
+  },checkout_note:"Use this exact NEXORA account email at Gumroad checkout: "+user.email});
+}
+async function handleGumroadPing(req,res) {
+  if(!pool || !process.env.GUMROAD_ACCESS_TOKEN || !process.env.GUMROAD_PING_SECRET ||
+     !process.env.GUMROAD_PRODUCT_ID || !process.env.GUMROAD_EXPECTED_SELLER_ID ||
+     !process.env.GUMROAD_EXPECTED_PRICE_CENTS) return send(res,503,{error:"Gumroad verification is not configured"});
+  const requestUrl=new URL(req.url,"http://localhost");
+  const expected=Buffer.from(process.env.GUMROAD_PING_SECRET);
+  const supplied=Buffer.from(requestUrl.searchParams.get("secret")||"");
+  if(expected.length<32 || expected.length!==supplied.length || !crypto.timingSafeEqual(expected,supplied)) return send(res,404,{error:"Not found"});
+  const raw=await readBody(req);
+  const ping=new URLSearchParams(raw.toString("utf8"));
+  const saleId=ping.get("sale_id")||"";
+  if(!/^[A-Za-z0-9_=-]{1,256}$/.test(saleId)) return send(res,400,{error:"A valid Gumroad sale_id is required"});
+  const client=await pool.connect();
   try {
-    const payment = await mollieRequest("/payments", {
-      method: "POST",
-      body: JSON.stringify({
-        amount: { currency: "EUR", value: amount },
-        description: "NEXORA " + description,
-        redirectUrl: PAYMENT_RETURN_URL + "?payment_id=" + encodeURIComponent(orderId),
-        webhookUrl: PUBLIC_API_URL + "/v1/payments/mollie-webhook",
-        metadata: { order_id: orderId, user_id: String(user.id) }
-      })
-    });
-    const checkoutUrl = payment?._links?.checkout?.href;
-    if (!payment?.id || !checkoutUrl) throw new Error("Payment provider returned an incomplete checkout response");
-    await pool.query(
-      `UPDATE own_payments SET mollie_payment_id=$1,status=$2,checkout_url=$3,updated_at=NOW()
-       WHERE order_id=$4`,
-      [payment.id, payment.status || "open", checkoutUrl, orderId]
+    await client.query("BEGIN");
+    await client.query("SET LOCAL lock_timeout='1500ms'");
+    await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))",[saleId]);
+    const controller=new AbortController();
+    const timeout=setTimeout(()=>controller.abort(),3000);
+    let verified;
+    try {
+      const response=await fetch("https://api.gumroad.com/v2/sales/"+encodeURIComponent(saleId),{
+        method:"GET",signal:controller.signal,
+        headers:{Authorization:"Bearer "+process.env.GUMROAD_ACCESS_TOKEN,Accept:"application/json"}
+      });
+      verified=await response.json().catch(()=>({}));
+      if(!response.ok || verified?.success!==true || verified?.sale?.id!==saleId) {
+        await client.query("ROLLBACK"); return send(res,404,{error:"Gumroad could not verify this sale"});
+      }
+    } catch(error) {
+      await client.query("ROLLBACK");
+      console.error("Gumroad sale verification failed",error.name||"Error");
+      return send(res,503,{error:"Gumroad verification is temporarily unavailable"});
+    } finally { clearTimeout(timeout); }
+    const sale=verified.sale;
+    if(String(sale.seller_id)!==String(process.env.GUMROAD_EXPECTED_SELLER_ID) ||
+       String(sale.product_id)!==String(process.env.GUMROAD_PRODUCT_ID)) {
+      await client.query("ROLLBACK"); return send(res,403,{error:"Sale seller or product does not match NEXORA configuration"});
+    }
+    const email=String(sale.email||sale.purchase_email||"").trim().toLowerCase();
+    if(!email || email.length>254) {
+      await client.query("ROLLBACK"); return send(res,422,{error:"Verified Gumroad sale has no valid buyer email"});
+    }
+    const priceCents=Number(sale.price);
+    const expectedPrice=Number(process.env.GUMROAD_EXPECTED_PRICE_CENTS);
+    if(!Number.isSafeInteger(priceCents) || priceCents!==expectedPrice || priceCents<100) {
+      await client.query("ROLLBACK"); return send(res,409,{error:"Verified sale price does not match the configured product price"});
+    }
+    const customer=await client.query("SELECT id FROM app_users WHERE lower(email)=lower($1)",[email]);
+    if(!customer.rowCount) {
+      await client.query("ROLLBACK"); return send(res,409,{error:"Create your NEXORA account with the same email used at Gumroad checkout, then contact support to reconcile this sale"});
+    }
+    const userId=customer.rows[0].id;
+    if(sale.test===true || sale.is_test===true) { await client.query("ROLLBACK"); return send(res,409,{error:"Gumroad test purchases do not create live NEXORA entitlements"}); }
+    const isRevoked=Boolean(sale.refunded || ((sale.chargedback || sale.disputed) && !sale.dispute_won));
+    const paymentStatus=sale.refunded?"refunded":((sale.chargedback || sale.disputed)&&!sale.dispute_won)?(sale.chargedback?"charged_back":"disputed"):"paid";
+    const amount=(priceCents/100).toFixed(2);
+    const currency=typeof sale.currency==="string" && /^[A-Za-z]{3}$/.test(sale.currency) ? sale.currency.toUpperCase() : "USD";
+    let existing=await client.query(
+      "SELECT order_id,user_id,product_id FROM own_payments WHERE payment_provider='gumroad' AND provider_payment_id=$1 FOR UPDATE",
+      [saleId]
     );
-    return send(res, 201, {
-      order_id: orderId,
-      payment_id: payment.id,
-      status: payment.status || "open",
-      amount: { currency: "EUR", value: amount },
-      checkout_url: checkoutUrl,
-      mode: payment.mode || "unknown"
-    });
-  } catch (error) {
-    await pool.query("UPDATE own_payments SET status='creation_failed',updated_at=NOW() WHERE order_id=$1", [orderId]);
+    let orderId;
+    if(existing.rowCount) {
+      const row=existing.rows[0];
+      if(String(row.user_id)!==String(userId) || row.product_id!=="payment-integrity") {
+        await client.query("ROLLBACK"); return send(res,409,{error:"Gumroad sale is already linked to a different account or product"});
+      }
+      orderId=row.order_id;
+      await client.query("UPDATE own_payments SET status=$1,updated_at=NOW() WHERE order_id=$2",[paymentStatus,orderId]);
+    } else {
+      orderId=crypto.randomUUID();
+      await client.query(
+        `INSERT INTO own_payments(order_id,user_id,product_id,payment_provider,provider_payment_id,amount,currency,description,status)
+         VALUES($1,$2,'payment-integrity','gumroad',$3,$4,$5,'NEXORA Payment Integrity',$6)
+         ON CONFLICT DO NOTHING`,
+        [orderId,userId,saleId,amount,currency,paymentStatus]
+      );
+      const saved=await client.query(
+        "SELECT order_id,user_id,product_id FROM own_payments WHERE payment_provider='gumroad' AND provider_payment_id=$1 FOR UPDATE",[saleId]
+      );
+      if(!saved.rowCount || String(saved.rows[0].user_id)!==String(userId) || saved.rows[0].product_id!=="payment-integrity") {
+        await client.query("ROLLBACK"); return send(res,409,{error:"Gumroad sale could not be linked safely"});
+      }
+      orderId=saved.rows[0].order_id;
+      await client.query("UPDATE own_payments SET status=$1,updated_at=NOW() WHERE order_id=$2",[paymentStatus,orderId]);
+    }
+    if(isRevoked) {
+      await client.query(
+        "UPDATE product_entitlements SET revoked_at=COALESCE(revoked_at,NOW()),revoke_reason=$1 WHERE order_id=$2",
+        [paymentStatus,orderId]
+      );
+    } else {
+      await client.query(
+        "UPDATE product_entitlements SET revoked_at=NULL,revoke_reason=NULL WHERE order_id=$1 AND revoke_reason='disputed'",
+        [orderId]
+      );
+      await client.query(
+        `INSERT INTO product_entitlements(user_id,product_id,order_id) VALUES($1,'payment-integrity',$2)
+         ON CONFLICT DO NOTHING`,
+        [userId,orderId]
+      );
+    }
+    await client.query("COMMIT");
+    return send(res,200,{received:true,verified:true,order_status:paymentStatus,access_granted:!isRevoked});
+  } catch(error) {
+    await client.query("ROLLBACK");
+    if(error.code==="55P03") return send(res,503,{error:"Gumroad sale is already being processed; retry shortly"});
     throw error;
+  } finally { client.release(); }
+}
+async function handleProductCatalogue(req,res) {
+  if(!pool) return send(res,503,{error:"Product catalogue requires the database"});
+  const result=await pool.query(
+    "SELECT product_id,name,description,price_amount,currency,active FROM product_catalog ORDER BY name"
+  );
+  return send(res,200,{products:result.rows.map(p=>({...p,price:p.price_amount===null?null:Number(p.price_amount).toFixed(2)}))});
+}
+async function hasActiveProduct(userId,productId) {
+  const result=await pool.query(
+    "SELECT 1 FROM product_entitlements WHERE user_id=$1 AND product_id=$2 AND revoked_at IS NULL LIMIT 1",
+    [userId,productId]
+  );
+  return result.rowCount>0;
+}
+async function handleCustomerScreenings(req,res) {
+  const user=await requireUser(req,res); if(!user) return;
+  if(!await hasActiveProduct(user.id,"payment-integrity")) return send(res,403,{error:"An active Payment Integrity entitlement is required"});
+  if(req.method==="GET") {
+    const result=await pool.query(
+      `SELECT id,provider_id,event_id,amount,currency,event_status,decision,reason,created_at
+       FROM customer_screenings WHERE user_id=$1 ORDER BY created_at DESC LIMIT 100`,
+      [user.id]
+    );
+    return send(res,200,{events:result.rows});
   }
-}
-async function handleMollieWebhook(req, res) {
-  if (!pool || !process.env.MOLLIE_API_KEY) return send(res, 503, { error: "Payment webhook is not configured" });
-  const rawBody = await readBody(req);
-  const params = new URLSearchParams(rawBody.toString("utf8"));
-  const molliePaymentId = params.get("id");
-  if (!molliePaymentId || !/^tr_[A-Za-z0-9]+$/.test(molliePaymentId)) return send(res, 400, { error: "Invalid payment identifier" });
-  const payment = await mollieRequest("/payments/" + encodeURIComponent(molliePaymentId));
-  const orderId = payment?.metadata?.order_id;
-  if (payment?.resource !== "payment" || typeof orderId !== "string") return send(res, 400, { error: "Payment metadata is invalid" });
-  const existing = await pool.query(
-    "SELECT order_id,amount,currency,mollie_payment_id FROM own_payments WHERE order_id=$1",
-    [orderId]
-  );
-  if (!existing.rowCount || existing.rows[0].mollie_payment_id !== molliePaymentId) return send(res, 404, { error: "Payment order not found" });
-  const expectedAmount = Number(existing.rows[0].amount).toFixed(2);
-  if (payment.amount?.currency !== existing.rows[0].currency || payment.amount?.value !== expectedAmount) {
-    console.error("Mollie payment amount mismatch", molliePaymentId);
-    return send(res, 409, { error: "Payment amount mismatch" });
+  if(req.method!=="POST") return send(res,405,{error:"Method not allowed"});
+  const raw=await readBody(req); let input;
+  try{input=JSON.parse(raw.toString("utf8"));}catch{return send(res,400,{error:"Invalid JSON"});}
+  const providerId=typeof input?.provider_id==="string"?input.provider_id.trim():"";
+  const eventId=typeof input?.event_id==="string"?input.event_id.trim():"";
+  const amount=Number(input?.amount);
+  const currency=typeof input?.currency==="string"?input.currency.trim().toUpperCase():"";
+  const status=typeof input?.status==="string"?input.status.trim().toUpperCase():"";
+  if(!providerId||providerId.length>128||!eventId||eventId.length>256||!Number.isFinite(amount)||amount<=0||amount>100000000||!/^[A-Z]{3}$/.test(currency)||!["SUCCESS","PENDING","FAILED"].includes(status)) {
+    return send(res,422,{error:"Provide provider_id, event_id, a positive amount, ISO currency and SUCCESS, PENDING or FAILED status"});
   }
-  const allowed = new Set(["open","pending","authorized","paid","canceled","expired","failed"]);
-  if (!allowed.has(payment.status)) return send(res, 422, { error: "Unsupported payment status" });
-  await pool.query(
-    "UPDATE own_payments SET status=$1,updated_at=NOW() WHERE order_id=$2",
-    [payment.status, orderId]
+  const event={provider_id:providerId,event_id:eventId,amount,currency,status};
+  const screened=screenEvent(event,{reviewThreshold:REVIEW_THRESHOLD});
+  const result=await pool.query(
+    `INSERT INTO customer_screenings(user_id,provider_id,event_id,amount,currency,event_status,decision,reason)
+     VALUES($1,$2,$3,$4,$5,$6,$7,$8)
+     ON CONFLICT(user_id,provider_id,event_id) DO NOTHING
+     RETURNING id,provider_id,event_id,amount,currency,event_status,decision,reason,created_at`,
+    [user.id,providerId,eventId,amount,currency,status,screened.decision,screened.reason]
   );
-  return send(res, 200, { received: true });
+  if(!result.rowCount) return send(res,200,{duplicate:true,decision:"REJECT",reason:"Duplicate provider + event identifier",reference:{provider_id:providerId,event_id:eventId}});
+  return send(res,201,{duplicate:false,...result.rows[0]});
 }
-async function handleGetPayment(req, res, orderId) {
-  if (!pool) return send(res, 503, { error: "Payment service requires the database" });
-  const user = await getAuthenticatedUser(req);
-  if (!user) return send(res, 401, { error: "Authentication required" });
-  const result = await pool.query(
-    `SELECT order_id,amount,currency,description,status,created_at,updated_at
-     FROM own_payments WHERE order_id=$1 AND user_id=$2`,
-    [orderId,user.id]
+async function handleMyProducts(req,res) {
+  const user=await requireUser(req,res); if(!user) return;
+  const result=await pool.query(
+    `SELECT e.product_id,p.name,p.description,e.order_id,e.granted_at
+     FROM product_entitlements e JOIN product_catalog p ON p.product_id=e.product_id
+     WHERE e.user_id=$1 AND e.revoked_at IS NULL ORDER BY e.granted_at DESC`,
+    [user.id]
   );
-  if (!result.rowCount) return send(res, 404, { error: "Payment not found" });
-  const p = result.rows[0];
-  return send(res, 200, {
-    order_id: p.order_id, amount: { currency: p.currency, value: Number(p.amount).toFixed(2) },
-    description: p.description, status: p.status, created_at: p.created_at, updated_at: p.updated_at,
-    paid: p.status === "paid"
-  });
+  return send(res,200,{products:result.rows});
 }
-
 async function handleRegister(req, res) {
   if (!pool) return send(res, 503, { error: "Account service is not configured; database is required" });
   if (authRateLimited(req)) return send(res, 429, { error: "Too many account attempts; try again in 15 minutes" });
@@ -567,10 +647,11 @@ const server = createServer(async (req, res) => {
     if (req.url === "/v1/marketplace/listings") return await handleMarketplace(req,res);
     if (req.url === "/v1/business/workspace") return await handleBusinessWorkspace(req,res);
     if (req.url === "/v1/business/ai-plan") return await handleBusinessAIPlan(req,res);
-    if (req.method === "POST" && req.url === "/v1/payments") return await handleCreatePayment(req, res);
-    if (req.method === "POST" && req.url === "/v1/payments/mollie-webhook") return await handleMollieWebhook(req, res);
-    const paymentStatusMatch = /^\/v1\/payments\/([0-9a-f-]{36})$/.exec(req.url || "");
-    if (req.method === "GET" && paymentStatusMatch) return await handleGetPayment(req, res, paymentStatusMatch[1]);
+    if (req.method === "GET" && req.url === "/v1/catalogue/products") return await handleProductCatalogue(req,res);
+    if (req.method === "GET" && req.url === "/v1/account/products") return await handleMyProducts(req,res);
+    if ((req.method === "GET" || req.method === "POST") && req.url === "/v1/account/payment-integrity/events") return await handleCustomerScreenings(req,res);
+    if (req.method === "GET" && req.url === "/v1/payments/checkout") return await handleGumroadCheckout(req,res);
+    if (req.method === "POST" && new URL(req.url,"http://localhost").pathname === "/v1/payments/gumroad-ping") return await handleGumroadPing(req,res);
     if (req.method === "POST" && req.url === "/v1/events") return await handleEvent(req, res);
     if (req.method === "POST" && req.url === "/v1/demo/events") return await handleDemoEvent(req, res);
     return send(res, 404, { error: "Not found" });

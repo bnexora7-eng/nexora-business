@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#07111f">
+<title>NEXORA Payment Integrity — Customer Workspace</title>
+<style>
+:root{color-scheme:dark;--bg:#07111f;--panel:#102238;--line:#29435d;--text:#eff6ff;--muted:#a8b8ca;--mint:#62e6c5;--gold:#ffd27a;--red:#ff9c9c}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 80% 0,#173b52 0,transparent 38%),var(--bg);color:var(--text);font:15px/1.55 Inter,system-ui,sans-serif}
+main{width:min(980px,calc(100% - 30px));margin:auto;padding:24px 0 48px}.top{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line);padding:12px 0 20px;gap:12px}.brand{font-weight:900;letter-spacing:.16em}.brand small{display:block;color:var(--mint);font-size:10px}.top a,.back{color:var(--mint);text-decoration:none}.eyebrow{color:var(--mint);font-size:11px;letter-spacing:.18em;font-weight:800;margin-top:26px}h1{font-size:clamp(32px,6vw,52px);line-height:1.05;margin:10px 0}.muted{color:var(--muted);font-size:13px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:22px}.card{background:var(--panel);border:1px solid var(--line);border-radius:15px;padding:20px}.card h2{margin:0 0 14px;font-size:19px}.field{display:grid;gap:6px;margin:12px 0}.field label{font-size:12px;color:var(--muted)}input,select{width:100%;padding:12px;border:1px solid #35516b;border-radius:8px;background:#071727;color:var(--text);font:inherit}button{border:0;border-radius:8px;background:var(--mint);color:#061923;font-weight:900;padding:12px 16px;cursor:pointer}button:disabled{opacity:.5}.result{margin-top:14px;border:1px solid var(--line);border-radius:10px;padding:14px;background:#081625}.decision{font-size:24px;font-weight:900}.ACCEPT{color:var(--mint)}.REVIEW{color:var(--gold)}.REJECT{color:var(--red)}.item{border-top:1px solid var(--line);padding:12px 0}.notice{margin-top:18px;padding:13px;border:1px solid #665a3b;background:#29271f;border-radius:10px;color:#e6d9b8;font-size:12px}.error{color:#ffb9c2}.hidden{display:none}@media(max-width:700px){.grid{grid-template-columns:1fr}.top{align-items:flex-start}}
+</style>
+</head>
+<body><main>
+<header class="top"><div class="brand">NEXORA<small>PAYMENT INTEGRITY · CUSTOMER WORKSPACE</small></div><a href="./index.html">My account</a></header>
+<div id="loading" class="muted">Checking account and product access…</div>
+<section id="workspace" class="hidden">
+<div class="eyebrow">PRIVATE CUSTOMER WORKSPACE</div><h1>Payment event screening.</h1>
+<p class="muted">Submit a payment event and receive an explainable rule-based ACCEPT, REVIEW or REJECT decision. Your event history is stored privately against your account.</p>
+<div class="grid">
+<section class="card"><h2>Evaluate an event</h2>
+<form id="screen-form">
+<div class="field"><label for="provider">PROVIDER IDENTIFIER</label><input id="provider" value="my-provider" maxlength="128" required></div>
+<div class="field"><label for="event">EVENT IDENTIFIER</label><input id="event" placeholder="evt-10001" maxlength="256" required></div>
+<div class="field"><label for="amount">AMOUNT</label><input id="amount" type="number" min="0.01" max="100000000" step="0.01" value="25.00" required></div>
+<div class="field"><label for="currency">CURRENCY</label><select id="currency"><option>EUR</option><option>USD</option><option>GBP</option></select></div>
+<div class="field"><label for="status">EVENT STATUS</label><select id="status"><option value="SUCCESS">Successful</option><option value="PENDING">Pending</option><option value="FAILED">Failed</option></select></div>
+<button id="submit" type="submit">SCREEN EVENT</button></form><div id="result" class="result muted" aria-live="polite">Your screening result will appear here.</div>
+</section>
+<section class="card"><h2>Your recent event history</h2><p class="muted">Latest 100 events for this account.</p><div id="history" class="muted">Loading…</div><button id="refresh" type="button" style="margin-top:12px">REFRESH HISTORY</button></section>
+</div>
+<div class="notice"><b>Product scope:</b> this workspace applies deterministic screening rules to submitted event data. It is not a validated fraud model, does not connect to banks or payment providers, and is not a compliance certification. Use synthetic or non-sensitive test data only.</div>
+</section>
+<section id="blocked" class="hidden"><h2>Access unavailable</h2><p id="blocked-message" class="muted"></p><a class="back" href="./index.html">Return to account</a></section>
+</main>
+<script>
+(function(){
+const API="https://nexora-payment-integrity-api.onrender.com";
+const $=id=>document.getElementById(id);
+const token=sessionStorage.getItem("nexora_web_token");
+function escapeHtml(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+async function request(path,options={}){const r=await fetch(API+path,{...options,headers:{"Authorization":"Bearer "+token,...(options.headers||{})}});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||"Service request failed");return d;}
+function showBlocked(message){$("loading").classList.add("hidden");$("workspace").classList.add("hidden");$("blocked").classList.remove("hidden");$("blocked-message").textContent=message;}
+async function loadHistory(){const host=$("history");try{const data=await request("/v1/account/payment-integrity/events");host.innerHTML=data.events.length?data.events.map(e=>'<div class="item"><b class="'+escapeHtml(e.decision)+'">'+escapeHtml(e.decision)+'</b> · '+escapeHtml(e.provider_id)+' / '+escapeHtml(e.event_id)+'<div class="muted">'+escapeHtml(e.amount)+' '+escapeHtml(e.currency)+' · '+escapeHtml(e.event_status)+' · '+escapeHtml(e.reason)+'</div></div>').join(""):'No events screened yet.';}catch(e){host.textContent=e.message;}}
+async function start(){if(!token){showBlocked("Sign in to your NEXORA account first.");return;}try{await request("/v1/auth/me");const data=await request("/v1/account/products");if(!data.products.some(p=>p.product_id==="payment-integrity")){showBlocked("This account does not have an active Payment Integrity purchase entitlement.");return;}$("loading").classList.add("hidden");$("workspace").classList.remove("hidden");await loadHistory();}catch(e){showBlocked(e.message);}}
+$("screen-form").addEventListener("submit",async e=>{e.preventDefault();const button=$("submit");button.disabled=true;button.textContent="SCREENING…";try{const data=await request("/v1/account/payment-integrity/events",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({provider_id:$("provider").value.trim(),event_id:$("event").value.trim(),amount:Number($("amount").value),currency:$("currency").value,status:$("status").value})});$("result").innerHTML='<div class="decision '+escapeHtml(data.decision)+'">'+escapeHtml(data.decision)+'</div><div>'+escapeHtml(data.reason)+'</div>'+(data.duplicate?'<div class="muted">Duplicate event — no second record was created.</div>':'<div class="muted">Saved to your private account history.</div>');await loadHistory();}catch(err){$("result").innerHTML='<span class="error">'+escapeHtml(err.message)+'</span>';}finally{button.disabled=false;button.textContent="SCREEN EVENT";}});
+$("refresh").addEventListener("click",loadHistory);
+start();
+})();
+</script></body></html>
