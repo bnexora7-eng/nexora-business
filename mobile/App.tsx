@@ -159,7 +159,7 @@ export default function App() {
         <Action title="Business Tools" subtitle="Tools for growing businesses" onPress={()=>go("Business")}/>
         <Action title="Payment Integrity" subtitle="A decision-support payment screening module" onPress={()=>go("Integrity")}/>
       </>}
-      {(tab==="Community"||tab==="Marketplace"||tab==="Business")&&<NexoraModules screen={tab} signedIn={!!account}/>}
+      {(tab==="Community"||tab==="Marketplace"||tab==="Business")&&<NexoraModules screen={tab} signedIn={!!account} onNavigate={go}/>}
       {tab==="Integrity" && <>
         <Card><Text style={styles.kicker}>PAYMENT INTEGRITY • DEMO</Text><Text style={styles.hero}>Screen a payment event.</Text><Text style={styles.muted}>Local demonstration only. This does not connect to a bank, move money or approve a real payment.</Text>
           <Text style={styles.label}>AMOUNT (EUR)</Text><TextInput value={amount} onChangeText={setAmount} keyboardType="decimal-pad" placeholder="950.00" placeholderTextColor={C.muted} style={styles.input}/>
