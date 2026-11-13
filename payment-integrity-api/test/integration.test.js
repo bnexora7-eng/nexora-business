@@ -79,6 +79,14 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   assert.equal(login.status, 200);
   const loggedIn = await login.json();
 
+  const mobileScreen = await fetch(`http://127.0.0.1:${port}/v1/integrity/screen`, {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: "Bearer " + registered.token },
+    body: JSON.stringify({ event_id: "mobile-screen-" + Date.now(), amount: 125, currency: "EUR", status: "SUCCESS" })
+  });
+  assert.equal(mobileScreen.status, 200);
+  assert.equal((await mobileScreen.json()).decision, "ACCEPT");
+
   // Create user-owned content, then verify account deletion removes it.
   const createPost = await fetch(`http://127.0.0.1:${port}/v1/community/posts`, {
     method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + registered.token },
