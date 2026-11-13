@@ -31,5 +31,7 @@ npx expo start
 ## Android package
 `com.nexora.business`
 
+The project uses Expo SDK 54, which targets Android 16 / API 36. The APK workflow verifies the generated target SDK before building.
+
 ## Current status
 The mobile app has a working prototype structure and backend account/payment API integration code. The payment provider is not configured, so checkout cannot yet accept money. Android build and TypeScript checks are automated in GitHub Actions; a successful build is a debug APK, not a Play Store release.
