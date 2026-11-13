@@ -16,7 +16,7 @@ const styles = {
   note:{fontSize:12,color:C.cyan,marginTop:10,lineHeight:18}
 };
 
-export default function NexoraModules({screen,signedIn}:{screen:"Community"|"Marketplace"|"Business";signedIn:boolean}) {
+export default function NexoraModules({screen,signedIn,onNavigate}:{screen:"Community"|"Marketplace"|"Business";signedIn:boolean;onNavigate:(tab:"Home"|"Profile")=>void}) {
   const [posts,setPosts]=useState<any[]>([]);
   const [post,setPost]=useState("");
   const [message,setMessage]=useState("");
@@ -44,6 +44,7 @@ export default function NexoraModules({screen,signedIn}:{screen:"Community"|"Mar
   const button=(label:string,onPress:()=>void)=><TouchableOpacity disabled={busy} style={styles.button} onPress={onPress}><Text style={styles.buttonText}>{busy?"PLEASE WAIT":label}</Text></TouchableOpacity>;
 
   return <View>
+    <View style={{flexDirection:"row",justifyContent:"space-between",alignItems:"center",marginBottom:12}}><TouchableOpacity onPress={()=>onNavigate("Home")} style={{paddingVertical:10,paddingHorizontal:12,borderWidth:1,borderColor:C.line,borderRadius:9}}><Text style={{color:C.cyan,fontWeight:"800"}}>‹ HOME</Text></TouchableOpacity>{!signedIn&&<TouchableOpacity onPress={()=>onNavigate("Profile")} style={{paddingVertical:10,paddingHorizontal:12,backgroundColor:C.cyan,borderRadius:9}}><Text style={{color:C.bg,fontWeight:"900"}}>SIGN IN / REGISTER</Text></TouchableOpacity>}</View>
     {screen==="Community"&&<>
       <View style={styles.card}><Text style={styles.title}>NEXORA Community</Text><Text style={styles.text}>Share updates with members. Posts are saved in the NEXORA database.</Text>{field("YOUR UPDATE",post,setPost,"Write something for the community...",true)}{button("PUBLISH UPDATE",publishPost)}{!!message&&<Text style={styles.note}>{message}</Text>}</View>
       <Text style={styles.title}>Latest updates ({posts.length})</Text>
