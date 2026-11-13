@@ -11,6 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
+      EXPO_PUBLIC_NEXORA_API_URL: ${{ vars.EXPO_PUBLIC_NEXORA_API_URL || 'https://nexora-payment-integrity-api.onrender.com' }}
+    env:
       NEXORA_UPLOAD_KEYSTORE: ${{ github.workspace }}/mobile/android/app/upload-keystore.jks
       NEXORA_UPLOAD_STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
       NEXORA_UPLOAD_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
