@@ -130,12 +130,12 @@ When resuming work, start with this file, then inspect the current main branch a
 
 ## Project enquiry flow — 13 November 2026
 
-- Added `order.html`, a structured project-enquiry page with contact details, project type, optional budget/timeline and requirements.
-- Updated the public landing page to link to the new enquiry page instead of relying on the previous Netlify Forms form.
-- The enquiry form prepares a Gmail draft to the published NEXORA contact address. The visitor must review and send the email; the static GitHub Pages site does not store submissions or create server-side orders.
-- The form explicitly describes itself as a non-binding enquiry. It does not request or publish bank details, take deposits, issue invoices, or claim to confirm payment.
-- No customer payment or private IBAN has been enabled. The existing Mollie checkout remains a separate unconfigured integration and is not presented as available.
-- **Verification still required:** wait for the GitHub Pages workflow to complete, then test the landing-page link and Gmail-draft handoff on a real phone. Do not claim that enquiries are automatically stored or that payments are live.
+- The public `order.html` page collects a non-binding project enquiry; it does not create an order, invoice or payment.
+- The original Gmail-compose handoff was removed. The form now submits by AJAX to FormSubmit and is designed to keep the visitor on the NEXORA page.
+- The landing page and privacy link were corrected to describe the new form flow.
+- FormSubmit's official documentation says the first submission triggers an activation email to the configured recipient. Until the mailbox owner activates the form and an end-to-end test confirms receipt, delivery is **not verified**.
+- No customer payment or private IBAN has been enabled. Mollie checkout remains a separate unconfigured integration.
+- **Release gate:** activate FormSubmit from the email sent to `bnexora7@gmail.com`, then submit a controlled test from a separate device and confirm receipt in the NEXORA mailbox. Do not claim that enquiry delivery is live before that test passes.
 
 
 ## Public enquiry form correction — 13 November 2026
