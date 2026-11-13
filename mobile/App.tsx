@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import * as SecureStore from "expo-secure-store";
 import NexoraModules from "./NexoraModules";
 import { API_BASE } from "./api";
-import { BackHandler, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View, Linking } from "react-native";
+import { Alert, BackHandler, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View, Linking } from "react-native";
 
 type Tab = "Home" | "Community" | "Marketplace" | "Business" | "Integrity" | "Payments" | "Profile";
 type Decision = "ACCEPT" | "REVIEW" | "REJECT";
@@ -118,6 +118,29 @@ export default function App() {
     setAuthMessage("Wylogowano.");
   };
 
+  const deleteAccount = () => {
+    Alert.alert(
+      "Delete NEXORA account?",
+      "This permanently deletes your account, posts, marketplace listings and business workspace. Payment records may be retained without your account link where legally required.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Delete account", style: "destructive", onPress: async () => {
+          try {
+            const token = await SecureStore.getItemAsync("nexora_session");
+            const response = await fetch(API_BASE + "/v1/auth/account", { method: "DELETE", headers: { Authorization: "Bearer " + token } });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || "Account deletion failed.");
+            await SecureStore.deleteItemAsync("nexora_session");
+            setAccount(null); setPassword(""); setAuthMessage("Your NEXORA account and associated content have been deleted.");
+            setTab("Home");
+          } catch (error) {
+            Alert.alert("Account not deleted", error instanceof Error ? error.message : "Please try again.");
+          }
+        }}
+      ]
+    );
+  };
+
   const screening = useMemo(():Decision => {
     const n = Number(amount.replace(",","."));
     if (!Number.isFinite(n) || n <= 0) return "REJECT";
@@ -201,6 +224,8 @@ export default function App() {
             <Text style={styles.hero}>You are signed in.</Text>
             <Text style={styles.muted}>{account.email}</Text>
             <TouchableOpacity style={styles.primary} onPress={signOut}><Text style={styles.primaryText}>SIGN OUT</Text></TouchableOpacity>
+            <TouchableOpacity style={[styles.action,{marginTop:12,borderColor:C.red}]} onPress={deleteAccount}><Text style={{color:C.red,fontWeight:"800"}}>DELETE ACCOUNT AND DATA</Text></TouchableOpacity>
+            <TouchableOpacity onPress={()=>Linking.openURL("https://bnexora7-eng.github.io/nexora-business/privacy/")}><Text style={styles.note}>Privacy policy</Text></TouchableOpacity>
           </> : <>
             <Text style={styles.hero}>{authMode==="register"?"Create your NEXORA account.":"Welcome back."}</Text>
             <Text style={styles.muted}>An account will give you a personal profile across NEXORA services.</Text>
