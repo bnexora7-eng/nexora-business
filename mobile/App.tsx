@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import * as SecureStore from "expo-secure-store";
 import NexoraModules from "./NexoraModules";
 import { API_BASE } from "./api";
-import { SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View, Linking } from "react-native";
+import { BackHandler, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View, Linking } from "react-native";
 
 type Tab = "Home" | "Community" | "Marketplace" | "Business" | "Integrity" | "Payments" | "Profile";
 type Decision = "ACCEPT" | "REVIEW" | "REJECT";
@@ -127,6 +127,14 @@ export default function App() {
   },[amount,reference]);
 
   const go = (next:Tab) => { setTab(next); setDecision(null); };
+
+  useEffect(() => {
+    const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
+      if (tab !== "Home") { setTab("Home"); setDecision(null); return true; }
+      return false;
+    });
+    return () => subscription.remove();
+  }, [tab]);
   const heading:Record<Tab,string> = {
     Home:"One platform. More possibilities.",
     Community:"NEXORA Community",
