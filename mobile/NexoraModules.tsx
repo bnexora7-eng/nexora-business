@@ -2,8 +2,8 @@ import React, { useEffect, useState } from "react";
 import { ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
 import * as SecureStore from "expo-secure-store";
 import BusinessStudio from "./BusinessStudio";
+import { API_BASE as API } from "./api";
 
-const API = "https://nexora-payment-integrity-api.onrender.com";
 const C = { bg:"#08111F", panel:"#111E30", line:"#263A53", text:"#F3F7FC", muted:"#91A4BA", cyan:"#4DE1D2" };
 const styles = {
   card:{backgroundColor:C.panel,borderWidth:1,borderColor:C.line,borderRadius:16,padding:16,marginBottom:14},
