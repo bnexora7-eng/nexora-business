@@ -28,8 +28,6 @@ ALLOWED_ORIGINS.add(DEMO_ORIGIN);
 const demoRequests = new Map();
 const demoEvents = new Map();
 const authAttempts = new Map();
-const PUBLIC_API_URL = (process.env.PUBLIC_API_URL || "https://nexora-payment-integrity-api.onrender.com").replace(/\/$/, "");
-const PAYMENT_RETURN_URL = process.env.NEXORA_PAYMENT_RETURN_URL || "https://bnexora7-eng.github.io/nexora-business/";
 const AI_API_KEY = process.env.OPENAI_API_KEY || "";
 const AI_MODEL = process.env.OPENAI_MODEL || "gpt-4.1-mini";
 const AI_API_URL = process.env.OPENAI_API_URL || "https://api.openai.com/v1/chat/completions";
@@ -367,59 +365,6 @@ async function handleMyProducts(req,res) {
     [user.id]
   );
   return send(res,200,{products:result.rows});
-}
-async function handleMollieWebhook(req, res) {
-  if (!pool || !process.env.MOLLIE_API_KEY) return send(res,503,{error:"Payment webhook is not configured"});
-  const rawBody=await readBody(req);
-  const params=new URLSearchParams(rawBody.toString("utf8"));
-  const molliePaymentId=params.get("id");
-  if(!molliePaymentId||!/^tr_[A-Za-z0-9]+$/.test(molliePaymentId)) return send(res,400,{error:"Invalid payment identifier"});
-  const payment=await mollieRequest("/payments/"+encodeURIComponent(molliePaymentId));
-  const orderId=payment?.metadata?.order_id;
-  if(payment?.resource!=="payment"||typeof orderId!=="string") return send(res,400,{error:"Payment metadata is invalid"});
-  const client=await pool.connect();
-  try {
-    await client.query("BEGIN");
-    const existing=await client.query(
-      "SELECT order_id,user_id,product_id,amount,currency,mollie_payment_id FROM own_payments WHERE order_id=$1 FOR UPDATE",[orderId]
-    );
-    if(!existing.rowCount||existing.rows[0].mollie_payment_id!==molliePaymentId) {
-      await client.query("ROLLBACK"); return send(res,404,{error:"Payment order not found"});
-    }
-    const order=existing.rows[0];
-    if(!order.user_id||!order.product_id ||
-       String(payment.metadata?.user_id)!==String(order.user_id) ||
-       payment.metadata?.product_id!==order.product_id) {
-      await client.query("ROLLBACK"); return send(res,409,{error:"Payment metadata does not match the stored customer order"});
-    }
-    const expectedAmount=Number(order.amount).toFixed(2);
-    if(payment.amount?.currency!==order.currency||payment.amount?.value!==expectedAmount) {
-      await client.query("ROLLBACK"); console.error("Mollie payment amount mismatch",molliePaymentId);
-      return send(res,409,{error:"Payment amount mismatch"});
-    }
-    const allowed=new Set(["open","pending","authorized","paid","canceled","expired","failed","refunded","charged_back"]);
-    if(!allowed.has(payment.status)) {
-      await client.query("ROLLBACK"); return send(res,422,{error:"Unsupported payment status"});
-    }
-    await client.query("UPDATE own_payments SET status=$1,updated_at=NOW() WHERE order_id=$2",[payment.status,orderId]);
-    if(payment.status==="paid") {
-      await client.query(
-        `INSERT INTO product_entitlements (user_id,product_id,order_id)
-         VALUES ($1,$2,$3) ON CONFLICT DO NOTHING`,
-        [order.user_id,order.product_id,order.order_id]
-      );
-    } else if(payment.status==="refunded"||payment.status==="charged_back") {
-      await client.query(
-        `UPDATE product_entitlements SET revoked_at=COALESCE(revoked_at,NOW()),revoke_reason=$1
-         WHERE order_id=$2`,
-        [payment.status,order.order_id]
-      );
-    }
-    await client.query("COMMIT");
-    return send(res,200,{received:true,order_status:payment.status,access_granted:payment.status==="paid"});
-  } catch(error) {
-    await client.query("ROLLBACK"); throw error;
-  } finally { client.release(); }
 }
 async function handleRegister(req, res) {
   if (!pool) return send(res, 503, { error: "Account service is not configured; database is required" });
