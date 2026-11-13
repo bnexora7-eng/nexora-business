@@ -37,3 +37,13 @@ Before production: use a managed secret store, secret rotation and revocation, T
 ## API contract
 
 The HTTP API contract is documented in [openapi.yaml](openapi.yaml).
+
+## Product orders and entitlements
+
+- GET /v1/catalogue/products returns the server-owned product catalogue. A product is purchasable only when its database row is explicitly active and has a configured EUR price.
+- POST /v1/payments requires a signed-in account and accepts only `product_id`. The server reads the product name and price from `product_catalog`; client-supplied amounts and descriptions are not accepted.
+- Mollie webhooks are verified by retrieving the payment directly from Mollie. The order ID, provider payment ID, currency and exact amount must match the stored order.
+- A product entitlement is granted only for a verified `paid` payment. The grant is idempotent by order ID.
+- GET /v1/account/products returns only the signed-in user's non-revoked product access.
+- The initial Payment Integrity catalogue entry is intentionally inactive and has no price. It must remain unavailable until its deliverable, commercial price, payment provider configuration and gated product experience are ready. Do not activate it or enable live payments as a shortcut.
+- The current public demo remains a preview using synthetic events. It is not the paid product and is not a production fraud-prevention service.
