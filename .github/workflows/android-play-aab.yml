@@ -1,13 +1,22 @@
-name: NEXORA signed Google Play App Bundle
+name: NEXORA Android build (Play AAB when signing key is configured)
 
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - "mobile/**"
+      - ".github/workflows/android-play-aab.yml"
+      - "scripts/**"
 
 permissions:
   contents: read
 
+concurrency:
+  group: nexora-android-release-build-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  build-play-aab:
+  build-android:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
@@ -16,36 +25,40 @@ jobs:
       NEXORA_UPLOAD_STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
       NEXORA_UPLOAD_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
       NEXORA_UPLOAD_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+      HAS_PLAY_SIGNING: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' && secrets.ANDROID_KEYSTORE_PASSWORD != '' && secrets.ANDROID_KEY_ALIAS != '' && secrets.ANDROID_KEY_PASSWORD != '' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Validate signing secrets
-        env:
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-        run: |
-          test -n "$ANDROID_KEYSTORE_BASE64"
-          test -n "$NEXORA_UPLOAD_STORE_PASSWORD"
-          test -n "$NEXORA_UPLOAD_KEY_ALIAS"
-          test -n "$NEXORA_UPLOAD_KEY_PASSWORD"
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
+
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
+
       - name: Install dependencies
         working-directory: mobile
         run: npm install --no-audit --no-fund
+
       - name: TypeScript check
         working-directory: mobile
         run: npm run typecheck
+
+      - name: Validate Expo configuration
+        working-directory: mobile
+        run: npx expo config --type public
+
       - name: Generate Android project
         working-directory: mobile
         run: npx expo prebuild --platform android --non-interactive
-      - name: Decode upload keystore
+
+      - name: Decode and verify Play upload keystore
+        if: env.HAS_PLAY_SIGNING == 'true'
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         run: |
@@ -53,26 +66,55 @@ jobs:
           printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$NEXORA_UPLOAD_KEYSTORE"
           test -s "$NEXORA_UPLOAD_KEYSTORE"
           keytool -list -keystore "$NEXORA_UPLOAD_KEYSTORE" -storepass "$NEXORA_UPLOAD_STORE_PASSWORD" -alias "$NEXORA_UPLOAD_KEY_ALIAS"
+
       - name: Configure release signing
+        if: env.HAS_PLAY_SIGNING == 'true'
         working-directory: mobile
         run: node ../scripts/configure-android-signing.mjs android/app/build.gradle
-      - name: Build signed Android App Bundle
+
+      - name: Build signed Google Play AAB
+        if: env.HAS_PLAY_SIGNING == 'true'
         working-directory: mobile/android
         run: |
           chmod +x gradlew
           ./gradlew --no-daemon --console=plain bundleRelease
-      - name: Verify signed App Bundle
+
+      - name: Verify signed AAB
+        if: env.HAS_PLAY_SIGNING == 'true'
         working-directory: mobile/android
         run: |
           test -s app/build/outputs/bundle/release/app-release.aab
           jarsigner -verify app/build/outputs/bundle/release/app-release.aab
+
+      - name: Build validation APK (until Play upload key is configured)
+        if: env.HAS_PLAY_SIGNING != 'true'
+        working-directory: mobile/android
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon --console=plain assembleDebug
+
+      - name: Verify validation APK
+        if: env.HAS_PLAY_SIGNING != 'true'
+        run: test -s mobile/android/app/build/outputs/apk/debug/app-debug.apk
+
       - name: Remove temporary keystore
         if: always()
         run: rm -f "$NEXORA_UPLOAD_KEYSTORE"
-      - name: Upload signed AAB
+
+      - name: Upload signed Google Play AAB
+        if: env.HAS_PLAY_SIGNING == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: nexora-google-play-aab
           path: mobile/android/app/build/outputs/bundle/release/app-release.aab
           if-no-files-found: error
           retention-days: 14
+
+      - name: Upload validation APK
+        if: env.HAS_PLAY_SIGNING != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexora-android-validation-apk
+          path: mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 7
