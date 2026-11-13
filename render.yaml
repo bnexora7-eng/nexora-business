@@ -28,6 +28,8 @@ services:
         sync: false
       - key: GUMROAD_PING_SECRET
         sync: false
+      - key: GUMROAD_PING_URL
+        sync: false
       - key: ALLOWED_ORIGINS
         value: "https://bnexora7-eng.github.io,https://splendid-lokum-02523e.netlify.app"
       - key: OPENAI_API_KEY
