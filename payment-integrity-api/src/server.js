@@ -376,6 +376,47 @@ async function handleLogout(req, res) {
   return send(res, 200, { status: "signed_out" });
 }
 
+async function deleteUserAccount(userId) {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    // Keep only legally required payment ledger fields; permanently detach them from the deleted account.
+    await client.query("UPDATE own_payments SET user_id=NULL WHERE user_id=$1", [userId]);
+    await client.query("DELETE FROM app_users WHERE id=$1", [userId]);
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+async function handleDeleteAccount(req, res) {
+  if (!pool) return send(res, 503, { error: "Account service is not configured; database is required" });
+  const user = await getAuthenticatedUser(req);
+  if (!user) return send(res, 401, { error: "Authentication required" });
+  await deleteUserAccount(user.id);
+  return send(res, 200, { status: "account_deleted", retained: "Unlinked payment records may be retained where legally required." });
+}
+
+async function handleWebAccountDeletion(req, res) {
+  if (!pool) return send(res, 503, { error: "Account service is not configured; database is required" });
+  if (authRateLimited(req)) return send(res, 429, { error: "Too many account attempts; try again in 15 minutes" });
+  const rawBody = await readBody(req);
+  let input;
+  try { input = JSON.parse(rawBody.toString("utf8")); } catch { return send(res, 400, { error: "Invalid JSON" }); }
+  const email = typeof input?.email === "string" ? input.email.trim().toLowerCase() : "";
+  const password = typeof input?.password === "string" ? input.password : "";
+  if (!email || email.length > 254 || !password || password.length > 128) return send(res, 401, { error: "Email or password is incorrect" });
+  const found = await pool.query("SELECT id,password_hash FROM app_users WHERE email=$1", [email]);
+  if (!found.rowCount || !(await verifyPassword(password, found.rows[0].password_hash))) {
+    return send(res, 401, { error: "Email or password is incorrect" });
+  }
+  await deleteUserAccount(found.rows[0].id);
+  return send(res, 200, { status: "account_deleted", retained: "Unlinked payment records may be retained where legally required." });
+}
+
 
 async function requireUser(req, res) {
   if (!pool) { send(res, 503, { error: "Database is not configured" }); return null; }
@@ -520,6 +561,8 @@ const server = createServer(async (req, res) => {
     if (req.method === "POST" && req.url === "/v1/auth/login") return await handleLogin(req, res);
     if (req.method === "GET" && req.url === "/v1/auth/me") return await handleMe(req, res);
     if (req.method === "POST" && req.url === "/v1/auth/logout") return await handleLogout(req, res);
+    if (req.method === "DELETE" && req.url === "/v1/auth/account") return await handleDeleteAccount(req, res);
+    if (req.method === "POST" && req.url === "/v1/auth/delete-request") return await handleWebAccountDeletion(req, res);
     if (req.url === "/v1/community/posts") return await handleCommunity(req,res);
     if (req.url === "/v1/marketplace/listings") return await handleMarketplace(req,res);
     if (req.url === "/v1/business/workspace") return await handleBusinessWorkspace(req,res);
