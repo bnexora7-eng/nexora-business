@@ -275,8 +275,8 @@ async function handleGumroadPing(req,res) {
     }
     const userId=customer.rows[0].id;
     if(sale.test===true || sale.is_test===true) { await client.query("ROLLBACK"); return send(res,409,{error:"Gumroad test purchases do not create live NEXORA entitlements"}); }
-    const isRevoked=Boolean(sale.refunded || sale.chargedback || (sale.disputed && !sale.dispute_won));
-    const paymentStatus=sale.refunded?"refunded":sale.chargedback?"charged_back":(sale.disputed&&!sale.dispute_won)?"disputed":"paid";
+    const isRevoked=Boolean(sale.refunded || ((sale.chargedback || sale.disputed) && !sale.dispute_won));
+    const paymentStatus=sale.refunded?"refunded":((sale.chargedback || sale.disputed)&&!sale.dispute_won)?(sale.chargedback?"charged_back":"disputed"):"paid";
     const amount=(priceCents/100).toFixed(2);
     const currency=typeof sale.currency==="string" && /^[A-Za-z]{3}$/.test(sale.currency) ? sale.currency.toUpperCase() : "USD";
     let existing=await client.query(
@@ -648,7 +648,7 @@ const server = createServer(async (req, res) => {
     if (req.method === "GET" && req.url === "/v1/account/products") return await handleMyProducts(req,res);
     if ((req.method === "GET" || req.method === "POST") && req.url === "/v1/account/payment-integrity/events") return await handleCustomerScreenings(req,res);
     if (req.method === "GET" && req.url === "/v1/payments/checkout") return await handleGumroadCheckout(req,res);
-    if (req.method === "POST" && req.url.startsWith("/v1/payments/gumroad-ping")) return await handleGumroadPing(req,res);
+    if (req.method === "POST" && new URL(req.url,"http://localhost").pathname === "/v1/payments/gumroad-ping") return await handleGumroadPing(req,res);
     if (req.method === "POST" && req.url === "/v1/events") return await handleEvent(req, res);
     if (req.method === "POST" && req.url === "/v1/demo/events") return await handleDemoEvent(req, res);
     return send(res, 404, { error: "Not found" });
