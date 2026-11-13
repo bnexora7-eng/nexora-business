@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
 import * as SecureStore from "expo-secure-store";
-const API="https://nexora-payment-integrity-api.onrender.com";
+import { API_BASE as API } from "./api";
 const C={bg:"#08111F",panel:"#111E30",line:"#263A53",text:"#F3F7FC",muted:"#91A4BA",cyan:"#4DE1D2"};
 const s={card:{backgroundColor:C.panel,borderWidth:1,borderColor:C.line,borderRadius:16,padding:16,marginBottom:14},title:{fontSize:20,fontWeight:"800" as const,color:C.text,marginBottom:8},text:{fontSize:13,lineHeight:20,color:C.muted},label:{fontSize:10,fontWeight:"800" as const,color:C.muted,marginTop:12,marginBottom:6},input:{backgroundColor:C.bg,borderWidth:1,borderColor:C.line,borderRadius:9,padding:12,color:C.text},button:{backgroundColor:C.cyan,borderRadius:10,padding:14,alignItems:"center" as const,marginTop:12},buttonText:{fontSize:12,fontWeight:"900" as const,color:C.bg},note:{fontSize:12,color:C.cyan,marginTop:10,lineHeight:18}};
 export default function BusinessStudio({signedIn}:{signedIn:boolean}){
