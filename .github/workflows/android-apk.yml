@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 40
     env:
-      EXPO_PUBLIC_NEXORA_API_URL: ${{ vars.EXPO_PUBLIC_NEXORA_API_URL }}
+      EXPO_PUBLIC_NEXORA_API_URL: ${{ vars.EXPO_PUBLIC_NEXORA_API_URL || 'https://nexora-payment-integrity-api.onrender.com' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
