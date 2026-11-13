@@ -23,8 +23,8 @@ test("only verified paid provider status grants access, idempotently", () => {
   const handler = server.slice(server.indexOf("async function handleMollieWebhook"), server.indexOf("async function handleGetPayment"));
   assert.match(handler, /payment\.status==="paid"/);
   assert.match(handler, /INSERT INTO product_entitlements/);
-  assert.match(handler, /ON CONFLICT \(order_id\) DO NOTHING/);
-  assert.match(handler, /payment\.amount\?\.currency/);
+  assert.match(handler, /ON CONFLICT DO NOTHING/);
+  assert.match(handler, /payment\.amount\?\.currency/);\n  assert.match(handler, /payment\.metadata\?\.user_id/);\n  assert.match(handler, /payment\.status==="refunded"\|\|payment\.status==="charged_back"/);\n  assert.match(handler, /UPDATE product_entitlements SET revoked_at/);
 });
 
 test("catalogue starts inactive and entitlement records are unique per order", () => {
@@ -37,4 +37,13 @@ test("customer product endpoint is authenticated and account page requests it", 
   assert.match(server, /GET" && req\.url === "\/v1\/account\/products"[\s\S]*handleMyProducts/);
   assert.match(server, /WHERE e\.user_id=\$1 AND e\.revoked_at IS NULL/);
   assert.match(account, /request\("\/v1\/account\/products"/);
+});
+
+test("private workspace requires entitlement and scopes history by user", () => {
+  const handler = server.slice(server.indexOf("async function handleCustomerScreenings"), server.indexOf("async function handleMyProducts"));
+  assert.match(handler, /hasActiveProduct\(user\.id,"payment-integrity"\)/);
+  assert.match(handler, /WHERE user_id=\$1 ORDER BY created_at DESC LIMIT 100/);
+  assert.match(server, /\/v1\/account\/payment-integrity\/events/);
+  assert.match(schema, /UNIQUE \(user_id,provider_id,event_id\)/);
+  assert.match(account, /OPEN YOUR PAYMENT INTEGRITY WORKSPACE/);
 });
