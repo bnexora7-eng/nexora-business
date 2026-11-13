@@ -30,6 +30,8 @@ This checklist distinguishes work completed in the repository from actions that 
 
 ## Play Console declarations and listing
 
+Store listing copy is drafted in [GOOGLE_PLAY_STORE_LISTING_DRAFT.md](GOOGLE_PLAY_STORE_LISTING_DRAFT.md); it must be checked against the exact submitted build before use.
+
 - [ ] Complete the Play Console app record and developer registration, including the one-time developer registration payment.
 - [ ] Upload the signed AAB and verify Play App Signing configuration.
 - [ ] Provide the store listing: app name, short/full descriptions, support contact, app icon (512×512), feature graphic (1024×500) and phone screenshots. NEXORA-specific Play listing graphics are not yet present in the repository.
