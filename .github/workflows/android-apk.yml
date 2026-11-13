@@ -55,3 +55,5 @@ jobs:
           path: mobile/android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
           retention-days: 14
+
+# Rebuild requested installable APK for phone testing.
