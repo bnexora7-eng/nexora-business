@@ -29,11 +29,13 @@ source = source.replace(signingBlock[0], signingBlock[0] + releaseConfig);
 
 const buildTypesIndex = source.indexOf("buildTypes {");
 if (buildTypesIndex < 0) throw new Error("Could not locate Android buildTypes block.");
-const before = source.slice(0, buildTypesIndex);
-const after = source.slice(buildTypesIndex);
-const updatedAfter = after.replace("signingConfig signingConfigs.debug", "signingConfig signingConfigs.release");
-if (updatedAfter === after) throw new Error("Could not locate release build signing assignment.");
-source = before + updatedAfter;
+const releaseStart = source.indexOf("release {", buildTypesIndex);
+if (releaseStart < 0) throw new Error("Could not locate release build type.");
+const before = source.slice(0, releaseStart);
+const releaseSection = source.slice(releaseStart);
+const updatedReleaseSection = releaseSection.replace("signingConfig signingConfigs.debug", "signingConfig signingConfigs.release");
+if (updatedReleaseSection === releaseSection) throw new Error("Could not locate release build signing assignment.");
+source = before + updatedReleaseSection;
 
 fs.writeFileSync(gradlePath, source);
 console.log("Configured Android release signing from environment secrets.");
