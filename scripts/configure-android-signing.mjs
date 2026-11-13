@@ -14,7 +14,7 @@ if (source.includes("signingConfigs.release")) {
   throw new Error("Release signing already configured; refusing to patch twice.");
 }
 
-const signingBlock = source.match(/signingConfigs\\s*\\{\\s*debug\\s*\\{[\\s\\S]*?\\n\\s*\\}/);
+const signingBlock = source.match(/signingConfigs\s*\{\s*debug\s*\{[\s\S]*?\n\s*\}/);
 if (!signingBlock) {
   throw new Error("Could not locate the generated Android debug signing configuration.");
 }
