@@ -66,7 +66,7 @@ jobs:
           grep -q "Bring clarity to" /tmp/nexora-site.html
           curl --fail --silent --show-error --location "$URL/order.html" -o /tmp/nexora-order.html
           grep -q "Project enquiry" /tmp/nexora-order.html
-          grep -q "Prepare enquiry email" /tmp/nexora-order.html
+          grep -q "Send project enquiry" /tmp/nexora-order.html
           echo "Public NEXORA website and project enquiry page are reachable on GitHub Pages."
       - name: Verify public privacy and account-deletion pages
         shell: bash
