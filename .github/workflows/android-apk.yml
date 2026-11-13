@@ -43,7 +43,13 @@ jobs:
       - name: Generate Android project
         working-directory: mobile
         run: npx expo prebuild --platform android --non-interactive
-      - name: Build installable debug APK
+      - name: Verify Android target API 36
+        working-directory: mobile
+        run: |
+          TARGET_SDK=$(grep -RhoE 'targetSdkVersion[[:space:]]*=?[[:space:]]*[0-9]+' android/build.gradle android/app/build.gradle | sed -E 's/.*([0-9]+)$/\\1/' | tail -n 1)
+          echo "Generated Android target SDK: ${TARGET_SDK:-unknown}"
+          test "$TARGET_SDK" = "36"
+      - name: Build installable test APK
         working-directory: mobile/android
         run: |
           chmod +x gradlew
