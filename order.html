@@ -31,10 +31,10 @@
 <div class="field full"><label class="check"><input type="checkbox" name="privacy" required><span>I have read the <a href="privacy/">privacy notice</a> and agree to send this enquiry by email.</span></label></div>
 </div>
 <div class="notice"><strong>Important:</strong> This is a non-binding enquiry, not a confirmed order, invoice or payment request. No bank account details are published here. We will agree the scope, price and permitted payment method before any paid work begins.</div>
-<button class="btn" type="submit">Prepare enquiry email</button>
-<p class="fine">After pressing the button, Gmail opens with your message filled in. Review it and press Send. The website does not store or submit the form automatically.</p>
+<button class="btn" id="submit-button" type="submit">Send project enquiry</button>
+<p class="fine">Your enquiry will be sent through our form-processing provider. You will remain on this page and see whether the submission was accepted.</p>
 </form>
-<div class="result" id="result" role="status"><strong>Your email draft is ready.</strong><p>If Gmail did not open, use this link:</p><a id="gmail-link" href="#">Open the enquiry in Gmail</a></div>
+<div class="result" id="result" role="status" aria-live="polite"></div>
 </section>
 </main>
 <footer class="wrap">© 2026 NEXORA BUSINESS · <a href="./">Back to NEXORA</a> · <a href="mailto:bnexora7@gmail.com">Contact by email</a></footer>
@@ -42,33 +42,48 @@
 (function(){
  const form=document.getElementById("enquiry-form");
  const result=document.getElementById("result");
- const gmailLink=document.getElementById("gmail-link");
- form.addEventListener("submit",function(event){
+ const button=document.getElementById("submit-button");
+ form.addEventListener("submit",async function(event){
   event.preventDefault();
   if(!form.reportValidity()) return;
   const data=new FormData(form);
-  const lines=[
-   "NEXORA BUSINESS — PROJECT ENQUIRY",
-   "",
-   "Name: "+data.get("name"),
-   "Email: "+data.get("email"),
-   "Company: "+(data.get("company")||"Not provided"),
-   "Country: "+data.get("country"),
-   "Project: "+data.get("service"),
-   "Indicative budget: "+(data.get("budget")||"To discuss"),
-   "Timeline: "+(data.get("timeline")||"Flexible"),
-   "",
-   "Requirements:",
-   data.get("details"),
-   "",
-   "Privacy notice acknowledged: Yes"
-  ];
-  const subject=encodeURIComponent("NEXORA project enquiry — "+data.get("service"));
-  const body=encodeURIComponent(lines.join("\n"));
-  const url="https://mail.google.com/mail/?view=cm&fs=1&to=bnexora7@gmail.com&su="+subject+"&body="+body;
-  gmailLink.href=url;
+  const payload={
+   name:data.get("name"),
+   email:data.get("email"),
+   _replyto:data.get("email"),
+   company:data.get("company")||"Not provided",
+   country:data.get("country"),
+   project_type:data.get("service"),
+   indicative_budget:data.get("budget")||"To discuss",
+   timeline:data.get("timeline")||"Flexible",
+   requirements:data.get("details"),
+   privacy_notice_acknowledged:"Yes",
+   _subject:"NEXORA project enquiry — "+data.get("service"),
+   _url:window.location.href
+  };
+  button.disabled=true;
+  button.textContent="Sending…";
   result.style.display="block";
-  window.location.href=url;
+  result.textContent="Sending your enquiry. Please wait…";
+  try{
+   const response=await fetch("https://formsubmit.co/ajax/bnexora7@gmail.com",{
+    method:"POST",
+    headers:{"Content-Type":"application/json","Accept":"application/json"},
+    body:JSON.stringify(payload)
+   });
+   const answer=await response.json();
+   if(answer.success==="true"){
+    form.reset();
+    result.textContent="Thank you. Your project enquiry has been submitted successfully to NEXORA. We will review it and reply to the email address you provided.";
+   }else{
+    result.textContent="The enquiry was not accepted. Your information is still in this form. Please try again later or contact bnexora7@gmail.com. Details: "+(answer.message||"Submission could not be confirmed.");
+   }
+  }catch(error){
+   result.textContent="We could not confirm delivery because of a connection problem. Your information is still in this form. Please try again or contact bnexora7@gmail.com.";
+  }finally{
+   button.disabled=false;
+   button.textContent="Send project enquiry";
+  }
  });
 })();
 </script>
