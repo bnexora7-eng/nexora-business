@@ -274,6 +274,7 @@ async function handleGumroadPing(req,res) {
       await client.query("ROLLBACK"); return send(res,409,{error:"Create your NEXORA account with the same email used at Gumroad checkout, then contact support to reconcile this sale"});
     }
     const userId=customer.rows[0].id;
+    if(sale.test===true || sale.is_test===true) { await client.query("ROLLBACK"); return send(res,409,{error:"Gumroad test purchases do not create live NEXORA entitlements"}); }
     const isRevoked=Boolean(sale.refunded || sale.chargedback || (sale.disputed && !sale.dispute_won));
     const paymentStatus=sale.refunded?"refunded":sale.chargedback?"charged_back":(sale.disputed&&!sale.dispute_won)?"disputed":"paid";
     const amount=(priceCents/100).toFixed(2);
@@ -313,6 +314,10 @@ async function handleGumroadPing(req,res) {
         [paymentStatus,orderId]
       );
     } else {
+      await client.query(
+        "UPDATE product_entitlements SET revoked_at=NULL,revoke_reason=NULL WHERE order_id=$1 AND revoke_reason='disputed'",
+        [orderId]
+      );
       await client.query(
         `INSERT INTO product_entitlements(user_id,product_id,order_id) VALUES($1,'payment-integrity',$2)
          ON CONFLICT DO NOTHING`,
