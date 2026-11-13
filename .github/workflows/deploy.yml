@@ -41,11 +41,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          URL="https://bnexora7-eng.github.io/nexora-business/payment-integrity-demo/"
-          curl --fail --silent --show-error --location --retry 12 --retry-all-errors --retry-delay 5 "$URL" -o /tmp/nexora-demo.html
-          grep -q "NEXORA Payment Integrity" /tmp/nexora-demo.html
-          grep -q "Run server checks: ACCEPT / REVIEW / REJECT / DUPLICATE" /tmp/nexora-demo.html
-          echo "Public demo URL returned the expected NEXORA demo page."
+          URL="https://nexora-business-2026.netlify.app/"
+          curl --fail --silent --show-error --location --retry 12 --retry-all-errors --retry-delay 5 "$URL" -o /tmp/nexora-site.html
+          grep -q "Confidence in" /tmp/nexora-site.html
+          grep -q "name=\"nexora-enquiry\"" /tmp/nexora-site.html
+          echo "Public Netlify site and NEXORA enquiry form are reachable."
       - name: Verify public privacy and account-deletion pages
         shell: bash
         run: |
@@ -59,8 +59,8 @@ jobs:
           echo "PASS: public privacy policy and account-deletion pages are deployed."
       - name: Verify deployed API with real POST requests
         env:
-          API_BASE_URL: https://splendid-lokum-02523e.netlify.app
-          DEMO_ORIGIN: https://splendid-lokum-02523e.netlify.app
+          API_BASE_URL: https://nexora-business-2026.netlify.app
+          DEMO_ORIGIN: https://nexora-business-2026.netlify.app
         run: |
           node --input-type=module <<'NODE'
           const base = process.env.API_BASE_URL;
