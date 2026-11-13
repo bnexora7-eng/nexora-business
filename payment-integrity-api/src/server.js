@@ -343,15 +343,17 @@ async function handleMollieWebhook(req, res) {
       await client.query("ROLLBACK"); return send(res,404,{error:"Payment order not found"});
     }
     const order=existing.rows[0];
-    if(!order.user_id||!order.product_id) {
-      await client.query("ROLLBACK"); return send(res,409,{error:"Order is not linked to an active customer product"});
+    if(!order.user_id||!order.product_id ||
+       String(payment.metadata?.user_id)!==String(order.user_id) ||
+       payment.metadata?.product_id!==order.product_id) {
+      await client.query("ROLLBACK"); return send(res,409,{error:"Payment metadata does not match the stored customer order"});
     }
     const expectedAmount=Number(order.amount).toFixed(2);
     if(payment.amount?.currency!==order.currency||payment.amount?.value!==expectedAmount) {
       await client.query("ROLLBACK"); console.error("Mollie payment amount mismatch",molliePaymentId);
       return send(res,409,{error:"Payment amount mismatch"});
     }
-    const allowed=new Set(["open","pending","authorized","paid","canceled","expired","failed"]);
+    const allowed=new Set(["open","pending","authorized","paid","canceled","expired","failed","refunded","charged_back"]);
     if(!allowed.has(payment.status)) {
       await client.query("ROLLBACK"); return send(res,422,{error:"Unsupported payment status"});
     }
@@ -361,6 +363,12 @@ async function handleMollieWebhook(req, res) {
         `INSERT INTO product_entitlements (user_id,product_id,order_id)
          VALUES ($1,$2,$3) ON CONFLICT DO NOTHING`,
         [order.user_id,order.product_id,order.order_id]
+      );
+    } else if(payment.status==="refunded"||payment.status==="charged_back") {
+      await client.query(
+        `UPDATE product_entitlements SET revoked_at=COALESCE(revoked_at,NOW()),revoke_reason=$1
+         WHERE order_id=$2`,
+        [payment.status,order.order_id]
       );
     }
     await client.query("COMMIT");
