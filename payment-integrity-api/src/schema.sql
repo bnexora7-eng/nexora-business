@@ -80,7 +80,7 @@ CREATE TABLE IF NOT EXISTS marketplace_listings (
   description VARCHAR(1000) NOT NULL,
   category VARCHAR(40) NOT NULL,
   price NUMERIC(12,2) NOT NULL CHECK (price >= 0 AND price <= 1000000),
-  currency CHAR(3) NOT NULL DEFAULT 'USD',
+  currency CHAR(3) NOT NULL DEFAULT 'EUR',
   status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','paused')),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
