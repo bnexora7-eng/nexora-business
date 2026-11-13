@@ -1,5 +1,5 @@
 [build]
-  publish = "payment-integrity-demo"
+  publish = "."
   functions = "netlify/functions"
 
 [[redirects]]
