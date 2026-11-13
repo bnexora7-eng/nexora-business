@@ -118,10 +118,14 @@ END $migrate$;
 INSERT INTO product_catalog (product_id,name,description,price_amount,currency,active)
 VALUES ('payment-integrity','NEXORA Payment Integrity','Payment-event screening prototype with explainable ACCEPT, REVIEW and REJECT outcomes and duplicate-event awareness. Synthetic data only; no live bank or payment-provider integrations. ',NULL,'USD',FALSE)
 ON CONFLICT (product_id) DO NOTHING;
+ALTER TABLE product_catalog ALTER COLUMN currency SET DEFAULT 'USD';
+UPDATE product_catalog SET currency='USD' WHERE product_id='payment-integrity' AND price_amount IS NULL AND active=FALSE;
 
 
 
 
+
+ALTER TABLE own_payments ALTER COLUMN currency SET DEFAULT 'USD';
 ALTER TABLE own_payments ADD COLUMN IF NOT EXISTS product_id TEXT
   REFERENCES product_catalog(product_id) ON DELETE SET NULL;
 CREATE INDEX IF NOT EXISTS own_payments_product_idx ON own_payments (product_id);
