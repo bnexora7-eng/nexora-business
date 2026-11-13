@@ -23,9 +23,9 @@ jobs:
       EXPO_PUBLIC_NEXORA_API_URL: ${{ vars.EXPO_PUBLIC_NEXORA_API_URL || 'https://nexora-payment-integrity-api.onrender.com' }}
       NEXORA_UPLOAD_KEYSTORE: ${{ github.workspace }}/mobile/android/app/upload-keystore.jks
       NEXORA_UPLOAD_STORE_PASSWORD: ${{ secrets.NEXORA_UPLOAD_STORE_PASSWORD }}
-      NEXORA_UPLOAD_KEY_ALIAS: ${{ secrets.NEXORA_UPLOAD_KEY_ALIAS }}
-      NEXORA_UPLOAD_KEY_PASSWORD: ${{ secrets.NEXORA_UPLOAD_KEY_PASSWORD }}
-      HAS_PLAY_SIGNING: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' && secrets.NEXORA_UPLOAD_STORE_PASSWORD != '' && secrets.NEXORA_UPLOAD_KEY_ALIAS != '' && secrets.NEXORA_UPLOAD_KEY_PASSWORD != '' }}
+      NEXORA_UPLOAD_KEY_ALIAS: nexora-upload-2026
+      NEXORA_UPLOAD_KEY_PASSWORD: ${{ secrets.NEXORA_UPLOAD_KEY_PASSWORD || secrets.NEXORA_UPLOAD_STORE_PASSWORD }}
+      HAS_PLAY_SIGNING: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' && secrets.NEXORA_UPLOAD_STORE_PASSWORD != '' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
