@@ -117,10 +117,11 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   });
   assert.equal(webDeleteRegister.status, 201);
   const webDelete = await fetch(`http://127.0.0.1:${port}/v1/auth/delete-request`, {
-    method: "POST", headers: { "content-type": "application/json" },
+    method: "POST", headers: { "content-type": "application/json", origin: "https://bnexora7-eng.github.io" },
     body: JSON.stringify({ email: webDeleteEmail, password: accountPassword })
   });
   assert.equal(webDelete.status, 200);
+  assert.equal(webDelete.headers.get("access-control-allow-origin"), "https://bnexora7-eng.github.io");
   const webDeletedUser = await pool.query("SELECT id FROM app_users WHERE email=$1", [webDeleteEmail]);
   assert.equal(webDeletedUser.rowCount, 0);
 
