@@ -452,6 +452,7 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   assert.equal((await subscriptionState.json()).status, "past_due");
 
   recurringPaymentAmount = { currency: "EUR", value: "29.99" };
+  recurringPaymentCreatedAt = "2026-11-14T11:00:00Z";
   const successfulRenewal = await fetch(`http://127.0.0.1:${port}/v1/payments/mollie-webhook`, {
     method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: "id=tr_nexorarecurring"
   });
