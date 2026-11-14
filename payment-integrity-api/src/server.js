@@ -211,7 +211,7 @@ async function authRateLimited(req) {
        END,
        attempt_count = CASE
          WHEN auth_rate_limits.window_started_at <= NOW() - INTERVAL '15 minutes' THEN 1
-         ELSE auth_rate_limits.attempt_count + 1
+         ELSE LEAST(auth_rate_limits.attempt_count + 1, 11)
        END
      RETURNING attempt_count`,
     [ipHash]
