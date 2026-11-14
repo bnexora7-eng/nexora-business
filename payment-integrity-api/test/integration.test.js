@@ -494,8 +494,9 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
     method: "POST", headers: { authorization: "Bearer " + loggedIn.token, "content-type": "application/json" },
     body: JSON.stringify({})
   });
-  assert.equal(cancelSubscription.status, 200);
-  const canceledBody = await cancelSubscription.json();
+  const cancelSubscriptionBody = await cancelSubscription.text();
+  assert.equal(cancelSubscription.status, 200, cancelSubscriptionBody);
+  const canceledBody = JSON.parse(cancelSubscriptionBody);
   assert.equal(canceledBody.status, "canceled");
   assert.equal(canceledBody.access, true);
   subscriptionState = await fetch(`http://127.0.0.1:${port}/v1/subscriptions/me`, {
