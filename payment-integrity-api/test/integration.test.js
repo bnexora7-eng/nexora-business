@@ -667,6 +667,32 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   });
   assert.equal(blockedOrigin.status, 403);
 
+  // Changing a client-controlled left-most X-Forwarded-For value must not
+  // bypass the demo rate limit when Render appends the same client IP at right.
+  const demoRateLimitIP = "198.51.100.88";
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const response = await fetch(`http://127.0.0.1:${port}/v1/demo/events`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        origin: "https://bnexora7-eng.github.io",
+        "x-forwarded-for": "203.0.113." + (attempt + 1) + ", " + demoRateLimitIP
+      },
+      body: JSON.stringify({ ...demoEvent, event_id: "evt-demo-limit-" + attempt })
+    });
+    assert.equal(response.status, 200, `demo request ${attempt + 1} should be allowed`);
+  }
+  const blockedDemoAttempt = await fetch(`http://127.0.0.1:${port}/v1/demo/events`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      origin: "https://bnexora7-eng.github.io",
+      "x-forwarded-for": "203.0.113.250, " + demoRateLimitIP
+    },
+    body: JSON.stringify({ ...demoEvent, event_id: "evt-demo-limit-blocked" })
+  });
+  assert.equal(blockedDemoAttempt.status, 429, "changing the spoofed left-most IP must not bypass the demo rate limit");
+
   const counts = await pool.query(
     "SELECT COUNT(*)::int AS events FROM screened_events WHERE provider_id=$1 AND event_id IN ($2,$3)",
     [providerId, "evt-integration-001", "evt-integration-002"]
