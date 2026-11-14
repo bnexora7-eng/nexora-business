@@ -213,6 +213,14 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   assert.equal(lockedFeature.status, 402);
   assert.equal((await lockedFeature.json()).code, "subscription_required");
 
+  const lockedAI = await fetch("http://127.0.0.1:" + port + "/v1/business/ai-plan", {
+    method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + loggedIn.token },
+    body: JSON.stringify({ industry: "software", problem: "subscription gate test" })
+  });
+  assert.equal(lockedAI.status, 402);
+  assert.equal((await lockedAI.json()).code, "subscription_required");
+  assert.equal(aiRequestObserved, null);
+
   // Verify canceled subscriptions retain access only through the already-paid period.
   await pool.query(
     "UPDATE app_users SET subscription_status='canceled',subscription_access_until=NOW() + INTERVAL '1 day' WHERE id=$1",
