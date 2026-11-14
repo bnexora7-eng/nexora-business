@@ -101,3 +101,12 @@ GitHub Actions backup-runner check **43617810597** passed on commit 19aebc536b. 
 
 
 The final Cron Blueprint now pins branch `main` and sets `autoDeploy: false` so routine application commits do not rebuild the backup service unexpectedly. Backup-runner CI run **43618325150** passed against this final Blueprint/Dockerfile revision (commit `0b5a23be44`).
+
+
+## Automated backup runner preparation — 14 November 2026
+
+- Runner source is in `backup/`; Render Blueprint is `render-backup.yaml` and is configured for a daily 03:30 UTC Cron run on the lowest approved plan (approximately $1/month), with `autoDeploy: false` to avoid rebuilds on routine application commits.
+- The runner uses PostgreSQL 18 `pg_dump` custom format, validates the archive with `pg_restore --list`, encrypts with AES-256-GCM and PBKDF2-HMAC-SHA256 (600,000 iterations), uploads only encrypted release assets to a private GitHub repository, verifies downloaded asset hashes and applies 30-day retention.
+- Backup runner CI run **43618325150** passed on commit `0b5a23be44`: Docker image build, PostgreSQL 18.7 client tools, shell/Python syntax, encryption/decryption and tamper rejection.
+- Render Blueprint planning previously returned `need_payment_info`; **no Cron service was created and no payment was taken**. The private destination repository, narrowly scoped GitHub token and Render payment method are still required.
+- **No actual database dump or restore has been completed.** The first encrypted backup and a restore into a separate recovery database remain critical launch gates.
