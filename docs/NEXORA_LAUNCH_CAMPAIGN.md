@@ -110,6 +110,6 @@ https://bnexora7-eng.github.io/nexora-business/
 ## Go-live gates
 
 - FormSubmit mailbox activation and a controlled test enquiry must be confirmed.
-- PayPal has requested additional tax information before the account can be used; payment collection must not be advertised as available until PayPal completes its review.
+- Paid membership and payment collection are not currently enabled; do not advertise checkout as available until the subscription flow is fully tested and approved.
 - No prices, guarantees, certifications, live integrations or production capabilities are claimed in this campaign.
 - Do not publish a private IBAN or request card/bank credentials by email.
