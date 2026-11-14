@@ -463,7 +463,7 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   });
   assert.equal(accountDeletePreflight.status, 204);
   assert.equal(accountDeletePreflight.headers.get("access-control-allow-origin"), "https://bnexora7-eng.github.io");
-  assert.match(accountDeletePreflight.headers.get("access-control-allow-methods") || "", /\\bDELETE\\b/);
+  assert.ok((accountDeletePreflight.headers.get("access-control-allow-methods") || "").split(",").map(method => method.trim()).includes("DELETE"));
   assert.match(accountDeletePreflight.headers.get("access-control-allow-headers") || "", /authorization/i);
 
   const webDeleteEmail = "nexora-web-delete-" + Date.now() + "@example.invalid";
