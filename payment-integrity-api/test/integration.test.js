@@ -32,7 +32,10 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
         data = { id: "tr_nexorafirst", status: firstPaymentStatus, mode: "test", _links: { checkout: { href: "https://checkout.example.test/first" } } };
       }
     } else if (req.method === "GET" && path === "/v2/payments/tr_nexorafirst") {
-      data = { resource: "payment", id: "tr_nexorafirst", status: firstPaymentStatus, amount: { currency: "EUR", value: "29.99" }, metadata: mockFirstPaymentMetadata };
+      data = { resource: "payment", id: "tr_nexorafirst", status: firstPaymentStatus, isCancelable: firstPaymentStatus === "open", amount: { currency: "EUR", value: "29.99" }, metadata: mockFirstPaymentMetadata };
+    } else if (req.method === "DELETE" && path === "/v2/payments/tr_nexorafirst") {
+      firstPaymentStatus = "canceled";
+      data = { resource: "payment", id: "tr_nexorafirst", status: "canceled", amount: { currency: "EUR", value: "29.99" } };
     } else if (req.method === "POST" && path === "/v2/customers/cst_nexoratest/subscriptions") {
       const input = JSON.parse(body || "{}");
       if (input.amount?.value !== "29.99" || input.interval !== "1 month") {
@@ -452,6 +455,7 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   // Account deletion must verify and cancel an active provider-side
   // subscription before removing the account and its customer reference.
   mollieSubscriptionStatus = "active";
+  firstPaymentStatus = "open";
   await pool.query(
     "UPDATE app_users SET subscription_status='active',subscription_access_until=NULL WHERE id=$1",
     [accountId]
@@ -459,6 +463,8 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   const deleteResponse = await fetch(`http://127.0.0.1:${port}/v1/auth/account`, {
     method: "DELETE", headers: { authorization: "Bearer " + loggedIn.token }
   });
+  assert.equal(firstPaymentStatus, "canceled",
+    "account deletion must cancel the pending first payment before deleting the account");
   assert.equal(mollieSubscriptionStatus, "canceled",
     "account deletion must cancel the active Mollie subscription first");
   assert.equal(deleteResponse.status, 200);
