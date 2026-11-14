@@ -155,9 +155,9 @@ async function handleEvent(req, res) {
 async function handleDemoEvent(req, res) {
   if (!ENABLE_PUBLIC_DEMO) return send(res, 404, { error: "Demo endpoint disabled" });
   if (req.headers.origin !== DEMO_ORIGIN) return send(res, 403, { error: "Origin not allowed" });
-  const forwardedParts = String(req.headers["x-forwarded-for"] || "").split(",").map(value => value.trim()).filter(Boolean);
-  // Match the auth limiter: trust the right-most address appended by Render, not a client-supplied left-most value.
-  const ip = (forwardedParts.at(-1) || req.socket.remoteAddress || "unknown").slice(0, 128);
+  // Render public traffic passes through Cloudflare, which overwrites this header with the connecting client IP.
+  // Ignore X-Forwarded-For: its list can contain caller-supplied values.
+  const ip = String(req.headers["cf-connecting-ip"] || req.socket.remoteAddress || "unknown").trim().slice(0, 128);
   const now = Date.now();
   const bucket = demoRequests.get(ip);
   if (!bucket && demoRequests.size >= MAX_TRACKED_CLIENTS) {
@@ -200,13 +200,10 @@ async function handleDemoEvent(req, res) {
 }
 
 async function authRateLimited(req) {
-  // Render's trusted edge proxy appends the connecting client address to
-  // X-Forwarded-For. Use the right-most entry, not the left-most value:
-  // the left-most entry can be supplied by an untrusted client and rotated
-  // to evade the persistent authentication rate limit.
-  const forwarded = String(req.headers["x-forwarded-for"] || "");
-  const forwardedParts = forwarded.split(",").map(value => value.trim()).filter(Boolean);
-  const ip = (forwardedParts.at(-1) || req.socket.remoteAddress || "unknown").slice(0, 128);
+  // Render public traffic passes through Cloudflare, which overwrites
+  // CF-Connecting-IP with the connecting client IP. Do not trust X-Forwarded-For,
+  // which can include caller-supplied values and be rotated to evade rate limits.
+  const ip = String(req.headers["cf-connecting-ip"] || req.socket.remoteAddress || "unknown").trim().slice(0, 128);
   const ipHash = crypto.createHash("sha256").update(ip).digest("hex");
   const result = await pool.query(
     `INSERT INTO auth_rate_limits (ip_hash, window_started_at, attempt_count)
