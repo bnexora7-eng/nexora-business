@@ -763,9 +763,27 @@ async function deleteUserAccount(userId) {
     [userId]
   );
   const account = billing.rows[0];
-  if (account?.mollie_subscription_id && account?.mollie_customer_id && account.subscription_status !== "canceled" && account.subscription_status !== "inactive") {
-    if (!process.env.MOLLIE_API_KEY) throw new Error("Cancel the recurring Mollie subscription before deleting this account.");
-    await mollieRequest("/customers/"+encodeURIComponent(account.mollie_customer_id)+"/subscriptions/"+encodeURIComponent(account.mollie_subscription_id),{method:"DELETE"});
+  if (!account) return;
+  const subscriptionMayBeActive = ["active", "activation_pending", "past_due"].includes(account.subscription_status);
+  if (subscriptionMayBeActive && !account.mollie_subscription_id) {
+    throw new Error("The recurring subscription status cannot be safely verified yet. Retry account deletion after subscription reconciliation.");
+  }
+  if (account.mollie_subscription_id) {
+    if (!account.mollie_customer_id) {
+      throw new Error("The recurring subscription is missing its Mollie customer reference. Account deletion is paused for reconciliation.");
+    }
+    if (!process.env.MOLLIE_API_KEY) {
+      throw new Error("The recurring Mollie subscription must be verified and canceled before deleting this account.");
+    }
+    const subscriptionPath = "/customers/" + encodeURIComponent(account.mollie_customer_id) +
+      "/subscriptions/" + encodeURIComponent(account.mollie_subscription_id);
+    const current = await mollieRequest(subscriptionPath);
+    if (current.status !== "canceled") {
+      const canceled = await mollieRequest(subscriptionPath, { method: "DELETE" });
+      if (canceled.status !== "canceled") {
+        throw new Error("Mollie did not confirm recurring subscription cancellation. Account deletion is paused.");
+      }
+    }
   }
   const client = await pool.connect();
   try {
