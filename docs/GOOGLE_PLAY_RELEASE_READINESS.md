@@ -20,7 +20,7 @@ This checklist distinguishes work completed in the repository from actions that 
 
 ## Mandatory technical release gates
 
-- [ ] Complete and verify the **signed Android App Bundle (.aab)** build. Workflow 43617415554 has passed Expo config, TypeScript, API 36 target-SDK validation, keystore decode/alias verification and signing configuration; `bundleRelease` is still in progress. No AAB is cleared for upload until signature verification and artifact upload pass.
+- [x] Build and verify the **signed Android App Bundle (.aab)**. Workflow 43617415554 completed successfully: Expo config, TypeScript, API 36 target-SDK validation, upload keystore/alias verification, signed `bundleRelease`, signature verification and artifact upload all passed. Artifact: `nexora-google-play-aab` (38,760,620 bytes; SHA-256 `da165e09283b53e37ecb6c36d50c845157c31121f538d2fc69f47c957da02187`), built from commit `ce75a5efaa`. The artifact expires from GitHub Actions on 28 November 2026; the verified AAB has also been preserved separately for the owner.
 - [x] Configure and verify the Android upload keystore. GitHub Actions confirms the required signing secrets are present, and workflow 43617415554 successfully decoded the key and verified alias `nexora-upload-2026`. The workflow expects `ANDROID_KEYSTORE_BASE64`, `NEXORA_UPLOAD_STORE_PASSWORD` and optionally `NEXORA_UPLOAD_KEY_PASSWORD`; if the key-password secret is omitted, the workflow uses the store password. The temporary decoded keystore is deleted after the build. Never commit the keystore or passwords to Git. See [ANDROID_UPLOAD_KEYSTORE.md](ANDROID_UPLOAD_KEYSTORE.md).
 - [x] Verify the generated app's Expo SDK target-SDK baseline: Expo SDK 54+ defaults to **Android 16 / API level 36**; workflow 43617415554 passed the check and detected no lower override.
 - [ ] Verify the production API and PostgreSQL readiness, HTTPS, CORS, database backups, monitoring and recovery.
@@ -32,7 +32,7 @@ This checklist distinguishes work completed in the repository from actions that 
 
 Store listing copy is drafted in [GOOGLE_PLAY_STORE_LISTING_DRAFT.md](GOOGLE_PLAY_STORE_LISTING_DRAFT.md); a cautious [Data safety form draft](GOOGLE_PLAY_DATA_SAFETY_DRAFT.md) is also prepared. Both must be checked against the exact submitted build before use.
 
-- [ ] Complete the Play Console app record and developer registration, including the one-time developer registration payment.
+- [ ] Complete the Play Console app record and developer registration, including the one-time developer registration payment. The signed AAB is ready as a build artifact, but it has not been uploaded to Play Console.
 - [ ] Upload the signed AAB and verify Play App Signing configuration.
 - [ ] Provide the store listing: app name, short/full descriptions, support contact, app icon (512×512), feature graphic (1024×500) and phone screenshots. NEXORA-specific Play listing graphics are not yet present in the repository.
 - [ ] Publish the privacy policy URL above and account-deletion URL above; confirm both are publicly reachable after GitHub Pages deployment.
@@ -48,7 +48,7 @@ Store listing copy is drafted in [GOOGLE_PLAY_STORE_LISTING_DRAFT.md](GOOGLE_PLA
 - Render `/ready` returned `status=ready` and `database=connected` after merge. The currently attached PostgreSQL instance is on the temporary Free plan and is scheduled to expire on 12 December 2026; secure a durable database and backup/recovery path before that date.
 - GitHub Pages deployment succeeded; the workflow verified the privacy policy and account-deletion pages are publicly served.
 - PostgreSQL 18 API integration tests, dependency audit, independent verification and Render readiness checks passed after the latest billing/deletion safeguards.
-- Android TypeScript and Expo configuration checks passed in workflow 43617415554; target SDK and upload keystore checks passed. Signed AAB build remains in progress; physical-device account registration, login and deletion still need a final test.
+- Android workflow 43617415554 completed successfully: TypeScript, Expo configuration, target SDK 36 baseline, upload-key alias verification, signed AAB build and signature verification all passed. The AAB artifact was uploaded to GitHub Actions and separately preserved. Physical-device account registration, login, session restoration and deletion still need final testing.
 
 ## Current product boundaries
 
@@ -56,4 +56,4 @@ NEXORA is still a pre-production prototype. Payment Integrity is a deterministic
 
 ## Release decision
 
-**Not yet ready for public production submission.** The repository now includes account-deletion and privacy-policy implementation, but the signed AAB, API 36 verification, production-service checks, store assets/declarations and required Play testing remain release gates.
+**Not yet ready for public production submission.** The signed AAB and API 36 build checks are green. Remaining gates include the Play Console developer registration, actual Play Console upload and App Signing confirmation, store assets/declarations, Play Billing route, physical-device tests, production service/backup verification, and legal/privacy review.
