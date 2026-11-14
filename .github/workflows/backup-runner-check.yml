@@ -51,7 +51,7 @@ jobs:
           docker run --rm -v "$WORK:/work" -e BACKUP_ENCRYPTION_KEY="$TEST_ONLY_VALUE" \
             --entrypoint python3 nexora-backup-check \
             /backup/crypto.py decrypt /work/backup.dump.enc /work/restored.dump
-          cmp "$WORK/plain.dump" "$WORK/restored.dump"
+          docker run --rm -v "$WORK:/work" --entrypoint sh nexora-backup-check -c "cmp /work/plain.dump /work/restored.dump"
           cp "$WORK/backup.dump.enc" "$WORK/tampered.dump.enc"
           printf 'x' >> "$WORK/tampered.dump.enc"
           if docker run --rm -v "$WORK:/work" -e BACKUP_ENCRYPTION_KEY="$TEST_ONLY_VALUE" \
