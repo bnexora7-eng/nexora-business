@@ -15,7 +15,7 @@ This is an exploratory request for a discussion, not a representation that NEXOR
 
 ## 2. What exists today
 
-- A publicly accessible interactive demonstration: https://splendid-lokum-02523e.netlify.app/
+- A publicly accessible interactive demonstration: https://bnexora7-eng.github.io/nexora-business/payment-integrity-demo/demo.html
 - A source repository and project documentation: https://github.com/bnexora7-eng/nexora-business
 - A separate technical backend scaffold covering webhook-signature verification, timestamp checks, PostgreSQL schema, idempotency and audit-related functionality.
 - Automated checks recorded in GitHub Actions, including synthetic ACCEPT, REVIEW, REJECT and DUPLICATE scenarios.
@@ -68,7 +68,7 @@ We understand that a conventional business loan may require formal business regi
 
 ## 7. Links for evaluation
 
-- **Live synthetic-data demo:** https://splendid-lokum-02523e.netlify.app/
+- **Live synthetic-data demo:** https://bnexora7-eng.github.io/nexora-business/payment-integrity-demo/demo.html
 - **Source repository:** https://github.com/bnexora7-eng/nexora-business
 - **Project brief:** https://github.com/bnexora7-eng/nexora-business/blob/main/docs/PROJECT_BRIEF.md
 - **Project status and verification notes:** https://github.com/bnexora7-eng/nexora-business/blob/main/docs/PROJECT_STATUS.md
