@@ -39,9 +39,6 @@ jobs:
         working-directory: mobile
         run: npm install --no-audit --no-fund
 
-      - name: Apply non-breaking dependency security fixes
-        working-directory: mobile
-        run: npm audit fix --no-fund
       - name: Preserve generated dependency lock for review
         if: always()
         uses: actions/upload-artifact@v4
