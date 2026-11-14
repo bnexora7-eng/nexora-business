@@ -1,0 +1,58 @@
+name: NEXORA dependency lockfile sync
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "mobile/package.json"
+      - "payment-integrity-api/package.json"
+      - ".github/workflows/dependency-lockfiles.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: nexora-dependency-lockfile-sync
+  cancel-in-progress: false
+
+jobs:
+  lockfiles:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Generate mobile lockfile
+        working-directory: mobile
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+
+      - name: Verify mobile lockfile install
+        working-directory: mobile
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Verify API lockfile install
+        working-directory: payment-integrity-api
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Commit dependency lockfiles
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add mobile/package-lock.json payment-integrity-api/package-lock.json
+          if git diff --cached --quiet; then
+            echo "Lockfiles already match package manifests."
+            exit 0
+          fi
+          git commit -m "build: sync reproducible dependency lockfiles"
+          git push origin HEAD:main
