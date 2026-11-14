@@ -35,7 +35,7 @@ No database contents have been exported or independently verified yet. Do not cl
    ```
 
    Prefer the connection URL's TLS option (Render external connections require TLS). Do not include credentials in command-line arguments or logs.
-5. Store the dump in private durable storage outside the Render database and outside this public GitHub repository. Encrypt it at rest.
+6. Store the dump in private durable storage outside the Render database and outside this public GitHub repository. Encrypt it at rest.
 6. Verify the archive with `pg_restore --list nexora-business-2026-11-14.dump`. Record file size and SHA-256 checksum. A non-empty file alone is not sufficient.
 7. Restore the dump into a separate, temporary PostgreSQL 18 database. Do not restore over the live database. Verify schema, row counts, indexes, and application startup against the restored database.
 8. Keep the verified dump until after the replacement database is live and a second backup has been verified.
