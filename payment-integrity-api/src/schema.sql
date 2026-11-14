@@ -117,6 +117,12 @@ CREATE TABLE IF NOT EXISTS email_action_tokens (
 CREATE INDEX IF NOT EXISTS email_action_tokens_user_purpose_idx
   ON email_action_tokens (user_id, purpose, created_at DESC);
 
+CREATE TABLE IF NOT EXISTS auth_rate_limits (
+  ip_hash CHAR(64) PRIMARY KEY,
+  window_started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  attempt_count INTEGER NOT NULL CHECK (attempt_count >= 1 AND attempt_count <= 11)
+);
+
 CREATE TABLE IF NOT EXISTS ai_usage_windows (
   user_id BIGINT PRIMARY KEY REFERENCES app_users(id) ON DELETE CASCADE,
   window_started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
