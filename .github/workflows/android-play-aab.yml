@@ -67,13 +67,13 @@ jobs:
           const properties = fs.existsSync('android/gradle.properties')
             ? fs.readFileSync('android/gradle.properties', 'utf8')
             : '';
-          const declarations = gradle.split(/\\r?\\n/).filter(line => /targetSdkVersion/i.test(line));
-          const appDeclarations = appGradle.split(/\\r?\\n/).filter(line => /targetSdkVersion/i.test(line));
+          const declarations = gradle.split(/\r?\n/).filter(line => /targetSdkVersion/i.test(line));
+          const appDeclarations = appGradle.split(/\r?\n/).filter(line => /targetSdkVersion/i.test(line));
           console.log('Root target SDK declarations:', declarations);
           console.log('App target SDK declarations:', appDeclarations);
-          const override = properties.match(/^android\\.targetSdkVersion\\s*=\\s*(\\d+)\\s*$/m);
-          const rootLine = declarations.find(line => /targetSdkVersion\\s*=/.test(line));
-          const defaultValue = rootLine?.match(/(?:\\?:\\s*['"]|=\\s*['"]?)(\\d+)/)?.[1];
+          const override = properties.match(/^android\.targetSdkVersion\s*=\s*(\d+)\s*$/m);
+          const rootLine = declarations.find(line => /targetSdkVersion\s*=/.test(line));
+          const defaultValue = rootLine?.match(/(?:\?:\s*['"]|=\s*['"]?)(\d+)/)?.[1];
           const target = Number(override?.[1] || defaultValue || 0);
           console.log('Resolved Android target SDK:', target || 'not detected');
           if (!target) throw new Error('Could not determine the generated Android target SDK; inspect the declarations above before submission.');
