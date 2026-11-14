@@ -1,206 +1,97 @@
-# NEXORA — Production Readiness Master Record
+# NEXORA — Production Readiness Master Checklist
 
-**Record opened:** 14 November 2026  
-**Product decision:** NEXORA remains an owner-operated platform.  
-**Membership target:** NEXORA All Access — €29.99/month.  
-**Current release classification:** pre-production; not approved for public paid launch.
+**Last reviewed:** 14 November 2026  
+**Release status:** **PRE-PRODUCTION — NOT CLEARED FOR PUBLIC PAID LAUNCH**  
+**Commercial model:** NEXORA All Access — €29.99/month. NEXORA remains owner-operated and independent.
 
-This is the controlling checklist for engineering completion, operational continuity, security, data durability, and future investment. Update it after every material code, infrastructure, test, or release change. Git commits and GitHub Actions preserve source changes and automated outcomes; this document records decisions, verified outcomes, and outstanding gates. Never store secrets, personal customer data, database dumps, or credentials here.
+This file is the current release-gate summary. A green CI check validates only the scope of that check; it does not substitute for provider onboarding, live sandbox testing, a real database backup/restore, legal approval or physical-device acceptance.
 
-## 1. Non-negotiable release standard
+## 1. Verified green gates
 
-A release is not complete merely because the homepage loads. The following user journeys must work end to end:
-- Register, verify email, sign in, remain signed in safely, sign out, and recover a forgotten password.
-- View and update account details; delete an account with clear consequences and proper recurring-subscription cancellation.
-- Use every advertised module; save and retrieve user work; handle empty, loading, validation, offline, and server-error states.
-- Purchase All Access, verify payment server-side, activate entitlement, handle renewals, duplicate/retried webhooks, failed payments, refunds/disputes where supported, cancellation, and paid-through access.
-- Marketplace and any future purchase flow must define seller/buyer roles, order states, refunds, disputes, fees, delivery/fulfilment, and fraud controls before real money is accepted.
-- Recover the service and its data from a verified backup, not merely restart the server.
-- Have security, privacy, legal, support, monitoring, and incident-response procedures appropriate to the real service.
-
-No live charges or real customer/payment data until applicable gates pass and the owner explicitly approves activation.
-
-## 2. Verified foundation as of 14 November 2026
-
-These are verified implementation/deployment facts, not a production-readiness declaration:
-- Public website is deployed on GitHub Pages. Latest Pages workflow run 43614151602 (commit 6592909d) completed successfully after the PostgreSQL 18 CI alignment. The previous full public verification in run 43613792428 passed homepage, account/workspace/enquiry pages, privacy and account-deletion pages, live Render API/demo decisions, and browser ACCEPT/REVIEW/REJECT checks.
-- Node.js API is deployed on Render. Latest deployment dep-dbs8ftm7bikc73epipl0 for commit 6592909d is live. Earlier runtime logs confirm database schema ready and API listening. Render health check path is /ready.
-- API CI run 43616808694 completed successfully on 14 November 2026 against PostgreSQL 18, including the expanded integration suite and production dependency audit. The independent verification workflow 43616808693 and Render backend smoke test 43616808724 also passed on commit 48228a9136. The production dependency audit reports 0 vulnerabilities. Nodemailer 10.1.4 is installed; CI fails on high/critical production dependency findings.
-- Account-deletion CORS preflight was corrected to allow DELETE and covered by an explicit integration test.
-- PostgreSQL 18 database exists in Frankfurt on Render Free; current state was available, not suspended, with an empty external IP allowlist.
-- Backend includes account registration, email-verification enforcement, login, logout, password reset, session revocation, account deletion endpoints, and database-backed authentication throttling.
-- Passwords use scrypt; session tokens are random and only their SHA-256 hashes are stored.
-- Account deletion removes the user and cascading user content, and detaches payment ledger records that may need legal retention. Before deletion, backend now queries Mollie for any linked subscription, cancels it if it is not already canceled, and fails closed if provider cancellation cannot be confirmed or a subscription is pending without a provider reference. Integration coverage exercises cancellation before deletion.
-- Community, Marketplace publishing, Business workspace writes, and AI planning are protected by a server-side All Access entitlement check. Public Community/Marketplace reads are previews.
-- Mollie recurring checkout and webhook lifecycle code exists, with mock-provider integration coverage. Checkout creation is serialized with a per-account PostgreSQL row lock to prevent concurrent duplicate first payments/customer creation; provider calls have a 15-second timeout. No complete live Mollie test-mode journey has been verified; provider credentials/onboarding remain outstanding.
-- AI endpoint has server-side key handling, prompt-boundary hardening, response-size cap, per-account rate limits, monthly token reservation limits, and integration tests against a mock provider. No live AI key is configured; AI remains disabled.
-- Payment Integrity public demo uses synthetic events and temporary in-memory demo storage. It is not a live payment processor, bank integration, production fraud engine, or durable demo audit service.
-- Existing Git history and GitHub Actions preserve source changes and automated test/deployment outcomes. They do not back up the production PostgreSQL data.
-
-## 3. Critical data durability gate
-
-**Current database:** Render Free PostgreSQL 18, Frankfurt.  
-**Creation:** 12 November 2026.  
-**Expiry:** 12 December 2026, 14:31:31 UTC.  
-**Automated backups/PITR:** not available on this Free instance.  
-**External IP allowlist:** empty.  
-**Verified logical dump:** none recorded.  
-**Restore test:** not performed.  
-**Replacement database:** not provisioned.
-
-Required before 12 December 2026:
-1. Create an encrypted logical backup without exposing the database URL or opening the database to the public internet.
-2. Verify the archive listing and SHA-256 checksum.
-3. Restore into a separate PostgreSQL 18 database and verify schema, row counts, indexes, and application connectivity.
-4. Choose and approve a durable replacement database/storage plan; do not let the Free database expire while it is the only copy.
-5. Establish scheduled backups, retention, off-provider storage, access controls, and recurring restore tests.
-6. Record backup timestamp, PostgreSQL version, archive size, checksum, destination, and restore-test result in a private operations record.
-
-Never use 0.0.0.0/0 for database access. Never treat a Git commit, GitHub Actions artifact, or database snapshot that has not been restore-tested as a complete backup.
-
-## 4. Application lifecycle and feature-completion matrix
-
-| Area | Existing foundation | Remaining acceptance gate |
+| Gate | Evidence | Current result |
 |---|---|---|
-| Registration and login | Backend endpoints and automated tests | Full browser and Android journey on real devices; email delivery verified |
-| Email verification | Token flow and endpoint | Production sender configured; deliverability, resend, expiry, replay and abuse tests |
-| Logout and sessions | Session revocation; hashed bearer tokens | Cross-device/session policy, expiry UX, secure storage review, device tests |
-| Password recovery | Reset endpoint and session revocation | Live email round trip and native Android recovery journey |
-| Account deletion | Web and authenticated API endpoints | Test subscription cancellation, retries/failures, legal retention, confirmation UX, and all clients |
-| Account profile | Authenticated profile endpoint | Complete profile editing and data export/rectification workflow where required |
-| Community | Paid write gate and public preview reads | Full CRUD/moderation/reporting/blocking, abuse controls, privacy and regression tests |
-| Marketplace | Paid listing create/read foundation | Buyer/seller flow, checkout, order lifecycle, fulfilment, refunds, disputes, fraud, seller verification; no real trading until complete |
-| Business Studio | Authenticated, paid-gated workspace save/load | Verify every field, persistence, concurrency, validation, export and error recovery |
-| AI planning | Secured provider-neutral integration; disabled by default | Owner-approved API key and budget, provider-side spending caps, live test, quota monitoring and failure UX |
-| Payment Integrity | Synthetic demo and backend webhook screening foundation | Real provider contract, threat review, persistent audit trail, reconciliation, operational alerts and independent validation |
-| All Access | €29.99/month entitlement model and preliminary Mollie code | Full test-mode lifecycle and Android billing decision; clear terms and customer self-service |
-| Android | App navigation and account deletion work previously device-checked | Current APK rebuild, full regression on device, signed AAB, Play declarations and store requirements |
-| Visual design | Deliberately deferred | Final responsive UI/UX, accessibility, error/empty/loading states, store assets after functional gates |
+| API integration tests | PostgreSQL 18 integration suite; latest passing run 43619535572 | **PASS** |
+| Independent API verification | Run 43619535682 | **PASS** |
+| Render API + PostgreSQL readiness | Run 43619535564 and scheduled monitor 43619617134 | **PASS** |
+| API dependency integrity | Committed `payment-integrity-api/package-lock.json`; `npm ci`; production audit | **PASS** |
+| Account security | Email verification required before login; one-use verification/reset tokens; reset revokes sessions; rate limiting; password hashing | **PASS in automated tests** |
+| Mollie lifecycle logic | Concurrent checkout, first-payment webhook, recurring renewals, amount mismatch, cancellation and deletion safeguards covered by mocked-provider integration tests | **PASS in mocked tests only** |
+| Backup runner image and cryptography | Backup runner CI 43618325150: Docker build, PostgreSQL 18.7 tools, AES-256-GCM round-trip and tamper rejection | **PASS in CI only** |
+| Public Pages smoke check | Run 43619617134 checked homepage, account, verification, recovery, deletion and privacy pages plus API readiness | **PASS** |
+| Android target SDK and signing setup | Run 43619553655: Expo config, TypeScript, SDK 36 baseline and upload-key alias validation | **PASS; signed AAB build still in progress at last check** |
+| Android billing safety | External Mollie checkout button disabled in the Android client until compliant Play billing is implemented | **PASS as a safety block** |
 
-## 5. Security and auditability
+## 2. Open production gates
 
-Required before production:
-- Threat model covering account takeover, credential stuffing, session theft, authorization bypass, IDOR, injection, XSS/CSRF, webhook spoofing/replay, payment fraud, data exfiltration, denial of service, dependency and supply-chain risks.
-- Verify all authorization on the server; never trust a client-side paid/unpaid flag or checkout redirect.
-- Validate inputs and bound request/response sizes; rate-limit sensitive endpoints using shared durable storage.
-- Secrets only in managed secret storage; rotate keys; never commit or log credentials.
-- TLS, secure headers, least-privilege database role, database network restrictions, and separate test/live credentials.
-- Append-only, privacy-minimized audit events for security-sensitive and financial state changes (account/session changes, entitlement transitions, order/payment/webhook decisions, admin actions). Define retention, access, integrity protection, and deletion/anonymization rules. Do not indiscriminately log every keystroke or sensitive payload.
-- Centralized error reporting, uptime/latency alerts, database capacity monitoring, payment reconciliation, and an incident-response runbook.
-- Independent security review and remediation of findings before real customer data or live payment activation.
+### A. Database durability — critical
 
-The current screening_audit table records Payment Integrity webhook decisions; it is not yet a complete platform-wide user/admin activity audit trail.
+- Render PostgreSQL 18 database `nexora-business-db` is on the Free plan in Frankfurt.
+- Current expiry: **12 December 2026**. Free plan has no automated backups or point-in-time recovery.
+- No actual database export or restore test has been completed.
+- Encrypted backup Cron Blueprint and runner code are prepared. Container and encryption checks passed, but Render has not created the Cron service.
+- The Cron requires a private GitHub repository `bnexora-private-backups`, a fine-grained token scoped only to that repository, and a Render payment method. The user authorized a maximum of approximately **$1/month** for this backup service only.
+- After setup: plan and review the single Cron resource, deploy it, create the first encrypted backup, verify the private release assets and hashes, then restore into a separate PostgreSQL 18 recovery database. Do not overwrite production. Any additional paid recovery resource requires separate approval.
 
-## 6. Billing, legal and customer operations
+### B. Transactional email
 
-- Mollie merchant onboarding and live processing require business/provider approval; do not enable live keys or ENABLE_LIVE_PAYMENTS prematurely.
-- Complete test-mode first payment, mandate/subscription creation, renewal, duplicate webhook, delayed webhook, failed renewal, cancellation, paid-through access, and account deletion.
-- Decide and implement the correct Google Play Billing route for digital membership access inside the Android app. Do not assume web checkout is sufficient.
-- Publish reviewed terms, privacy notice, recurring-payment disclosures, cancellation/refund/support policy, data retention schedule, operator identity/address, processor list, and cross-border data-transfer review.
-- Establish VAT/tax/accounting and customer-support processes with qualified local advice.
-- Do not describe marketplace listings as purchasable until the buyer/seller/payment lifecycle exists and has been tested.
+- Brevo HTTPS delivery is implemented; unit tests cover sender, recipient, message payload and provider failure handling.
+- Actual delivery is **not verified** because `BREVO_API_KEY` and a verified `BREVO_FROM` sender have not been configured.
+- Render Free blocks outbound SMTP ports 25, 465 and 587; use Brevo HTTPS rather than relying on SMTP.
+- Required: create a Brevo API key, verify the sender/domain, enter secrets directly into Render, then test registration, resend verification, password reset and delivery to real inboxes. Never send API keys in chat.
 
-## 7. Investment plan — cost approval required
+### C. Mollie merchant and recurring billing
 
-The owner has approved a maximum of **$1/month for the NEXORA PostgreSQL backup Cron service only**. No other paid resource is authorized. Obtain current vendor pricing and present any additional cost before creating or upgrading resources.
+- Subscription lifecycle and webhook reconciliation are covered by a Mollie-compatible mocked server, not the real Mollie sandbox.
+- No live merchant onboarding, API credentials or end-to-end provider transaction has been verified.
+- Required: complete merchant onboarding and legal/business checks, configure test credentials in Render, verify first payment, recurring renewal, failed renewal, cancellation, refunds/disputes and account deletion. Keep `ENABLE_LIVE_PAYMENTS` disabled until all gates pass.
+- Browser redirects alone never grant subscription access; the API must reconcile provider state.
+- PayPal is permanently excluded from this project.
 
-**Potentially required for a safe launch**
-- Durable managed PostgreSQL plan with automated backups/PITR appropriate to expected data and recovery objectives.
-- Encrypted off-provider backup storage and scheduled backup/restore automation.
-- Reliable transactional email provider and verified sender/domain.
-- Monitoring/error tracking and alert delivery.
-- Payment-provider fees and any required business verification/accounting costs.
-- Domain and TLS/DNS costs if a custom domain is chosen.
+### D. Android / Google Play
 
-**Scale-up investments**
-- Larger database compute/storage, connection pooling, read replicas or high availability.
-- Application compute with adequate memory/CPU, multiple instances and autoscaling.
-- Object storage/CDN for user uploads and generated assets.
-- Queue/background workers for email, notifications, media, AI and marketplace processing.
-- Centralized logs, audit storage, analytics, security scanning and independent penetration testing.
+- A signed AAB was previously built and signature-verified (workflow 43617415554, commit ce75a5efaa). A newer signed AAB rebuild with the Android Mollie-checkout block and current dependency audit was running in workflow 43619553655 at last review.
+- A fresh Android validation APK build was running in workflow 43619553600; another installable APK build was triggered after the latest workflow corrections.
+- Expo SDK 54+ and target SDK 36 baseline passed CI. Upload keystore alias `nexora-upload-2026` and signing configuration passed validation. The temporary decoded key is deleted by the workflow.
+- Android external Mollie checkout is intentionally disabled. Before enabling digital subscriptions, either implement Google Play Billing with server-side purchase verification or complete Google's EEA alternative-billing enrollment and all applicable APIs, reporting, user disclosure, customer-support and dispute requirements. EEA alternative billing requires a registered business.
+- Play Console developer registration fee has **not** been paid; the AAB has not been submitted to Play Console; store listing, Data Safety declarations, App Signing confirmation and physical-device acceptance tests remain open.
+- The current Play build is a candidate artifact, not a published or approved app.
 
-**Feature-specific variable costs**
-- AI provider usage, with provider-side hard budgets/alerts and application quotas.
-- Email volume, payment transaction fees, storage/bandwidth, and Android/Play distribution requirements.
+### E. AI provider and cost controls
 
-For each proposed purchase, record vendor, plan, monthly and annual price, included limits, overage pricing, data location, backup/retention, migration path, and reason. Present costs to the owner before creating or upgrading resources.
+- AI route is authenticated and All Access-gated.
+- No production provider key or approved monthly budget is configured. AI remains disabled by default (`AI_MONTHLY_TOKEN_LIMIT=0`).
+- Required before enabling: add the server-side key directly to Render, set a conservative monthly token limit, configure provider-side spending alerts/limits, verify quota reservation/reconciliation and test abuse/rate-limit behavior. No paid AI usage without explicit budget approval.
 
-## 8. Release decision record
+### F. Legal, privacy and business identity
 
-Release status remains **PRE-PRODUCTION / NOT CLEARED FOR PAID PUBLIC LAUNCH** until:
-- database backup and restore are verified and expiry risk is removed;
-- every advertised feature has an accurate availability classification;
-- account, deletion, security and all paid journeys pass end-to-end tests on web and Android;
-- payment rails and provider onboarding are verified in test mode and approved for live use;
-- legal/privacy/customer operations are reviewed;
-- monitoring, incident response and recurring backups are operational;
-- final visual/UX review is completed.
+- Public privacy page was corrected: it no longer describes a FormSubmit web form that the site does not use; it now describes the email link, Brevo conditional processing and website/mobile token storage.
+- A scheduled production smoke monitor verifies the public privacy and account-deletion pages and API readiness. Latest monitor run 43619617134 passed.
+- Internal terms and subscription disclosures draft: `docs/TERMS_AND_SUBSCRIPTION_DISCLOSURES_DRAFT.md`. It is **not published and not legally approved**.
+- Required before paid launch: actual operator/legal name, legal form, KVK number, registered address, VAT treatment of €29.99, verified support contact, final feature availability matrix, consumer withdrawal/refund/cancellation disclosures and Dutch/EU legal review.
+- Do not invent company identity or publish placeholder terms. Marketplace remains listings only; no checkout or escrow is implemented. Payment Integrity is a synthetic prototype, not a regulated payment service or certified fraud engine.
 
-## 9. Change log
+### G. Hosting and operational resilience
 
-- 2026-11-14 — Opened master readiness record; consolidated verified foundation, account lifecycle, payment/AI state, critical PostgreSQL expiry, audit requirements, and investment gates. No new paid infrastructure or live payment/AI activation authorized.
-- 2026-11-14 — Fixed account-deletion DELETE CORS preflight; upgraded Nodemailer to 10.1.4; added a production dependency audit gate. Latest API CI run 43614151644 passed 15/15 tests against PostgreSQL 18 and dependency audit reported zero vulnerabilities. Latest Render deployment dep-dbs8ftm7bikc73epipl0 is live. Pages workflow run 43614151602 completed successfully; the full public checks were previously verified in run 43613792428. No paid infrastructure, live payments, or live AI were enabled.
+- Render API service currently runs on the Free plan with one instance. PostgreSQL is also Free and temporary.
+- No public database allowlist was opened; do not use `0.0.0.0/0` for the database.
+- Production capacity, uptime guarantees, persistent backups, recovery time and support ownership are not yet established.
+- Any paid upgrade beyond the previously approved backup Cron requires separate approval.
 
+## 3. Mobile dependency security exception
 
-## Backup runner progress — 14 November 2026
+The mobile CI audit passes with a narrowly scoped exception for `image-size` used by Metro during local build asset inspection. The two current high-severity advisories are GHSA-5p2g-fcmc-qvqq and GHSA-w3rx-r6r6-pgpr; no patched npm release is currently published. The package is a build-tool dependency and is not shipped as app runtime code. The audit script permits only those exact advisories and package path; all other high/critical findings fail CI.
 
-An encrypted PostgreSQL 18 backup runner and restore helper have been committed under `backup/`; the Render Blueprint is `render-backup.yaml`. The runner validates the pg_dump archive, encrypts it with AES-256-GCM/PBKDF2, uploads ciphertext to a private GitHub repository, verifies Git blob hashes, and prunes backups older than 30 days. It is not yet deployed: Render Blueprint planning returned `need_payment_info`, so no cron resource was created and no charge occurred. The private backup repository and fine-grained Contents read/write token also remain to be configured. The first successful backup and separate-database restore test are still mandatory release gates.
+PostCSS is pinned to 8.5.33 to address the current PostCSS advisories. Reassess this exception on every Expo/Metro upgrade and remove it once a fixed `image-size` release is available. Do not use `npm audit fix --force` or jump Expo SDK major versions without a compatibility migration and full Android rebuild.
 
+## 4. Owner actions still required
 
-## Additional backend hardening — 14 November 2026
+1. Create the private `bnexora-private-backups` repository and its narrowly scoped GitHub token; add a payment method in Render for the approved backup Cron only.
+2. Create the Brevo API key and verify the sender/domain; enter secrets directly in Render.
+3. Complete the required Dutch business registration and legal identity/VAT details before merchant onboarding and publication.
+4. Complete Mollie test-mode and merchant verification, then select the Android billing route.
+5. Decide when to pay the Google Play Console one-time developer registration fee and complete store declarations.
+6. Install the latest APK on the Samsung phone and test registration, email verification, login, session persistence, Community/Marketplace, account deletion, subscription status and error handling.
 
-- Commit 8f39ce7 adds per-account row-lock serialization around All Access checkout reservation. Integration test commit 17efe4c exercises two concurrent checkout requests and asserts only one pending subscription order is created.
-- Commit 89a8c9c bounds Mollie API calls to 15 seconds.
-- Commit d8f9b6b makes account deletion fail closed unless any linked Mollie subscription is verified canceled; active/activation_pending/past_due states without a provider subscription ID block deletion for reconciliation.
-- Commit 48228a9 adds integration coverage proving an active Mollie subscription is canceled before account deletion.
-- PostgreSQL 18 API CI run 43616808694 passed; independent verification 43616808693 passed; Render backend smoke test 43616808724 passed. The latest production API source commit d8f9b6b is deployed live; commit 48228a9 adds test-only coverage on top.
+## 5. Release rule
 
-
-## Android release pipeline hardening — 14 November 2026
-
-The Play AAB workflow now performs a generated-Gradle target SDK check before signing/building. The first implementation failed to resolve the Expo-generated target SDK; the check has been replaced with a Gradle runtime inspection. Latest workflow run 43617263749 is in progress. GitHub Actions reports the Play signing secrets are present (`HAS_PLAY_SIGNING=true`), but the keystore alias/password and signed AAB are not yet verified. Do not mark Android release-ready until the workflow confirms the alias, builds the AAB, and verifies its signature.
-
-
-## Billing/deletion race hardening — 14 November 2026
-
-- Commit 247830d adds cancellation and provider verification for pending Mollie first payments before account deletion. If a payment is still being created, its provider result is uncertain, or Mollie cannot confirm cancellation, deletion fails closed.
-- Commit b91f657 blocks account deletion when a first payment is already paid but recurring subscription activation has not been reconciled.
-- Commit 67688fa serializes first-payment webhook activation with account deletion by locking the account row while the recurring subscription is created/verified. This prevents a delayed webhook from creating a recurring subscription after the account has been deleted.
-- Commit b10245d adds integration coverage for cancellation of the pending first payment and the recurring subscription before account deletion.
-- API CI run 43617761235, independent verification 43617761267, and Render PostgreSQL readiness smoke test 43617761238 all passed on commit b10245d.
-
-
-## Backup runner build verification — 14 November 2026
-
-Backup-runner CI run 43617810597 passed on commit 19aebc536b: Docker image build, PostgreSQL 18.7 client tools, timeout and script syntax checks, authenticated encryption/decryption round trip, and tamper rejection. This confirms the runner container and crypto helper, not a live database dump or restore. The first actual backup and separate-database restore remain open.
-
-
-## Latest billing reconciliation verification — 14 November 2026
-
-- Commit f2402a4 includes legacy `creation_failed` checkout rows in the fail-closed reconciliation path, preventing automatic duplicate checkout creation or account deletion while an old provider result may be uncertain.
-- API CI run 43617851487 passed on f2402a4; Render PostgreSQL readiness smoke test 43617851569 and independent verification 43617851563 also passed. This backend source revision is deployed and healthy.
-
-
-## Signed Android bundle completed — 14 November 2026
-
-- Android Play build workflow 43617415554 completed successfully on commit ce75a5efaa. TypeScript, Expo config, Android target SDK 36 baseline, upload-keystore decode/alias verification, release signing, AAB build and signature verification all passed. The temporary decoded keystore was removed from the runner.
-- Artifact `nexora-google-play-aab`: 39,110,665 bytes; GitHub artifact ZIP 39,110,665 bytes; GitHub artifact ZIP 38,760,620 bytes; SHA-256 `da165e09283b53e37ecb6c36d50c845157c31121f538d2fc69f47c957da02187`. It was downloaded and verified separately. The artifact's GitHub Actions retention expires 28 November 2026; the owner has a preserved AAB file.
-- Android build gate is green. This does not mean the app is published or Play Console approved. Developer registration payment, Play Console upload/App Signing confirmation, listing assets and declarations, Play Billing compliance, device testing and legal/privacy review remain open.
-
-
-## Account deletion conflict handling — 14 November 2026
-
-- Commit b77be14 returns a clear HTTP 409 conflict when account deletion is unsafe because a Mollie payment/subscription is pending or cannot be confirmed canceled; generic provider failures still return a generic server error.
-- Commit 614b2ab adds an integration test proving a paid first payment with no reconciled recurring subscription blocks account deletion with HTTP 409, leaves the account intact, and allows the subsequent webhook to finish activation.
-- API CI run 43618169661 passed; Render PostgreSQL readiness smoke test 43618169671 and independent verification 43618170090 passed on commit 614b2ab.
-
-
-## Current backend revision — 14 November 2026
-
-The latest backend source hardening is commit `b77be14`; Render smoke test 43618169671 passed after its deployment. Commit `614b2ab` adds the integration test for paid-first-payment deletion conflicts. API test run 43618169661 and independent verification 43618170090 passed on that test commit. Subsequent commits in the documentation-only sequence do not change backend source.
-
-
-## Final pending-payment deletion safeguard — 14 November 2026
-
-- Commit 1c50b6f broadens account deletion protection to **all** pending provider payments on an account, not only the All Access first payment. It verifies provider status and cancels cancelable payments before deletion; uncertain or non-cancelable payments block deletion.
-- API CI run 43618353896 passed; Render readiness smoke test 43618353871 and independent verification 43618353937 passed on commit 1c50b6f.
+Do not enable live payments, paid AI, or public paid subscriptions until: a real encrypted backup exists and restore has passed; email delivery works end to end; Mollie test lifecycle and merchant onboarding are complete; AI budgets are enforced; Android billing is policy-compliant; legal documents are approved; the database has durable production backup/retention; and physical-device acceptance tests pass.
