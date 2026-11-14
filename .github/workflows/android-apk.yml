@@ -49,9 +49,11 @@ jobs:
           path: mobile/package-lock.json
           if-no-files-found: ignore
           retention-days: 7
-      - name: Audit production dependencies
+      - name: Audit production dependency tree
         working-directory: mobile
-        run: npm audit --omit=dev --audit-level=high
+        run: |
+          npm audit --omit=dev --json > /tmp/nexora-mobile-audit.json || audit_status=$?
+          node ../scripts/check-mobile-audit.mjs /tmp/nexora-mobile-audit.json
       - name: Check TypeScript
         working-directory: mobile
         run: npm run typecheck
