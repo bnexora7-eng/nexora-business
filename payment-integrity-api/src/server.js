@@ -863,39 +863,43 @@ async function handleBusinessAIPlan(req,res) {
 const server = createServer(async (req, res) => {
   try {
     cors(req, res);
+    const pathname = (req.url || "/").split("?")[0].replace(/\/+$/, "") || "/";
     if (req.method === "OPTIONS") { res.writeHead(204); return res.end(); }
-    if (req.method === "GET" && req.url === "/health") {
+    if (req.method === "GET" && pathname === "/") {
+      return send(res, 200, { service: "NEXORA Payment Integrity API", status: "online", endpoints: { health: "/health", readiness: "/ready" }, message: "API is running. Use the documented /v1 endpoints for account, subscription and payment operations." });
+    }
+    if (req.method === "GET" && pathname === "/health") {
       if (pool) await pool.query("SELECT 1");
       return send(res, 200, { status: "ok", service: "nexora-payment-integrity-api", mode: pool ? "database" : "demo-only" });
     }
-    if (req.method === "GET" && req.url === "/ready") {
+    if (req.method === "GET" && pathname === "/ready") {
       if (!pool) return send(res, 503, { status: "not_ready", reason: "DATABASE_URL is not configured" });
       await pool.query("SELECT 1");
       return send(res, 200, { status: "ready", database: "connected" });
     }
-    if (req.method === "POST" && req.url === "/v1/auth/register") return await handleRegister(req, res);
-    if (req.method === "POST" && req.url === "/v1/auth/login") return await handleLogin(req, res);
-    if (req.method === "POST" && req.url === "/v1/auth/verify-email") return await handleVerifyEmail(req,res);
-    if (req.method === "POST" && req.url === "/v1/auth/resend-verification") return await handleResendVerification(req,res);
-    if (req.method === "POST" && req.url === "/v1/auth/request-password-reset") return await handleRequestPasswordReset(req,res);
-    if (req.method === "POST" && req.url === "/v1/auth/reset-password") return await handleResetPassword(req,res);
-    if (req.method === "GET" && req.url === "/v1/auth/me") return await handleMe(req, res);
-    if (req.method === "POST" && req.url === "/v1/auth/logout") return await handleLogout(req, res);
-    if (req.method === "DELETE" && req.url === "/v1/auth/account") return await handleDeleteAccount(req, res);
-    if (req.method === "POST" && req.url === "/v1/auth/delete-request") return await handleWebAccountDeletion(req, res);
-    if (req.url === "/v1/community/posts") return await handleCommunity(req,res);
-    if (req.url === "/v1/marketplace/listings") return await handleMarketplace(req,res);
-    if (req.url === "/v1/business/workspace") return await handleBusinessWorkspace(req,res);
-    if (req.url === "/v1/business/ai-plan") return await handleBusinessAIPlan(req,res);
-    if (req.method === "POST" && req.url === "/v1/payments") return await handleCreatePayment(req, res);
-    if (req.method === "POST" && req.url === "/v1/subscriptions/checkout") return await handleCreateSubscriptionCheckout(req,res);
-    if (req.method === "GET" && req.url === "/v1/subscriptions/me") return await handleGetSubscription(req,res);
-    if (req.method === "POST" && req.url === "/v1/subscriptions/cancel") return await handleCancelSubscription(req,res);
-    if (req.method === "POST" && req.url === "/v1/payments/mollie-webhook") return await handleMollieWebhook(req, res);
-    const paymentStatusMatch = /^\/v1\/payments\/([0-9a-f-]{36})$/.exec(req.url || "");
+    if (req.method === "POST" && pathname === "/v1/auth/register") return await handleRegister(req, res);
+    if (req.method === "POST" && pathname === "/v1/auth/login") return await handleLogin(req, res);
+    if (req.method === "POST" && pathname === "/v1/auth/verify-email") return await handleVerifyEmail(req,res);
+    if (req.method === "POST" && pathname === "/v1/auth/resend-verification") return await handleResendVerification(req,res);
+    if (req.method === "POST" && pathname === "/v1/auth/request-password-reset") return await handleRequestPasswordReset(req,res);
+    if (req.method === "POST" && pathname === "/v1/auth/reset-password") return await handleResetPassword(req,res);
+    if (req.method === "GET" && pathname === "/v1/auth/me") return await handleMe(req, res);
+    if (req.method === "POST" && pathname === "/v1/auth/logout") return await handleLogout(req, res);
+    if (req.method === "DELETE" && pathname === "/v1/auth/account") return await handleDeleteAccount(req, res);
+    if (req.method === "POST" && pathname === "/v1/auth/delete-request") return await handleWebAccountDeletion(req, res);
+    if (pathname === "/v1/community/posts") return await handleCommunity(req,res);
+    if (pathname === "/v1/marketplace/listings") return await handleMarketplace(req,res);
+    if (pathname === "/v1/business/workspace") return await handleBusinessWorkspace(req,res);
+    if (pathname === "/v1/business/ai-plan") return await handleBusinessAIPlan(req,res);
+    if (req.method === "POST" && pathname === "/v1/payments") return await handleCreatePayment(req, res);
+    if (req.method === "POST" && pathname === "/v1/subscriptions/checkout") return await handleCreateSubscriptionCheckout(req,res);
+    if (req.method === "GET" && pathname === "/v1/subscriptions/me") return await handleGetSubscription(req,res);
+    if (req.method === "POST" && pathname === "/v1/subscriptions/cancel") return await handleCancelSubscription(req,res);
+    if (req.method === "POST" && pathname === "/v1/payments/mollie-webhook") return await handleMollieWebhook(req, res);
+    const paymentStatusMatch = /^\/v1\/payments\/([0-9a-f-]{36})$/.exec(pathname);
     if (req.method === "GET" && paymentStatusMatch) return await handleGetPayment(req, res, paymentStatusMatch[1]);
-    if (req.method === "POST" && req.url === "/v1/events") return await handleEvent(req, res);
-    if (req.method === "POST" && req.url === "/v1/demo/events") return await handleDemoEvent(req, res);
+    if (req.method === "POST" && pathname === "/v1/events") return await handleEvent(req, res);
+    if (req.method === "POST" && pathname === "/v1/demo/events") return await handleDemoEvent(req, res);
     return send(res, 404, { error: "Not found" });
   } catch (error) {
     console.error("request failed", error);
