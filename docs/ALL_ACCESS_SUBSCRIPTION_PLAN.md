@@ -25,6 +25,8 @@ The membership is intended to become the single access pass for the NEXORA ecosy
 
 The account dashboard must show the member's actual entitlement state, not merely a successful sign-in.
 
+**Code audit finding (14 November 2026):** the current API module handlers primarily require a signed-in account; Community publishing, Marketplace publishing and Business workspace access do not yet enforce an active All Access subscription. Public Community / Marketplace reads are also currently available without a membership check. This is not yet a paid-access enforcement system. Before launch, define which public previews remain free and enforce the paid entitlement on every protected API route, not only by hiding buttons in the app.
+
 ## 3. Subscription and billing architecture
 
 The repository contains a preliminary Mollie recurring-subscription flow for web accounts: authenticated checkout creation for €29.99; first payment using a Mollie customer; webhook retrieval and validation; recurring subscription creation after the first payment; and subscription status and cancellation endpoints.
