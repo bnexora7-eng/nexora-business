@@ -41,6 +41,8 @@ jobs:
         with:
           node-version: 22
       - run: npm ci --no-audit --no-fund
+      - name: Validate OpenAPI YAML syntax
+        run: ruby -e 'require "yaml"; YAML.parse_file("openapi.yaml"); puts "OpenAPI YAML syntax valid."'
       - name: Preserve generated API dependency lock for review
         if: always()
         uses: actions/upload-artifact@v4
