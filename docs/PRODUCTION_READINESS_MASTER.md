@@ -25,14 +25,14 @@ No live charges or real customer/payment data until applicable gates pass and th
 These are verified implementation/deployment facts, not a production-readiness declaration:
 - Public website is deployed on GitHub Pages. Latest Pages workflow run 43614151602 (commit 6592909d) completed successfully after the PostgreSQL 18 CI alignment. The previous full public verification in run 43613792428 passed homepage, account/workspace/enquiry pages, privacy and account-deletion pages, live Render API/demo decisions, and browser ACCEPT/REVIEW/REJECT checks.
 - Node.js API is deployed on Render. Latest deployment dep-dbs8ftm7bikc73epipl0 for commit 6592909d is live. Earlier runtime logs confirm database schema ready and API listening. Render health check path is /ready.
-- Latest API CI run 43614151644 passed all 15 tests against PostgreSQL 18 (0 failures). The production dependency audit reports 0 vulnerabilities. Nodemailer 10.1.4 is installed; CI fails on high/critical production dependency findings.
+- API CI run 43616808694 completed successfully on 14 November 2026 against PostgreSQL 18, including the expanded integration suite and production dependency audit. The independent verification workflow 43616808693 and Render backend smoke test 43616808724 also passed on commit 48228a9136. The production dependency audit reports 0 vulnerabilities. Nodemailer 10.1.4 is installed; CI fails on high/critical production dependency findings.
 - Account-deletion CORS preflight was corrected to allow DELETE and covered by an explicit integration test.
 - PostgreSQL 18 database exists in Frankfurt on Render Free; current state was available, not suspended, with an empty external IP allowlist.
 - Backend includes account registration, email-verification enforcement, login, logout, password reset, session revocation, account deletion endpoints, and database-backed authentication throttling.
 - Passwords use scrypt; session tokens are random and only their SHA-256 hashes are stored.
-- Account deletion removes the user and cascading user content, and detaches payment ledger records that may need legal retention. If a recurring Mollie subscription exists, backend attempts to cancel it before deleting the account.
+- Account deletion removes the user and cascading user content, and detaches payment ledger records that may need legal retention. Before deletion, backend now queries Mollie for any linked subscription, cancels it if it is not already canceled, and fails closed if provider cancellation cannot be confirmed or a subscription is pending without a provider reference. Integration coverage exercises cancellation before deletion.
 - Community, Marketplace publishing, Business workspace writes, and AI planning are protected by a server-side All Access entitlement check. Public Community/Marketplace reads are previews.
-- Mollie recurring checkout and webhook lifecycle code exists, with mock-provider integration coverage. No complete live Mollie test-mode journey has been verified; provider credentials/onboarding remain outstanding.
+- Mollie recurring checkout and webhook lifecycle code exists, with mock-provider integration coverage. Checkout creation is serialized with a per-account PostgreSQL row lock to prevent concurrent duplicate first payments/customer creation; provider calls have a 15-second timeout. No complete live Mollie test-mode journey has been verified; provider credentials/onboarding remain outstanding.
 - AI endpoint has server-side key handling, prompt-boundary hardening, response-size cap, per-account rate limits, monthly token reservation limits, and integration tests against a mock provider. No live AI key is configured; AI remains disabled.
 - Payment Integrity public demo uses synthetic events and temporary in-memory demo storage. It is not a live payment processor, bank integration, production fraud engine, or durable demo audit service.
 - Existing Git history and GitHub Actions preserve source changes and automated test/deployment outcomes. They do not back up the production PostgreSQL data.
@@ -145,3 +145,12 @@ Release status remains **PRE-PRODUCTION / NOT CLEARED FOR PAID PUBLIC LAUNCH** u
 ## Backup runner progress — 14 November 2026
 
 An encrypted PostgreSQL 18 backup runner and restore helper have been committed under `backup/`; the Render Blueprint is `render-backup.yaml`. The runner validates the pg_dump archive, encrypts it with AES-256-GCM/PBKDF2, uploads ciphertext to a private GitHub repository, verifies Git blob hashes, and prunes backups older than 30 days. It is not yet deployed: Render Blueprint planning returned `need_payment_info`, so no cron resource was created and no charge occurred. The private backup repository and fine-grained Contents read/write token also remain to be configured. The first successful backup and separate-database restore test are still mandatory release gates.
+
+
+## Additional backend hardening — 14 November 2026
+
+- Commit 8f39ce7 adds per-account row-lock serialization around All Access checkout reservation. Integration test commit 17efe4c exercises two concurrent checkout requests and asserts only one pending subscription order is created.
+- Commit 89a8c9c bounds Mollie API calls to 15 seconds.
+- Commit d8f9b6b makes account deletion fail closed unless any linked Mollie subscription is verified canceled; active/activation_pending/past_due states without a provider subscription ID block deletion for reconciliation.
+- Commit 48228a9 adds integration coverage proving an active Mollie subscription is canceled before account deletion.
+- PostgreSQL 18 API CI run 43616808694 passed; independent verification 43616808693 passed; Render backend smoke test 43616808724 passed. The latest production API source commit d8f9b6b is deployed live; commit 48228a9 adds test-only coverage on top.
