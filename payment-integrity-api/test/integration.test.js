@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
+import { createServer } from "node:http";
 import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { signPayload } from "../src/screening.js";
@@ -9,16 +10,60 @@ const enabled = process.env.RUN_INTEGRATION === "1";
 test("HTTP API persists minimized event data and rejects duplicates", { skip: !enabled, timeout: 30000 }, async (t) => {
   const { Pool } = (await import("pg")).default;
   const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  let firstPaymentStatus = "open";
+  let recurringPaymentStatus = "failed";
+  let mollieSubscriptionStatus = "active";
+  const mollieMock = createServer(async (req, res) => {
+    const chunks = [];
+    for await (const chunk of req) chunks.push(chunk);
+    const body = Buffer.concat(chunks).toString("utf8");
+    const path = req.url || "";
+    let status = 200;
+    let data = {};
+    if (req.method === "POST" && path === "/v2/customers") {
+      data = { id: "cst_nexoratest" };
+    } else if (req.method === "POST" && path === "/v2/payments") {
+      const input = JSON.parse(body || "{}");
+      if (input.sequenceType !== "first" || input.amount?.value !== "29.99") {
+        status = 422; data = { title: "Unexpected first payment request" };
+      } else {
+        data = { id: "tr_nexorafirst", status: firstPaymentStatus, mode: "test", _links: { checkout: { href: "https://checkout.example.test/first" } } };
+      }
+    } else if (req.method === "GET" && path === "/v2/payments/tr_nexorafirst") {
+      data = { resource: "payment", id: "tr_nexorafirst", status: firstPaymentStatus, amount: { currency: "EUR", value: "29.99" }, metadata: mockFirstPaymentMetadata };
+    } else if (req.method === "POST" && path === "/v2/customers/cst_nexoratest/subscriptions") {
+      const input = JSON.parse(body || "{}");
+      if (input.amount?.value !== "29.99" || input.interval !== "1 month") {
+        status = 422; data = { title: "Unexpected recurring subscription request" };
+      } else {
+        data = { id: "sub_nexoratest", status: mollieSubscriptionStatus };
+      }
+    } else if (req.method === "GET" && path === "/v2/payments/tr_nexorarecurring") {
+      data = { resource: "payment", id: "tr_nexorarecurring", status: recurringPaymentStatus, subscriptionId: "sub_nexoratest", amount: { currency: "EUR", value: "29.99" } };
+    } else if (req.method === "GET" && path === "/v2/customers/cst_nexoratest/subscriptions/sub_nexoratest") {
+      data = { id: "sub_nexoratest", status: mollieSubscriptionStatus, nextPaymentDate: "2099-12-31" };
+    } else if (req.method === "DELETE" && path === "/v2/customers/cst_nexoratest/subscriptions/sub_nexoratest") {
+      mollieSubscriptionStatus = "canceled";
+      data = { id: "sub_nexoratest", status: "canceled" };
+    } else {
+      status = 404; data = { title: "Mock Mollie route not found", detail: path };
+    }
+    res.writeHead(status, { "content-type": "application/json" });
+    res.end(JSON.stringify(data));
+  });
+  let mockFirstPaymentMetadata = {};
+  await new Promise(resolve => mollieMock.listen(8082, "127.0.0.1", resolve));
   const port = 8081;
   const secret = "integration-test-secret-please-change";
   const providerId = "integration-provider";
   const child = spawn(process.execPath, ["src/server.js"], {
     cwd: process.cwd(),
-    env: { ...process.env, NODE_ENV: "test", SMTP_TEST_MODE: "true", PORT: String(port), PROVIDER_SECRETS: JSON.stringify({ [providerId]: secret }), ENABLE_PUBLIC_DEMO: "true", DEMO_ORIGIN: "https://bnexora7-eng.github.io" },
+    env: { ...process.env, NODE_ENV: "test", SMTP_TEST_MODE: "true", MOLLIE_API_KEY: "test_nexora_integration_key", MOLLIE_API_BASE: "http://127.0.0.1:8082/v2", PORT: String(port), PROVIDER_SECRETS: JSON.stringify({ [providerId]: secret }), ENABLE_PUBLIC_DEMO: "true", DEMO_ORIGIN: "https://bnexora7-eng.github.io" },
     stdio: "ignore"
   });
   t.after(async () => {
     child.kill("SIGTERM");
+    await new Promise(resolve => mollieMock.close(resolve));
     await pool.end();
   });
 
@@ -130,6 +175,61 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
 
   // Grant the test account All Access before exercising paid member endpoints.
   await pool.query("UPDATE app_users SET subscription_status='active',subscription_access_until=NULL WHERE id=$1",[accountId]);
+
+  // Exercise the complete subscription lifecycle against an isolated Mollie-compatible test server.
+  const checkout = await fetch(`http://127.0.0.1:${port}/v1/subscriptions/checkout`, {
+    method: "POST", headers: { authorization: "Bearer " + loggedIn.token, "content-type": "application/json" },
+    body: JSON.stringify({})
+  });
+  assert.equal(checkout.status, 201);
+  const checkoutBody = await checkout.json();
+  assert.equal(checkoutBody.amount.value, "29.99");
+  assert.equal(checkoutBody.mode, "test");
+  mockFirstPaymentMetadata = { order_id: checkoutBody.order_id, user_id: String(accountId), product: "nexora_all_access" };
+
+  firstPaymentStatus = "paid";
+  const firstWebhook = await fetch(`http://127.0.0.1:${port}/v1/payments/mollie-webhook`, {
+    method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: "id=tr_nexorafirst"
+  });
+  assert.equal(firstWebhook.status, 200);
+  let subscriptionState = await fetch(`http://127.0.0.1:${port}/v1/subscriptions/me`, {
+    headers: { authorization: "Bearer " + loggedIn.token }
+  });
+  assert.equal((await subscriptionState.json()).status, "active");
+
+  const failedRenewal = await fetch(`http://127.0.0.1:${port}/v1/payments/mollie-webhook`, {
+    method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: "id=tr_nexorarecurring"
+  });
+  assert.equal(failedRenewal.status, 200);
+  subscriptionState = await fetch(`http://127.0.0.1:${port}/v1/subscriptions/me`, {
+    headers: { authorization: "Bearer " + loggedIn.token }
+  });
+  assert.equal((await subscriptionState.json()).status, "past_due");
+
+  recurringPaymentStatus = "paid";
+  const successfulRenewal = await fetch(`http://127.0.0.1:${port}/v1/payments/mollie-webhook`, {
+    method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: "id=tr_nexorarecurring"
+  });
+  assert.equal(successfulRenewal.status, 200);
+  subscriptionState = await fetch(`http://127.0.0.1:${port}/v1/subscriptions/me`, {
+    headers: { authorization: "Bearer " + loggedIn.token }
+  });
+  assert.equal((await subscriptionState.json()).status, "active");
+
+  const cancelSubscription = await fetch(`http://127.0.0.1:${port}/v1/subscriptions/cancel`, {
+    method: "POST", headers: { authorization: "Bearer " + loggedIn.token, "content-type": "application/json" },
+    body: JSON.stringify({})
+  });
+  assert.equal(cancelSubscription.status, 200);
+  const canceledBody = await cancelSubscription.json();
+  assert.equal(canceledBody.status, "canceled");
+  assert.equal(canceledBody.access, true);
+  subscriptionState = await fetch(`http://127.0.0.1:${port}/v1/subscriptions/me`, {
+    headers: { authorization: "Bearer " + loggedIn.token }
+  });
+  const canceledState = await subscriptionState.json();
+  assert.equal(canceledState.status, "canceled");
+  assert.equal(canceledState.access, true);
 
   // Create user-owned content, then verify account deletion removes it.
   const createPost = await fetch(`http://127.0.0.1:${port}/v1/community/posts`, {
