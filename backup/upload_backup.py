@@ -17,7 +17,7 @@ stamp = os.environ["BACKUP_STAMP"]
 backup_path = Path(os.environ["BACKUP_FILE"])
 if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repo):
     raise SystemExit("BACKUP_REPOSITORY must be owner/repository")
-if not re.fullmatch(r"\\d{8}T\\d{6}Z", stamp):
+if not re.fullmatch(r"\d{8}T\d{6}Z", stamp):
     raise SystemExit("Invalid backup timestamp")
 if not backup_path.is_file():
     raise SystemExit("Encrypted backup file is missing")
@@ -111,7 +111,7 @@ while True:
         break
     for item in releases:
         old_tag = item.get("tag_name", "")
-        match = re.fullmatch(r"nexora-backup-(\\d{8}T\\d{6}Z)", old_tag)
+        match = re.fullmatch(r"nexora-backup-(\d{8}T\d{6}Z)", old_tag)
         if not match or item.get("id") == release_id:
             continue
         try:
