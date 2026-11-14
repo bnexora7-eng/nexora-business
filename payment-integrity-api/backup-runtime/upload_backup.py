@@ -58,6 +58,55 @@ def raw_request(method, url, data=None, accept="application/vnd.github+json", co
         detail = exc.read(2048).decode("utf-8", "replace")
         raise RuntimeError(f"GitHub asset transfer failed ({exc.code}): {detail}") from exc
 
+def download_asset(asset_id):
+    # GitHub may redirect the authenticated asset API request to a CDN.
+    # Do not let urllib forward the repository token to that second host.
+    url = base_url + "/releases/assets/" + str(asset_id)
+    request = urllib.request.Request(
+        url,
+        headers={**headers, "Accept": "application/octet-stream"},
+        method="GET",
+    )
+    opener = urllib.request.build_opener(
+        urllib.request.HTTPRedirectHandler()
+    )
+    # Use a handler that refuses redirects so the credential-bearing request
+    # cannot silently forward Authorization to a different hostname.
+    class NoRedirect(urllib.request.HTTPRedirectHandler):
+        def redirect_request(self, req, fp, code, msg, response_headers, newurl):
+            return None
+
+    opener = urllib.request.build_opener(NoRedirect())
+    try:
+        with opener.open(request, timeout=180) as response:
+            return response.read()
+    except urllib.error.HTTPError as exc:
+        if exc.code not in (301, 302, 303, 307, 308):
+            detail = exc.read(2048).decode("utf-8", "replace")
+            raise RuntimeError(f"GitHub asset download failed ({exc.code}): {detail}") from exc
+        location = exc.headers.get("Location")
+        exc.close()
+    if not location:
+        raise RuntimeError("GitHub asset redirect did not include a Location header")
+    parsed = urllib.parse.urlsplit(location)
+    host = parsed.hostname or ""
+    if (
+        parsed.scheme != "https"
+        or not (host == "github.com" or host.endswith(".githubusercontent.com"))
+        or parsed.username
+        or parsed.password
+        or parsed.port not in (None, 443)
+    ):
+        raise RuntimeError("GitHub asset redirect target is not an approved HTTPS host")
+    # The signed CDN URL is sufficient; deliberately send no GitHub token.
+    request = urllib.request.Request(
+        location,
+        headers={"User-Agent": "NEXORA-Encrypted-Backup", "Accept": "application/octet-stream"},
+        method="GET",
+    )
+    with urllib.request.urlopen(request, timeout=180) as response:
+        return response.read()
+
 metadata = api_json("GET", "")
 if metadata.get("private") is not True:
     raise SystemExit("Backup destination repository must be private; refusing to upload")
@@ -93,8 +142,7 @@ def upload_asset(name, payload):
     result = json.loads(response.decode("utf-8"))
     if result.get("size") != len(payload):
         raise SystemExit("GitHub asset size mismatch for " + name)
-    downloaded = raw_request("GET", base_url + "/releases/assets/" + str(result["id"]),
-                             accept="application/octet-stream")
+    downloaded = download_asset(result["id"])
     if hashlib.sha256(downloaded).digest() != hashlib.sha256(payload).digest():
         raise SystemExit("GitHub asset read-back hash mismatch for " + name)
     return result
