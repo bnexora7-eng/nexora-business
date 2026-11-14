@@ -98,3 +98,6 @@ Do not write dumps to an ephemeral filesystem and call that a backup. Do not sen
 ### Container and cryptography CI verification — 14 November 2026
 
 GitHub Actions backup-runner check **43617810597** passed on commit 19aebc536b. It built the Docker image, confirmed PostgreSQL client tools at 18.7, verified GNU timeout and shell/Python syntax, performed an AES-256-GCM encrypt/decrypt round trip, and confirmed that tampered ciphertext is rejected. This validates the runner image and encryption helper only; it does **not** represent a database export or restore test.
+
+
+The final Cron Blueprint now pins branch `main` and sets `autoDeploy: false` so routine application commits do not rebuild the backup service unexpectedly. Backup-runner CI run **43618325150** passed against this final Blueprint/Dockerfile revision (commit `0b5a23be44`).
