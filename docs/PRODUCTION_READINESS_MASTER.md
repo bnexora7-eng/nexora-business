@@ -173,3 +173,9 @@ The Play AAB workflow now performs a generated-Gradle target SDK check before si
 ## Backup runner build verification — 14 November 2026
 
 Backup-runner CI run 43617810597 passed on commit 19aebc536b: Docker image build, PostgreSQL 18.7 client tools, timeout and script syntax checks, authenticated encryption/decryption round trip, and tamper rejection. This confirms the runner container and crypto helper, not a live database dump or restore. The first actual backup and separate-database restore remain open.
+
+
+## Latest billing reconciliation verification — 14 November 2026
+
+- Commit f2402a4 includes legacy `creation_failed` checkout rows in the fail-closed reconciliation path, preventing automatic duplicate checkout creation or account deletion while an old provider result may be uncertain.
+- API CI run 43617851487 passed on f2402a4; Render PostgreSQL readiness smoke test 43617851569 and independent verification 43617851563 also passed. This backend source revision is deployed and healthy.
