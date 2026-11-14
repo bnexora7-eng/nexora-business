@@ -204,10 +204,12 @@ When resuming work, start with this file, then inspect the current main branch a
 - Android digital membership billing needs a separate Google Play policy and implementation check; website Mollie checkout must not be assumed to satisfy Play Billing requirements.
 - Visual design remains deliberately deferred until functional, access-control, billing, security and release checks are complete.
 
-## Public demo rate-limit hardening — 14 November 2026
+## Functional integration and proxy audit — 14 November 2026
 
-- The public `POST /v1/demo/events` rate limiter now selects the right-most non-empty `X-Forwarded-For` address, matching the authenticated-route limiter, rather than trusting a client-controlled left-most value.
-- Added an integration regression check: 20 requests with different spoofed left-most addresses but the same right-most address are accepted; the 21st is rate-limited with HTTP 429.
-- CI for commit `5970b5882d88df20263fe3ceb3ae6bf71795df19`: API test workflow passed (18 tests, 0 failures); independent verification passed; Render backend smoke test passed; Render deployment is live.
-- The test verifies application behavior with a simulated forwarded header. The exact ordering of forwarded addresses at Render's edge remains an infrastructure assumption and has not been independently confirmed against a live proxy trace.
-- The Node `DEP0169` warning seen in CI occurs during GitHub Actions artifact upload, not in NEXORA application source. A repository code search found no direct `url.parse()` call. No dependency was changed based on that CI-tool warning.
+- The public Render API is routed through Cloudflare. Both authentication and public-demo rate limiters now use `CF-Connecting-IP`, which Cloudflare overwrites with the connecting client IP; caller-controlled `X-Forwarded-For` is ignored. If the trusted header is absent, the service falls back to the socket peer address rather than trusting an unverified forwarded value.
+- Regression coverage varies spoofed `X-Forwarded-For` values while holding `CF-Connecting-IP` constant. The auth limiter still blocks the 11th attempt in its 15-minute window; the public demo limiter blocks the 21st request in its one-minute window.
+- CI for commit `bb4d21970bd65ada73517c99cf9127a4301030ae`: API tests passed (18 tests, 0 failures), independent verification passed and Render backend smoke test passed. The backend code commit `f4fbce267aa2e02bc61ba7d8b0f1b9d66a5aaa74` deployed to Render; the follow-up test-only commit is being deployed.
+- The integration tests simulate Cloudflare's trusted header. They do not replace a production request trace proving what headers arrive at the Render edge.
+- The CI `DEP0169` warning is emitted during GitHub Actions artifact upload, not by NEXORA application source; repository code search found no direct `url.parse()` call. No runtime dependency was changed based on that workflow-tool warning.
+- Functional inventory findings: the web workspace and Android modules connect to the account, Business Studio, Community and Marketplace APIs; Marketplace supports listings only (no checkout or escrow); AI generation is integrated but disabled by the zero production token budget and absent provider key; the public demo uses temporary in-memory event storage; Android Payment Integrity uses local demo rules rather than the server screening endpoint; and the standalone `POST /v1/payments` / payment-status API has no current web or Android UI caller.
+- Mollie recurring billing remains mock-tested only, Brevo email delivery is unconfigured, Android digital subscriptions still require a compliant Google Play billing path, and legal/business launch requirements remain open. NEXORA is still pre-production.
