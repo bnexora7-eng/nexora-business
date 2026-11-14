@@ -67,6 +67,10 @@ jobs:
           curl --fail --silent --show-error --location "$URL/account/" -o /tmp/nexora-account.html
           grep -q "Create your account" /tmp/nexora-account.html
           grep -q "/v1/auth/register" /tmp/nexora-account.html
+          grep -q "OPEN NEXORA WORKSPACE" /tmp/nexora-account.html
+          curl --fail --silent --show-error --location "$URL/app/" -o /tmp/nexora-app.html
+          grep -q "NEXORA Workspace" /tmp/nexora-app.html
+          grep -q "/v1/business/ai-plan" /tmp/nexora-app.html
           curl --fail --silent --show-error --location "$URL/order.html" -o /tmp/nexora-order.html
           grep -q "Project enquiry" /tmp/nexora-order.html
           grep -q "Send project enquiry" /tmp/nexora-order.html
