@@ -168,3 +168,8 @@ The Play AAB workflow now performs a generated-Gradle target SDK check before si
 - Commit 67688fa serializes first-payment webhook activation with account deletion by locking the account row while the recurring subscription is created/verified. This prevents a delayed webhook from creating a recurring subscription after the account has been deleted.
 - Commit b10245d adds integration coverage for cancellation of the pending first payment and the recurring subscription before account deletion.
 - API CI run 43617761235, independent verification 43617761267, and Render PostgreSQL readiness smoke test 43617761238 all passed on commit b10245d.
+
+
+## Backup runner build verification — 14 November 2026
+
+Backup-runner CI run 43617810597 passed on commit 19aebc536b: Docker image build, PostgreSQL 18.7 client tools, timeout and script syntax checks, authenticated encryption/decryption round trip, and tamper rejection. This confirms the runner container and crypto helper, not a live database dump or restore. The first actual backup and separate-database restore remain open.
