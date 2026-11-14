@@ -50,9 +50,17 @@ jobs:
         run: |
           set -euo pipefail
           BASE="https://bnexora7-eng.github.io/nexora-business"
-          curl --fail --silent --show-error "$BASE/privacy/" -o /tmp/privacy.html
-          ! grep -qi "FormSubmit" /tmp/privacy.html
-          grep -qi "Brevo" /tmp/privacy.html
+          ready="false"
+          for attempt in $(seq 1 12); do
+            curl --fail --silent --show-error "$BASE/privacy/" -o /tmp/privacy.html
+            if ! grep -qi "FormSubmit" /tmp/privacy.html && grep -qi "Brevo" /tmp/privacy.html; then
+              ready="true"
+              break
+            fi
+            echo "Waiting for the latest Pages deployment (\${attempt}/12)..."
+            sleep 10
+          done
+          test "$ready" = "true"
           curl --fail --silent --show-error "$BASE/account-deletion/" -o /tmp/delete.html
           grep -q "/v1/auth/delete-request" /tmp/delete.html
           echo "PASS: privacy disclosure and account deletion route are present."
