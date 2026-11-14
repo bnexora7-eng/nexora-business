@@ -23,7 +23,7 @@ button{border:0;border-radius:9px;background:var(--mint);color:#061923;font-weig
 <p class="intro">A browser-based demonstrator for screening simulated payment-event data, flagging duplicate identifiers and recording explainable decisions. The GitHub Pages demo sends simulated payment events to the NEXORA demo API for server-side screening. It does not connect to banks, payment providers or live money.</p>
 <div class="grid">
 <section class="card">
-<h2>Evaluate a payment event</h2>
+<h2>Evaluate a payment event</h2><p id="appStatus" class="muted" aria-live="polite">Loading demo controls…</p>
 <form id="eventForm">
 <div class="field"><label for="provider">Provider identifier</label><input id="provider" value="demo-provider" maxlength="80" required></div>
 <div class="field"><label for="event">Event identifier</label><input id="event" placeholder="evt-10001" maxlength="100" required></div>
@@ -58,79 +58,5 @@ button{border:0;border-radius:9px;background:var(--mint);color:#061923;font-weig
 <div class="footer">NEXORA BUSINESS · Product concept and technical sandbox · Not a live financial service</div>
 </main>
 <script src="./config.js"></script>
-<script>
-(function(){
-const $=id=>document.getElementById(id);const records=[];const seen=new Set();let accepted=0,flagged=0;
-const API_BASE_URL=String(window.NEXORA_API_BASE_URL||"").replace(/\/+$/,"");
-function renderStats(){$('total').textContent=records.length;$('accepted').textContent=accepted;$('flagged').textContent=flagged}
-function evaluate(data){
-const key=data.provider+'::'+data.event;const reasons=[];let decision='ACCEPT';
-if(!data.provider.trim()||!data.event.trim()){decision='REJECT';reasons.push('Missing provider or event identifier')}
-if(seen.has(key)){decision='REJECT';reasons.push('Duplicate provider + event identifier')}
-if(!Number.isFinite(data.amount)||data.amount<=0){decision='REJECT';reasons.push('Amount must be greater than zero')}
-if(!['EUR','USD','GBP'].includes(data.currency)){decision='REVIEW';reasons.push('Currency is outside the demo allowlist')}
-if(data.amount>10000&&decision!=='REJECT'){decision='REVIEW';reasons.push('Amount exceeds the illustrative review threshold')}
-if(data.status==='pending'&&decision!=='REJECT'){decision='REVIEW';reasons.push('Event is pending')}
-if(data.status==='failed'){decision='REJECT';reasons.push('Provider event status is failed')}
-if(!reasons.length)reasons.push('All configured demo checks passed');
-if(data.provider.trim()&&data.event.trim())seen.add(key);
-const row={time:new Date().toLocaleTimeString(),...data,decision,reason:reasons.join('; ')};records.unshift(row);
-if(decision==='ACCEPT')accepted++;else flagged++;renderStats();renderLog();showResult(row,reasons);
-}
-function showResult(row,reasons){$('result').innerHTML='<div class="muted">DECISION OUTPUT</div><div class="decision '+row.decision.toLowerCase()+'">'+row.decision+'</div><ul class="checks">'+reasons.map(x=>'<li>'+escapeHtml(x)+'</li>').join('')+'</ul><div class="muted">Demo reference: '+escapeHtml(row.provider)+' / '+escapeHtml(row.event)+'</div>'}
-function renderLog(){$('log').innerHTML=records.length?records.map(r=>'<tr><td>'+escapeHtml(r.time)+'</td><td>'+escapeHtml(r.provider)+'</td><td>'+escapeHtml(r.event)+'</td><td>'+r.amount.toFixed(2)+' '+escapeHtml(r.currency)+'</td><td class="'+r.decision.toLowerCase()+'">'+r.decision+'</td><td>'+escapeHtml(r.reason)+'</td></tr>').join(''):'<tr><td colspan="6" class="muted">No events evaluated yet.</td></tr>'}
-function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-$('eventForm').addEventListener('submit',async e=>{
-e.preventDefault();
-const data={provider:$('provider').value.trim(),event:$('event').value.trim(),amount:Number($('amount').value),currency:$('currency').value,status:$('status').value};
-if(!API_BASE_URL){evaluate(data);return}
-const button=$('eventForm').querySelector('button[type="submit"]');button.disabled=true;button.textContent='Sending to API…';
-try{
-const response=await fetch(API_BASE_URL+'/v1/demo/events',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({provider_id:data.provider,event_id:data.event,amount:data.amount,currency:data.currency,status:data.status})});
-const result=await response.json();
-if(!response.ok)throw new Error(result.error||'API request failed');
-const reasons=[result.reason];const row={time:new Date().toLocaleTimeString(),...data,provider:result.reference?.provider_id||data.provider,decision:result.decision,reason:result.reason};
-records.unshift(row);if(row.decision==='ACCEPT')accepted++;else flagged++;renderStats();renderLog();showResult(row,reasons);
-}catch(error){$('result').innerHTML='<div class="muted">API ERROR</div><div class="decision reject">NOT PROCESSED</div><div class="muted">'+escapeHtml(error.message)+'</div>'}
-finally{button.disabled=false;button.textContent='Evaluate event'}
-});
-$('sample').addEventListener('click',()=>{$('provider').value='demo-provider';$('event').value='evt-review-'+Date.now();$('amount').value='950';$('currency').value='EUR';$('status').value='pending';$('eventForm').requestSubmit();});
-$('apiTests').addEventListener('click',async()=>{
- const button=$('apiTests'),panel=$('apiTestResults');
- panel.hidden=false;button.disabled=true;
- if(!API_BASE_URL){panel.innerHTML='<div class="reject">API URL IS NOT CONFIGURED</div>';button.disabled=false;return}
- panel.innerHTML='<div class="muted">RUNNING REAL SERVER REQUESTS…</div>';
- const stamp=Date.now();
- const cases=[
-  {name:'ACCEPT — successful event',event:'nexora-test-accept-'+stamp,status:'succeeded',expected:'ACCEPT'},
-  {name:'REVIEW — pending event',event:'nexora-test-review-'+stamp,status:'pending',expected:'REVIEW'},
-  {name:'REJECT — failed event',event:'nexora-test-reject-'+stamp,status:'failed',expected:'REJECT'}
- ];
- const send=async item=>{
-  const response=await fetch(API_BASE_URL+'/v1/demo/events',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({provider_id:'nexora-api-test',event_id:item.event,amount:25,currency:'EUR',status:item.status})});
-  const body=await response.json().catch(()=>({error:'API returned invalid JSON'}));
-  if(!response.ok)throw new Error(body.error||('HTTP '+response.status));
-  return body;
- };
- try{
-  const healthResponse=await fetch(API_BASE_URL+'/health',{method:'GET',cache:'no-store'});
-  const health=await healthResponse.json();
-  if(!healthResponse.ok||health.status!=='ok')throw new Error('API health check failed');
-  const outcomes=[];
-  for(const item of cases){
-   const result=await send(item);
-   outcomes.push({name:item.name,passed:result.decision===item.expected,detail:'Server decision: '+result.decision+' — '+(result.reason||'no reason returned')});
-  }
-  const duplicateEvent='nexora-test-duplicate-'+stamp;
-  const first=await send({event:duplicateEvent,status:'succeeded'});
-  const second=await send({event:duplicateEvent,status:'succeeded'});
-  outcomes.push({name:'DUPLICATE — repeated event',passed:first.decision==='ACCEPT'&&second.decision==='REJECT'&&second.duplicate===true,detail:'First request: '+first.decision+'; replay: '+second.decision+'; duplicate flag: '+String(second.duplicate)});
-  panel.innerHTML='<div class="muted">LIVE SERVER TEST RESULTS — REAL POST REQUESTS</div>'+outcomes.map(x=>'<div class="'+(x.passed?'accept':'reject')+'"><b>'+(x.passed?'PASS':'FAIL')+'</b> — '+escapeHtml(x.name)+'</div><div class="muted">'+escapeHtml(x.detail)+'</div>').join('')+'<div class="decision '+(outcomes.every(x=>x.passed)?'accept':'reject')+'">'+(outcomes.every(x=>x.passed)?'ALL SERVER TESTS PASSED':'SERVER TEST FAILURE')+'</div><div class="muted">API: '+escapeHtml(health.service)+' · '+escapeHtml(health.version)+'</div>';
- }catch(error){
-  panel.innerHTML='<div class="muted">LIVE SERVER TEST RESULTS</div><div class="decision reject">CONNECTION / API ERROR</div><div class="muted">'+escapeHtml(error.message)+'</div>';
- }finally{button.disabled=false}
-});
-$('clear').addEventListener('click',()=>{records.length=0;seen.clear();accepted=0;flagged=0;renderStats();renderLog();$('result').innerHTML='<div class="muted">DECISION OUTPUT</div><div class="muted">Session log cleared.</div>'});
-})();
-</script>
+<script src="./app.js?v=20261114-1331" defer></script>
 </body></html>
