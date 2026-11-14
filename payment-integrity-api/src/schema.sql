@@ -116,3 +116,15 @@ CREATE TABLE IF NOT EXISTS email_action_tokens (
 );
 CREATE INDEX IF NOT EXISTS email_action_tokens_user_purpose_idx
   ON email_action_tokens (user_id, purpose, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS ai_usage_windows (
+  user_id BIGINT PRIMARY KEY REFERENCES app_users(id) ON DELETE CASCADE,
+  window_started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  request_count INTEGER NOT NULL CHECK (request_count >= 1 AND request_count <= 4)
+);
+CREATE TABLE IF NOT EXISTS ai_monthly_usage (
+  period_start DATE PRIMARY KEY,
+  reserved_tokens BIGINT NOT NULL CHECK (reserved_tokens >= 0),
+  request_count BIGINT NOT NULL DEFAULT 0 CHECK (request_count >= 0),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
