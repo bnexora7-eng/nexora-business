@@ -159,7 +159,7 @@ export default function App() {
     return () => subscription.remove();
   }, [tab]);
   const heading:Record<Tab,string> = {
-    Home:"One platform. More possibilities.",
+    Home:"What do you want to get done today?",
     Community:"NEXORA Community",
     Marketplace:"NEXORA Marketplace",
     Business:"Business Tools",
@@ -171,7 +171,7 @@ export default function App() {
   return <SafeAreaView style={styles.safe}>
     <StatusBar barStyle="light-content" backgroundColor={C.bg}/>
     <View style={styles.header}>
-      <View><Text style={styles.brand}>NEXORA<Text style={{color:C.cyan}}>.</Text></Text><Text style={styles.tag}>BUSINESS ECOSYSTEM</Text></View>
+      <View style={{flexDirection:"row",alignItems:"center",gap:10}}><View style={styles.brandMark}><Text style={styles.brandMarkText}>N</Text><View style={styles.brandChip}/></View><View><Text style={styles.brand}>NEXORA<Text style={{color:C.cyan}}>.</Text></Text><Text style={styles.tag}>A PLACE TO MOVE FORWARD</Text></View></View>
       <View style={styles.status}><View style={styles.dot}/><Text style={styles.statusText}>PROTOTYPE</Text></View>
     </View>
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
@@ -179,16 +179,16 @@ export default function App() {
       <Text style={styles.heading}>{heading[tab]}</Text>
       {tab==="Home" && <>
         <Card>
-          <Text style={styles.kicker}>THE NEXORA VISION</Text>
-          <Text style={styles.hero}>A connected digital ecosystem for people and business.</Text>
-          <Text style={styles.muted}>Discover services, connect with people, grow a business and bring more confidence to digital payments.</Text>
-          <View style={styles.tagRow}><Text style={styles.tagChip}>COMMUNITY</Text><Text style={styles.tagChip}>COMMERCE</Text><Text style={styles.tagChip}>TRUST</Text></View>
+          <Text style={styles.kicker}>WELCOME TO NEXORA</Text>
+          <Text style={styles.hero}>One simple place to make your next move.</Text>
+          <Text style={styles.muted}>Build something, find your next opportunity, meet people or get help moving an idea forward. Choose a starting point below.</Text>
         </Card>
-        <Text style={styles.section}>Explore the platform</Text>
-        <Action title="Community" subtitle="Connect, share and discover" onPress={()=>go("Community")}/>
-        <Action title="Marketplace" subtitle="Products, services and offers" onPress={()=>go("Marketplace")}/>
-        <Action title="Business Tools" subtitle="Tools for growing businesses" onPress={()=>go("Business")}/>
-        <Action title="Payment Integrity" subtitle="A decision-support payment screening module" onPress={()=>go("Integrity")}/>
+        <Text style={styles.section}>Choose what you need</Text>
+        <Action title="Start a business" subtitle="Turn an idea into a clear first plan" onPress={()=>go("Business")}/>
+        <Action title="Find opportunities" subtitle="Explore services, offers and ways to work together" onPress={()=>go("Marketplace")}/>
+        <Action title="Meet people" subtitle="Connect, share ideas and discover the community" onPress={()=>go("Community")}/>
+        <Action title="Get things done" subtitle="Open your tools and work on your next step" onPress={()=>go("Business")}/>
+        <Text style={styles.note}>Start with one simple step. You can explore the other areas whenever you need them.</Text>
       </>}
       {(tab==="Community"||tab==="Marketplace"||tab==="Business")&&<NexoraModules screen={tab} signedIn={!!account} onNavigate={go}/>}
       {tab==="Integrity" && <>
@@ -255,7 +255,7 @@ export default function App() {
 
 const styles = StyleSheet.create({
  safe:{flex:1,backgroundColor:C.bg},header:{paddingHorizontal:20,paddingTop:12,paddingBottom:14,borderBottomWidth:1,borderColor:C.line,flexDirection:"row",alignItems:"center",justifyContent:"space-between"},
- brand:{fontSize:25,fontWeight:"900",letterSpacing:2,color:C.text},tag:{fontSize:9,letterSpacing:2,color:C.muted,marginTop:2},status:{flexDirection:"row",alignItems:"center",gap:7,borderWidth:1,borderColor:C.line,borderRadius:20,paddingHorizontal:10,paddingVertical:7},dot:{width:7,height:7,borderRadius:5,backgroundColor:C.amber},statusText:{fontSize:9,fontWeight:"800",color:C.amber,letterSpacing:1},
+ brandMark:{width:42,height:42,borderRadius:11,borderWidth:1,borderColor:C.cyan,backgroundColor:"#0D2035",alignItems:"center",justifyContent:"center",position:"relative",shadowColor:C.cyan,shadowOpacity:0.28,shadowRadius:10},brandMarkText:{fontSize:25,fontWeight:"900",color:C.text,letterSpacing:-2},brandChip:{position:"absolute",width:9,height:9,right:-3,bottom:-3,borderRadius:2,backgroundColor:C.cyan,borderWidth:2,borderColor:C.bg},brand:{fontSize:25,fontWeight:"900",letterSpacing:2,color:C.text},tag:{fontSize:9,letterSpacing:2,color:C.muted,marginTop:2},status:{flexDirection:"row",alignItems:"center",gap:7,borderWidth:1,borderColor:C.line,borderRadius:20,paddingHorizontal:10,paddingVertical:7},dot:{width:7,height:7,borderRadius:5,backgroundColor:C.amber},statusText:{fontSize:9,fontWeight:"800",color:C.amber,letterSpacing:1},
  content:{padding:20,paddingBottom:30},eyebrow:{fontSize:10,fontWeight:"800",letterSpacing:2,color:C.cyan,marginBottom:8},heading:{fontSize:27,lineHeight:33,fontWeight:"800",color:C.text,marginBottom:18},card:{backgroundColor:C.panel,borderWidth:1,borderColor:C.line,borderRadius:18,padding:18,marginBottom:18},kicker:{fontSize:10,fontWeight:"800",letterSpacing:1.7,color:C.cyan,marginBottom:12},hero:{fontSize:23,lineHeight:29,fontWeight:"800",color:C.text,marginBottom:10},muted:{fontSize:13,lineHeight:20,color:C.muted},tagRow:{flexDirection:"row",gap:7,flexWrap:"wrap",marginTop:17},tagChip:{overflow:"hidden",fontSize:9,color:C.cyan,borderWidth:1,borderColor:C.line,borderRadius:20,paddingHorizontal:9,paddingVertical:6,letterSpacing:1,fontWeight:"800"},
  section:{fontSize:17,fontWeight:"800",color:C.text,marginTop:4,marginBottom:10},action:{backgroundColor:C.panel,borderWidth:1,borderColor:C.line,borderRadius:14,padding:15,marginBottom:9,flexDirection:"row",alignItems:"center"},actionTitle:{fontSize:15,fontWeight:"800",color:C.text,marginBottom:4},arrow:{fontSize:26,color:C.cyan,paddingLeft:10},note:{fontSize:12,lineHeight:19,color:C.muted,marginTop:12,marginBottom:14},label:{fontSize:10,fontWeight:"800",letterSpacing:1.5,color:C.muted,marginTop:14,marginBottom:7},input:{backgroundColor:C.bg,borderWidth:1,borderColor:C.line,borderRadius:10,paddingHorizontal:13,paddingVertical:12,color:C.text,fontSize:15},
  primary:{backgroundColor:C.cyan,borderRadius:11,padding:15,alignItems:"center",marginTop:17},primaryText:{fontSize:12,fontWeight:"900",letterSpacing:1,color:C.bg},result:{borderWidth:1,borderRadius:12,padding:14,marginTop:15},resultTitle:{fontSize:21,fontWeight:"900",marginBottom:5},outcomes:{flexDirection:"row",justifyContent:"space-between",backgroundColor:C.panel,borderWidth:1,borderColor:C.line,borderRadius:12,padding:15},plan:{flexDirection:"row",alignItems:"center",backgroundColor:C.panel,borderWidth:1,borderColor:C.line,borderRadius:13,padding:15,marginBottom:10},planSelected:{borderColor:C.cyan,backgroundColor:C.panel2},nav:{height:66,borderTopWidth:1,borderColor:C.line,backgroundColor:C.bg,flexDirection:"row",alignItems:"center",justifyContent:"space-around",paddingHorizontal:4},navItem:{alignItems:"center",justifyContent:"center",flex:1,gap:5},navMark:{width:5,height:5,borderRadius:4,backgroundColor:C.line},navMarkActive:{width:18,backgroundColor:C.cyan},navText:{fontSize:9,color:C.muted,fontWeight:"700"},pill:{paddingHorizontal:12,paddingVertical:8,borderRadius:20,borderWidth:1,borderColor:C.line},pillActive:{backgroundColor:C.cyan,borderColor:C.cyan},pillText:{fontSize:11,fontWeight:"800",color:C.text}
