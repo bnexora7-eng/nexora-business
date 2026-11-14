@@ -115,9 +115,18 @@ export default function App() {
     Alert.alert("Anulować NEXORA All Access?", "Po anulowaniu kolejne miesięczne płatności zostaną zatrzymane.", [
       { text: "Wróć", style: "cancel" },
       { text: "Anuluj abonament", style: "destructive", onPress: async () => {
+        if (!API_BASE) {
+          setSubscriptionMessage("Serwer NEXORA nie jest skonfigurowany. Abonament nie został zmieniony.");
+          return;
+        }
         setSubscriptionBusy(true);
         try {
           const token = await SecureStore.getItemAsync("nexora_session");
+          if (!token) {
+            setAccount(null);
+            setSubscriptionMessage("Sesja wygasła. Zaloguj się ponownie, aby zarządzać abonamentem.");
+            return;
+          }
           const response = await fetch(API_BASE + "/v1/subscriptions/cancel", { method: "POST", headers: { Authorization: "Bearer " + token } });
           const data = await response.json();
           if (!response.ok) throw new Error(data.error || "Nie udało się anulować abonamentu.");
