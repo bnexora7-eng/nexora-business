@@ -517,45 +517,72 @@ async function handleMollieWebhook(req, res) {
     }
     await pool.query("UPDATE own_payments SET status=$1,updated_at=NOW() WHERE order_id=$2",[payment.status,orderId]);
     if (order.description === "NEXORA All Access monthly subscription" && payment.status === "paid") {
-      const account=await pool.query("SELECT id,mollie_customer_id,mollie_subscription_id FROM app_users WHERE id=$1",[order.user_id]);
-      if (!account.rowCount) return send(res,200,{received:true,account:"deleted"});
-      const member=account.rows[0];
-      if (!member.mollie_subscription_id) {
-        await pool.query("UPDATE app_users SET subscription_status='activation_pending',subscription_updated_at=NOW() WHERE id=$1",[member.id]);
-        const subscription=await mollieRequest("/customers/"+encodeURIComponent(member.mollie_customer_id)+"/subscriptions",{
-          method:"POST",
-          headers:{"Idempotency-Key":"nexora-subscription-"+orderId},
-          body:JSON.stringify({
-            amount:{currency:"EUR",value:"29.99"},
-            interval:"1 month",
-            description:"NEXORA All Access",
-            webhookUrl:PUBLIC_API_URL+"/v1/payments/mollie-webhook",
-            metadata:{user_id:String(member.id),product:"nexora_all_access"}
-          })
-        });
-        if(!subscription?.id) throw new Error("Mollie did not confirm the recurring subscription");
-        const mollieStatus = subscription.status === "active" ? "active" : "activation_pending";
-        await pool.query(
-          "UPDATE app_users SET mollie_subscription_id=$1,subscription_status=$2,subscription_access_until=NULL,subscription_started_at=CASE WHEN $2='active' THEN COALESCE(subscription_started_at,NOW()) ELSE subscription_started_at END,subscription_updated_at=NOW() WHERE id=$3",
-          [subscription.id,mollieStatus,member.id]
+      // Serialize first-payment activation with account deletion and checkout.
+      // If deletion owns the row lock first, this sees no account after it commits
+      // and must not create a provider-side recurring subscription.
+      const client = await pool.connect();
+      try {
+        await client.query("BEGIN");
+        const account = await client.query(
+          "SELECT id,mollie_customer_id,mollie_subscription_id FROM app_users WHERE id=$1 FOR UPDATE",
+          [order.user_id]
         );
-      } else {
-        // Mollie may retry the first-payment webhook. Never treat a duplicate
-        // first-payment notification as proof that the recurring subscription
-        // itself is active: read its current provider-side status first.
-        const subscription = await mollieRequest(
-          "/customers/" + encodeURIComponent(member.mollie_customer_id) +
-          "/subscriptions/" + encodeURIComponent(member.mollie_subscription_id)
-        );
-        const confirmedStatus = subscription.status === "active"
-          ? "active"
-          : subscription.status === "canceled"
-            ? "canceled"
-            : "activation_pending";
-        await pool.query(
-          "UPDATE app_users SET subscription_status=$1,subscription_started_at=CASE WHEN $1='active' THEN COALESCE(subscription_started_at,NOW()) ELSE subscription_started_at END,subscription_updated_at=NOW() WHERE id=$2",
-          [confirmedStatus,member.id]
-        );
+        if (!account.rowCount) {
+          await client.query("COMMIT");
+          return send(res,200,{received:true,account:"deleted"});
+        }
+        const member = account.rows[0];
+        if (!member.mollie_customer_id) {
+          throw new Error("Paid first payment has no Mollie customer reference; subscription activation requires reconciliation.");
+        }
+        if (!member.mollie_subscription_id) {
+          await client.query(
+            "UPDATE app_users SET subscription_status='activation_pending',subscription_updated_at=NOW() WHERE id=$1",
+            [member.id]
+          );
+          const subscription = await mollieRequest(
+            "/customers/" + encodeURIComponent(member.mollie_customer_id) + "/subscriptions",
+            {
+              method:"POST",
+              headers:{"Idempotency-Key":"nexora-subscription-"+orderId},
+              body:JSON.stringify({
+                amount:{currency:"EUR",value:"29.99"},
+                interval:"1 month",
+                description:"NEXORA All Access",
+                webhookUrl:PUBLIC_API_URL+"/v1/payments/mollie-webhook",
+                metadata:{user_id:String(member.id),product:"nexora_all_access"}
+              })
+            }
+          );
+          if (!subscription?.id) throw new Error("Mollie did not confirm the recurring subscription");
+          const mollieStatus = subscription.status === "active" ? "active" : "activation_pending";
+          await client.query(
+            "UPDATE app_users SET mollie_subscription_id=$1,subscription_status=$2,subscription_access_until=NULL,subscription_started_at=CASE WHEN $2='active' THEN COALESCE(subscription_started_at,NOW()) ELSE subscription_started_at END,subscription_updated_at=NOW() WHERE id=$3",
+            [subscription.id,mollieStatus,member.id]
+          );
+        } else {
+          // Mollie may retry the first-payment webhook. Never treat a duplicate
+          // notification as proof that the recurring subscription itself is active.
+          const subscription = await mollieRequest(
+            "/customers/" + encodeURIComponent(member.mollie_customer_id) +
+            "/subscriptions/" + encodeURIComponent(member.mollie_subscription_id)
+          );
+          const confirmedStatus = subscription.status === "active"
+            ? "active"
+            : subscription.status === "canceled"
+              ? "canceled"
+              : "activation_pending";
+          await client.query(
+            "UPDATE app_users SET subscription_status=$1,subscription_started_at=CASE WHEN $1='active' THEN COALESCE(subscription_started_at,NOW()) ELSE subscription_started_at END,subscription_updated_at=NOW() WHERE id=$2",
+            [confirmedStatus,member.id]
+          );
+        }
+        await client.query("COMMIT");
+      } catch (error) {
+        await client.query("ROLLBACK").catch(() => {});
+        throw error;
+      } finally {
+        client.release();
       }
     }
     return send(res,200,{received:true});
