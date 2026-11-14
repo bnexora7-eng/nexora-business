@@ -27,6 +27,7 @@ export default function App() {
   const [authMode,setAuthMode] = useState<"login"|"register">("register");
   const [authBusy,setAuthBusy] = useState(false);
   const [authMessage,setAuthMessage] = useState("");
+  const [pendingVerificationEmail,setPendingVerificationEmail] = useState("");
   const [account,setAccount] = useState<Account|null>(null);
   const [decision,setDecision] = useState<Decision|null>(null);
   const [plan,setPlan] = useState("Free");
@@ -68,11 +69,21 @@ export default function App() {
         body: JSON.stringify({ email: email.trim(), password })
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Nie udało się zalogować.");
+      if (!response.ok) {
+        if (data.code === "email_not_verified") setPendingVerificationEmail(email.trim());
+        throw new Error(data.error || "Nie udało się zalogować.");
+      }
+      if (data.status === "verification_required") {
+        setPendingVerificationEmail(data.email || email.trim());
+        setPassword("");
+        setAuthMessage("Konto utworzone. Otwórz wiadomość e-mail od NEXORA i potwierdź adres. Dopiero wtedy możesz się zalogować.");
+        return;
+      }
       await SecureStore.setItemAsync("nexora_session", data.token);
       setAccount(data.user);
       setPassword("");
-      setAuthMessage(authMode === "register" ? "Konto zostało utworzone." : "Zalogowano pomyślnie.");
+      setPendingVerificationEmail("");
+      setAuthMessage("Zalogowano pomyślnie.");
     } catch (error) {
       setAuthMessage(error instanceof Error ? error.message : "Błąd połączenia.");
     } finally {
