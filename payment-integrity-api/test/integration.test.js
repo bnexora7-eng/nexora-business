@@ -80,7 +80,7 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   const providerId = "integration-provider";
   const child = spawn(process.execPath, ["src/server.js"], {
     cwd: process.cwd(),
-    env: { ...process.env, NODE_ENV: "test", SMTP_TEST_MODE: "true", MOLLIE_API_KEY: "test_nexora_integration_key", MOLLIE_API_BASE: "http://127.0.0.1:8082/v2", OPENAI_API_KEY: "test_nexora_ai_key", OPENAI_MODEL: "gpt-4.1-mini", OPENAI_API_URL: "http://127.0.0.1:8083/v1/chat/completions", PORT: String(port), PROVIDER_SECRETS: JSON.stringify({ [providerId]: secret }), ENABLE_PUBLIC_DEMO: "true", DEMO_ORIGIN: "https://bnexora7-eng.github.io" },
+    env: { ...process.env, NODE_ENV: "test", SMTP_TEST_MODE: "true", MOLLIE_API_KEY: "test_nexora_integration_key", MOLLIE_API_BASE: "http://127.0.0.1:8082/v2", OPENAI_API_KEY: "test_nexora_ai_key", OPENAI_MODEL: "gpt-4.1-mini", OPENAI_API_URL: "http://127.0.0.1:8083/v1/chat/completions", AI_MONTHLY_TOKEN_LIMIT: "100000", PORT: String(port), PROVIDER_SECRETS: JSON.stringify({ [providerId]: secret }), ENABLE_PUBLIC_DEMO: "true", DEMO_ORIGIN: "https://bnexora7-eng.github.io" },
     stdio: "ignore"
   });
   t.after(async () => {
@@ -288,6 +288,17 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   });
   assert.equal(rateLimitedAI.status, 429);
   assert.equal(aiRequestCount, providerCallsAtLimit, "rate-limited requests must not reach the AI provider");
+
+  await pool.query("UPDATE ai_monthly_usage SET reserved_tokens=99999 WHERE period_start=date_trunc('month', NOW() AT TIME ZONE 'UTC')::date");
+  const callsBeforeBudgetCheck = aiRequestCount;
+  const monthlyLimitedAI = await fetch("http://127.0.0.1:" + port + "/v1/business/ai-plan", {
+    method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + newSessionToken },
+    body: JSON.stringify({ industry: "software", problem: "Monthly budget check" })
+  });
+  assert.equal(monthlyLimitedAI.status, 429);
+  assert.match((await monthlyLimitedAI.json()).error, /monthly AI usage budget/i);
+  assert.equal(aiRequestCount, callsBeforeBudgetCheck, "monthly quota must block calls before provider usage");
+
 
   // Exercise the member workspace, community and marketplace API used by the published UI.
   const workspaceSave = await fetch("http://127.0.0.1:" + port + "/v1/business/workspace", {
