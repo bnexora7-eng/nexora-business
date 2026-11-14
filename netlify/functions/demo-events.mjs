@@ -27,7 +27,7 @@ export default async (request) => {
     return reply(200, {
       status: "ok",
       service: "NEXORA Payment Integrity Demo API",
-      version: "0.1.1",
+      version: "0.1.2",
       storage: "temporary-demo-memory",
       supported_methods: ["GET", "POST", "OPTIONS"]
     });
