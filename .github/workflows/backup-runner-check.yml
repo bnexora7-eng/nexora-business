@@ -1,0 +1,64 @@
+name: NEXORA encrypted backup runner checks
+
+on:
+  push:
+    paths:
+      - "backup/**"
+      - "render-backup.yaml"
+      - ".github/workflows/backup-runner-check.yml"
+  pull_request:
+    paths:
+      - "backup/**"
+      - "render-backup.yaml"
+      - ".github/workflows/backup-runner-check.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  backup-runner:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build backup container
+        run: docker build --pull -t nexora-backup-check ./backup
+
+      - name: Verify PostgreSQL 18 client and runtime tools
+        run: |
+          docker run --rm --entrypoint sh nexora-backup-check -c '
+            pg_dump --version
+            pg_restore --version
+            timeout --version | head -n 1
+            sh -n /backup/run.sh
+            sh -n /backup/restore.sh
+            python3 -m py_compile /backup/crypto.py /backup/upload_backup.py
+          '
+
+      - name: Verify authenticated encryption and tamper rejection
+        shell: bash
+        run: |
+          set -euo pipefail
+          WORK="$(mktemp -d)"
+          trap 'rm -rf "$WORK"' EXIT
+          printf 'NEXORA PostgreSQL backup integrity test\n' > "$WORK/plain.dump"
+          TEST_ONLY_VALUE='nexora-public-ci-test-value-not-a-secret-2026'
+          docker run --rm -v "$WORK:/work" -e BACKUP_ENCRYPTION_KEY="$TEST_ONLY_VALUE" \
+            --entrypoint python3 nexora-backup-check \
+            /backup/crypto.py encrypt /work/plain.dump /work/backup.dump.enc
+          docker run --rm -v "$WORK:/work" -e BACKUP_ENCRYPTION_KEY="$TEST_ONLY_VALUE" \
+            --entrypoint python3 nexora-backup-check \
+            /backup/crypto.py decrypt /work/backup.dump.enc /work/restored.dump
+          cmp "$WORK/plain.dump" "$WORK/restored.dump"
+          cp "$WORK/backup.dump.enc" "$WORK/tampered.dump.enc"
+          printf 'x' >> "$WORK/tampered.dump.enc"
+          if docker run --rm -v "$WORK:/work" -e BACKUP_ENCRYPTION_KEY="$TEST_ONLY_VALUE" \
+            --entrypoint python3 nexora-backup-check \
+            /backup/crypto.py decrypt /work/tampered.dump.enc /work/should-not-exist.dump; then
+            echo "FAIL: tampered backup was accepted."
+            exit 1
+          fi
+          test ! -e "$WORK/should-not-exist.dump"
+          echo "PASS: backup encryption, decryption and tamper rejection."
