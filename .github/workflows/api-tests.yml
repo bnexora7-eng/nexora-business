@@ -41,4 +41,8 @@ jobs:
         with:
           node-version: 22
       - run: npm install
+      - name: Audit production dependencies
+        run: |
+          npm audit --omit=dev --json > /tmp/nexora-npm-audit.json || true
+          node -e 'const a=require("/tmp/nexora-npm-audit.json"); const v=Object.entries(a.vulnerabilities||{}).map(([name,x])=>({name,severity:x.severity,range:x.range,via:x.via.map(y=>typeof y==="string"?y:{title:y.title,url:y.url,range:y.range}),fixAvailable:x.fixAvailable})); console.log(JSON.stringify({counts:a.metadata?.vulnerabilities, vulnerablePackages:v},null,2))'
       - run: npm test
