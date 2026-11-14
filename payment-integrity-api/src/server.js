@@ -374,12 +374,19 @@ async function handleVerifyEmail(req,res) {
   if(!pool) return send(res,503,{error:"Account service is not configured"});
   const raw=await readBody(req); let input;
   try { input=JSON.parse(raw.toString("utf8")); } catch { return send(res,400,{error:"Invalid JSON"}); }
-  const userId=await consumeEmailActionToken(input?.token,"verify_email");
-  if(!userId) return send(res,400,{error:"This verification link is invalid, expired or already used. Request a new link."});
-  await pool.query("UPDATE app_users SET email_verified_at=COALESCE(email_verified_at,NOW()),updated_at=NOW() WHERE id=$1",[userId]);
-  return send(res,200,{status:"email_verified",message:"Email address confirmed. You can now sign in."});
+  const token=input?.token;
+  if(typeof token!=="string"||token.length<30||token.length>200) return send(res,400,{error:"This verification link is invalid, expired or already used. Request a new link."});
+  const client=await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const consumed=await client.query("UPDATE email_action_tokens SET consumed_at=NOW() WHERE token_hash=$1 AND purpose='verify_email' AND consumed_at IS NULL AND expires_at>NOW() RETURNING user_id",[hashActionToken(token)]);
+    if(!consumed.rowCount) { await client.query("ROLLBACK"); return send(res,400,{error:"This verification link is invalid, expired or already used. Request a new link."}); }
+    await client.query("UPDATE app_users SET email_verified_at=COALESCE(email_verified_at,NOW()),updated_at=NOW() WHERE id=$1",[consumed.rows[0].user_id]);
+    await client.query("COMMIT");
+    return send(res,200,{status:"email_verified",message:"Email address confirmed. You can now sign in."});
+  } catch(error) { await client.query("ROLLBACK"); throw error; }
+  finally { client.release(); }
 }
-
 async function handleResendVerification(req,res) {
   if(!pool) return send(res,503,{error:"Account service is not configured"});
   if(authRateLimited(req)) return send(res,429,{error:"Too many account attempts; try again in 15 minutes"});
@@ -417,20 +424,23 @@ async function handleResetPassword(req,res) {
   const raw=await readBody(req); let input;
   try { input=JSON.parse(raw.toString("utf8")); } catch { return send(res,400,{error:"Invalid JSON"}); }
   const password=typeof input?.password==="string"?input.password:"";
+  const token=input?.token;
   if(password.length<12||password.length>128) return send(res,422,{error:"Password must contain 12 to 128 characters"});
-  const userId=await consumeEmailActionToken(input?.token,"reset_password");
-  if(!userId) return send(res,400,{error:"This reset link is invalid, expired or already used. Request a new one."});
+  if(typeof token!=="string"||token.length<30||token.length>200) return send(res,400,{error:"This reset link is invalid, expired or already used. Request a new one."});
   const passwordHash=await hashPassword(password);
   const client=await pool.connect();
   try {
     await client.query("BEGIN");
+    const consumed=await client.query("UPDATE email_action_tokens SET consumed_at=NOW() WHERE token_hash=$1 AND purpose='reset_password' AND consumed_at IS NULL AND expires_at>NOW() RETURNING user_id",[hashActionToken(token)]);
+    if(!consumed.rowCount) { await client.query("ROLLBACK"); return send(res,400,{error:"This reset link is invalid, expired or already used. Request a new one."}); }
+    const userId=consumed.rows[0].user_id;
     await client.query("UPDATE app_users SET password_hash=$1,updated_at=NOW() WHERE id=$2",[passwordHash,userId]);
     await client.query("UPDATE app_sessions SET revoked_at=NOW() WHERE user_id=$1 AND revoked_at IS NULL",[userId]);
     await client.query("UPDATE email_action_tokens SET consumed_at=NOW() WHERE user_id=$1 AND purpose='reset_password' AND consumed_at IS NULL",[userId]);
     await client.query("COMMIT");
+    return send(res,200,{status:"password_reset",message:"Password changed. Sign in using your new password."});
   } catch(error) { await client.query("ROLLBACK"); throw error; }
   finally { client.release(); }
-  return send(res,200,{status:"password_reset",message:"Password changed. Sign in using your new password."});
 }
 
 async function handleMe(req, res) {
