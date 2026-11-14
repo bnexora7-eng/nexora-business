@@ -1,6 +1,6 @@
 # NEXORA — Google Play release readiness
 
-**Updated:** 13 November 2026  
+**Updated:** 14 November 2026  
 **Android package:** `com.nexora.business`  
 **Current app version:** 0.4.0 (versionCode 4)
 
@@ -15,14 +15,14 @@ This checklist distinguishes work completed in the repository from actions that 
 - Public account-deletion web page: `https://bnexora7-eng.github.io/nexora-business/account-deletion/`.
 - Privacy policy: `https://bnexora7-eng.github.io/nexora-business/privacy/`.
 - Account deletion removes the account, sessions, Community posts, Marketplace listings and Business workspace. Payment ledger entries, if any, are detached from the account and may be retained only where legally required.
-- CI builds an installable Android test APK and runs TypeScript checks.
+- Android CI validates TypeScript and Expo config, checks the SDK 54+ target SDK baseline, verifies the upload keystore, and builds a signed Play AAB when signing secrets are present. The signed AAB build is currently running in workflow 43617415554.
 - Backend integration tests cover account registration, login, logout, authenticated deletion, web deletion and core payment-integrity behaviour.
 
 ## Mandatory technical release gates
 
-- [ ] Build a **signed Android App Bundle (.aab)** for Play Console. A manual workflow is prepared at `.github/workflows/android-play-aab.yml`; the current CI artifact is an installable APK, not the Play upload bundle.
-- [ ] Generate and securely retain the Android upload keystore, then verify its alias and passwords. The current signed-AAB workflow expects these GitHub Actions secrets: `ANDROID_KEYSTORE_BASE64`, `NEXORA_UPLOAD_STORE_PASSWORD` and (optionally) `NEXORA_UPLOAD_KEY_PASSWORD`; it uses the fixed alias `nexora-upload-2026`. If the key password secret is omitted, the workflow falls back to the store password. The temporary decoded keystore is deleted after the build. Never commit the keystore or passwords to Git. Follow [ANDROID_UPLOAD_KEYSTORE.md](ANDROID_UPLOAD_KEYSTORE.md) and verify that its instructions match these exact workflow names before configuring secrets.
-- [ ] Verify the final generated manifest targets **Android 16 / API level 36 or higher**, required for new app submissions from 31 August 2026.
+- [ ] Complete and verify the **signed Android App Bundle (.aab)** build. Workflow 43617415554 has passed Expo config, TypeScript, API 36 target-SDK validation, keystore decode/alias verification and signing configuration; `bundleRelease` is still in progress. No AAB is cleared for upload until signature verification and artifact upload pass.
+- [x] Configure and verify the Android upload keystore. GitHub Actions confirms the required signing secrets are present, and workflow 43617415554 successfully decoded the key and verified alias `nexora-upload-2026`. The workflow expects `ANDROID_KEYSTORE_BASE64`, `NEXORA_UPLOAD_STORE_PASSWORD` and optionally `NEXORA_UPLOAD_KEY_PASSWORD`; if the key-password secret is omitted, the workflow uses the store password. The temporary decoded keystore is deleted after the build. Never commit the keystore or passwords to Git. See [ANDROID_UPLOAD_KEYSTORE.md](ANDROID_UPLOAD_KEYSTORE.md).
+- [x] Verify the generated app's Expo SDK target-SDK baseline: Expo SDK 54+ defaults to **Android 16 / API level 36**; workflow 43617415554 passed the check and detected no lower override.
 - [ ] Verify the production API and PostgreSQL readiness, HTTPS, CORS, database backups, monitoring and recovery.
 - [ ] Complete live device tests for registration, login, session restoration, logout, account deletion, Community publish/read, Marketplace publish/read and Business workspace save/load.
 - [ ] Confirm that disabled features (Mollie checkout and AI planning) are either properly configured and tested or clearly marked unavailable in the submitted build.
@@ -43,12 +43,12 @@ Store listing copy is drafted in [GOOGLE_PLAY_STORE_LISTING_DRAFT.md](GOOGLE_PLA
 - [ ] Review all Google Play Developer Program policies, including User Data, account deletion, payments, impersonation and financial-services requirements where applicable.
 - [ ] If the Play Console account is a personal account created after 13 November 2023, complete the required closed test with at least 12 opted-in testers continuously for 14 days before applying for production access.
 
-## Verified deployment status — 13 November 2026
+## Verified deployment status — 14 November 2026
 
 - Render `/ready` returned `status=ready` and `database=connected` after merge. The currently attached PostgreSQL instance is on the temporary Free plan and is scheduled to expire on 12 December 2026; secure a durable database and backup/recovery path before that date.
 - GitHub Pages deployment succeeded; the workflow verified the privacy policy and account-deletion pages are publicly served.
-- PostgreSQL-backed API tests and mobile TypeScript checks passed on the merged release-preparation commit.
-- Installable test APK 0.4.0 was built successfully; physical-device account registration, login and deletion still need a final test.
+- PostgreSQL 18 API integration tests, dependency audit, independent verification and Render readiness checks passed after the latest billing/deletion safeguards.
+- Android TypeScript and Expo configuration checks passed in workflow 43617415554; target SDK and upload keystore checks passed. Signed AAB build remains in progress; physical-device account registration, login and deletion still need a final test.
 
 ## Current product boundaries
 
