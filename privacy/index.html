@@ -22,7 +22,7 @@
 <li><strong>Business workspace:</strong> business name, tagline and notes/goals saved to your account. These are intended to be private to your account.</li>
 <li><strong>Payment records:</strong> if checkout is enabled, order amount, currency, description, provider reference and payment status. Card and bank login credentials are not collected by NEXORA; the payment provider handles checkout.</li>
 <li><strong>AI planning inputs:</strong> if server-side AI planning is enabled and you use it, the business details you submit are sent to the configured AI provider to generate a response.</li>
-<li><strong>Technical/security data:</strong> limited request and diagnostic information needed to operate, protect and troubleshoot the service.</li>
+<li><strong>Technical/security data:</strong> limited request and diagnostic information needed to operate, protect and troubleshoot the service. The API stores a one-way hash of the client IP for authentication rate limiting; expired rate-limit records are periodically cleaned up.</li>
 </ul>
 <h2>3. Purposes and legal basis</h2>
 <p>Data is used to create and secure accounts, provide requested features, store content, process and reconcile checkout orders when enabled, respond to support/privacy requests, prevent abuse and maintain the service. Depending on the feature and applicable law, processing is based on performance of a requested service, legitimate interests in service security and operation, consent where required, or legal obligations.</p>
