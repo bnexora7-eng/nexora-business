@@ -176,6 +176,9 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   // Grant the test account All Access before exercising paid member endpoints.
   await pool.query("UPDATE app_users SET subscription_status='active',subscription_access_until=NULL WHERE id=$1",[accountId]);
 
+  // Start from a clean billing state before exercising the subscription lifecycle.
+  await pool.query("UPDATE app_users SET subscription_status='inactive',mollie_customer_id=NULL,mollie_subscription_id=NULL,subscription_access_until=NULL WHERE id=$1",[accountId]);
+
   // Exercise the complete subscription lifecycle against an isolated Mollie-compatible test server.
   const checkout = await fetch(`http://127.0.0.1:${port}/v1/subscriptions/checkout`, {
     method: "POST", headers: { authorization: "Bearer " + loggedIn.token, "content-type": "application/json" },
