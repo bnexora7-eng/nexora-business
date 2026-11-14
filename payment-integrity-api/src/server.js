@@ -939,6 +939,9 @@ async function deleteUserAccount(userId) {
       }
       const paymentPath = "/payments/" + encodeURIComponent(pending.mollie_payment_id);
       const providerPayment = await mollieRequest(paymentPath);
+      if (providerPayment?.resource !== "payment" || providerPayment.id !== pending.mollie_payment_id) {
+        throw accountDeletionConflict("Mollie payment identity could not be verified. Account deletion is paused for reconciliation.");
+      }
       if (["paid", "canceled", "expired", "failed"].includes(providerPayment.status)) {
         await client.query(
           "UPDATE own_payments SET status=$1,updated_at=NOW() WHERE order_id=$2",
@@ -950,7 +953,8 @@ async function deleteUserAccount(userId) {
         throw accountDeletionConflict("Mollie reports that the pending first payment cannot be canceled safely. Account deletion is paused for reconciliation.");
       }
       const canceledPayment = await mollieRequest(paymentPath, { method: "DELETE" });
-      if (canceledPayment.status !== "canceled") {
+      if (canceledPayment?.resource !== "payment" || canceledPayment.id !== pending.mollie_payment_id ||
+          canceledPayment.status !== "canceled") {
         throw accountDeletionConflict("Mollie did not confirm cancellation of the pending first payment. Account deletion is paused.");
       }
       await client.query(
@@ -983,9 +987,15 @@ async function deleteUserAccount(userId) {
       const subscriptionPath = "/customers/" + encodeURIComponent(account.mollie_customer_id) +
         "/subscriptions/" + encodeURIComponent(account.mollie_subscription_id);
       const current = await mollieRequest(subscriptionPath);
+      if (current?.resource !== "subscription" || current.id !== account.mollie_subscription_id ||
+          current.customerId !== account.mollie_customer_id ||
+          !["pending", "active", "canceled", "suspended", "completed"].includes(current.status)) {
+        throw accountDeletionConflict("Mollie subscription identity or state could not be verified. Account deletion is paused for reconciliation.");
+      }
       if (current.status !== "canceled") {
         const canceled = await mollieRequest(subscriptionPath, { method: "DELETE" });
-        if (canceled.status !== "canceled") {
+        if (canceled?.resource !== "subscription" || canceled.id !== account.mollie_subscription_id ||
+            canceled.customerId !== account.mollie_customer_id || canceled.status !== "canceled") {
           throw accountDeletionConflict("Mollie did not confirm recurring subscription cancellation. Account deletion is paused.");
         }
       }
