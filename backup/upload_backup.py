@@ -67,9 +67,6 @@ def download_asset(asset_id):
         headers={**headers, "Accept": "application/octet-stream"},
         method="GET",
     )
-    opener = urllib.request.build_opener(
-        urllib.request.HTTPRedirectHandler()
-    )
     # Use a handler that refuses redirects so the credential-bearing request
     # cannot silently forward Authorization to a different hostname.
     class NoRedirect(urllib.request.HTTPRedirectHandler):
