@@ -100,14 +100,6 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   });
   assert.equal(badLogin.status, 401);
 
-  const login = await fetch(`http://127.0.0.1:${port}/v1/auth/login`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ email: accountEmail, password: accountPassword })
-  });
-  assert.equal(login.status, 200);
-  const loggedIn = await login.json();
-
   // Create user-owned content, then verify account deletion removes it.
   const createPost = await fetch(`http://127.0.0.1:${port}/v1/community/posts`, {
     method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + loggedIn.token },
