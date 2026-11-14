@@ -46,19 +46,17 @@ jobs:
           printf 'NEXORA PostgreSQL backup integrity test\n' > "$WORK/plain.dump"
           TEST_ONLY_VALUE='nexora-public-ci-test-value-not-a-secret-2026'
           docker run --rm -v "$WORK:/work" -e BACKUP_ENCRYPTION_KEY="$TEST_ONLY_VALUE" \
-            --entrypoint python3 nexora-backup-check \
-            /backup/crypto.py encrypt /work/plain.dump /work/backup.dump.enc
-          docker run --rm -v "$WORK:/work" -e BACKUP_ENCRYPTION_KEY="$TEST_ONLY_VALUE" \
-            --entrypoint python3 nexora-backup-check \
-            /backup/crypto.py decrypt /work/backup.dump.enc /work/restored.dump
-          docker run --rm -v "$WORK:/work" --entrypoint sh nexora-backup-check -c "cmp /work/plain.dump /work/restored.dump"
-          cp "$WORK/backup.dump.enc" "$WORK/tampered.dump.enc"
-          printf 'x' >> "$WORK/tampered.dump.enc"
-          if docker run --rm -v "$WORK:/work" -e BACKUP_ENCRYPTION_KEY="$TEST_ONLY_VALUE" \
-            --entrypoint python3 nexora-backup-check \
-            /backup/crypto.py decrypt /work/tampered.dump.enc /work/should-not-exist.dump; then
-            echo "FAIL: tampered backup was accepted."
-            exit 1
-          fi
-          test ! -e "$WORK/should-not-exist.dump"
-          echo "PASS: backup encryption, decryption and tamper rejection."
+            --entrypoint sh nexora-backup-check -c '
+              set -eu
+              python3 /backup/crypto.py encrypt /work/plain.dump /work/backup.dump.enc
+              python3 /backup/crypto.py decrypt /work/backup.dump.enc /work/restored.dump
+              cmp /work/plain.dump /work/restored.dump
+              cp /work/backup.dump.enc /work/tampered.dump.enc
+              printf "x" >> /work/tampered.dump.enc
+              if python3 /backup/crypto.py decrypt /work/tampered.dump.enc /work/should-not-exist.dump; then
+                echo "FAIL: tampered backup was accepted."
+                exit 1
+              fi
+              test ! -e /work/should-not-exist.dump
+              echo "PASS: backup encryption, decryption and tamper rejection."
+            '
