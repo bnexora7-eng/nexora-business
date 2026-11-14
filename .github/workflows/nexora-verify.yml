@@ -23,7 +23,7 @@ jobs:
           cache-dependency-path: payment-integrity-api/package.json
       - name: Install API dependencies
         working-directory: payment-integrity-api
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
       - name: Run NEXORA unit tests
         working-directory: payment-integrity-api
         run: npm test
