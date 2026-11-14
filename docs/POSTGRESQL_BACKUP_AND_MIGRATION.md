@@ -70,3 +70,16 @@ No database contents have been exported or independently verified yet. Do not cl
 - [ ] Recurring backup process established
 
 **Status at document creation:** no verified dump; migration not performed.
+
+## Additional safe execution path and cost gate (verified 14 November 2026)
+
+The database can be reached privately by a Render-hosted service in the same region using the internal database connection URL; the empty external IP allowlist does not block this private-network path. However, Render Cron Jobs are billable and have a minimum charge of **$1 per cron-job service per month**. They are not a free workaround. Do not create a cron job or any other paid resource until the owner explicitly approves the estimated cost.
+
+Official references:
+- https://render.com/docs/cronjobs
+- https://render.com/docs/free
+- https://render.com/docs/postgresql-backups
+
+The free Postgres plan has no managed backups. A Render-hosted backup runner is a viable controlled route only after cost approval and after a secure durable destination and encryption key-management method are selected. Do not write dumps to an ephemeral filesystem and call that a backup. Do not send database credentials, dump contents, or encryption keys to logs, GitHub, or chat.
+
+Current execution constraint: no trusted local PostgreSQL client environment or secure off-provider backup destination has yet been configured. Therefore the backup and restore checklist remains open. This is an explicit blocker, not a completed task.
