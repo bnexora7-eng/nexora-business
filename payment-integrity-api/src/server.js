@@ -52,7 +52,7 @@ const BACKUP_TOKEN = process.env.BACKUP_TRIGGER_TOKEN || "";
 
 function backupAuthorized(req) {
   const supplied = bearerToken(req);
-  if (BACKUP_TOKEN.length < 32 || !supplied) return false;
+  if (BACKUP_TOKEN.length < 40 || !supplied) return false;
   const expected = Buffer.from(BACKUP_TOKEN, "utf8");
   const actual = Buffer.from(supplied, "utf8");
   return expected.length === actual.length && crypto.timingSafeEqual(expected, actual);
