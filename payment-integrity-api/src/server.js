@@ -4,6 +4,7 @@ import pg from "pg";
 import { readFile } from "node:fs/promises";
 import { screenEvent, verifySignature } from "./screening.js";
 import { createSessionToken, hashPassword, hashSessionToken, verifyPassword } from "./auth.js";
+import { createActionToken, hashActionToken, sendPasswordResetEmail, sendVerificationEmail } from "./email.js";
 const { Pool } = pg;
 const PORT = Number(process.env.PORT || 8080);
 const DATABASE_URL = process.env.DATABASE_URL;
@@ -26,9 +27,11 @@ const DEMO_ORIGIN = process.env.DEMO_ORIGIN || "https://bnexora7-eng.github.io";
 const demoRequests = new Map();
 const demoEvents = new Map();
 const authAttempts = new Map();
-const MOLLIE_API_BASE = "https://api.mollie.com/v2";
+const MOLLIE_API_BASE = process.env.NODE_ENV === "test" && process.env.MOLLIE_API_BASE
+  ? process.env.MOLLIE_API_BASE.replace(/\/$/, "")
+  : "https://api.mollie.com/v2";
 const PUBLIC_API_URL = (process.env.PUBLIC_API_URL || "https://nexora-payment-integrity-api.onrender.com").replace(/\/$/, "");
-const PAYMENT_RETURN_URL = process.env.NEXORA_PAYMENT_RETURN_URL || "https://bnexora7-eng.github.io/nexora-business/";
+const PAYMENT_RETURN_URL = process.env.NEXORA_PAYMENT_RETURN_URL || "https://bnexora7-eng.github.io/nexora-business/account/";
 const AI_API_KEY = process.env.OPENAI_API_KEY || "";
 const AI_MODEL = process.env.OPENAI_MODEL || "gpt-4.1-mini";
 const AI_API_URL = process.env.OPENAI_API_URL || "https://api.openai.com/v1/chat/completions";
@@ -190,8 +193,9 @@ async function getAuthenticatedUser(req) {
   const token = bearerToken(req);
   if (!token) return null;
   const result = await pool.query(
-    `SELECT u.id, u.email FROM app_sessions s JOIN app_users u ON u.id=s.user_id
-     WHERE s.token_hash=$1 AND s.revoked_at IS NULL AND s.expires_at > NOW()`,
+    `SELECT u.id, u.email, u.subscription_status, u.subscription_access_until FROM app_sessions s JOIN app_users u ON u.id=s.user_id
+     WHERE s.token_hash=$1 AND s.revoked_at IS NULL AND s.expires_at > NOW()
+       AND u.email_verified_at IS NOT NULL`,
     [hashSessionToken(token)]
   );
   return result.rows[0] || null;
@@ -268,6 +272,145 @@ async function handleCreatePayment(req, res) {
     throw error;
   }
 }
+async function handleCreateSubscriptionCheckout(req, res) {
+  if (!pool) return send(res, 503, { error: "Subscription service requires the database" });
+  const user = await getAuthenticatedUser(req);
+  if (!user) return send(res, 401, { error: "Sign in to activate NEXORA All Access" });
+  if (!process.env.MOLLIE_API_KEY) return send(res, 503, { error: "Subscription payments are not configured yet" });
+  if (!process.env.MOLLIE_API_KEY.startsWith("test_") && !(process.env.MOLLIE_API_KEY.startsWith("live_") && process.env.ENABLE_LIVE_PAYMENTS === "true")) {
+    return send(res, 503, { error: "Live payments are disabled; configure a Mollie test key first" });
+  }
+  const account = await pool.query(
+    "SELECT id,email,mollie_customer_id,subscription_status,subscription_access_until FROM app_users WHERE id=$1",
+    [user.id]
+  );
+  const current = account.rows[0];
+  if (current.subscription_status === "canceled" &&
+      (!current.subscription_access_until || new Date(current.subscription_access_until).getTime() <= Date.now())) {
+    await pool.query("UPDATE app_users SET subscription_status='inactive',mollie_subscription_id=NULL,subscription_access_until=NULL WHERE id=$1",[user.id]);
+    current.subscription_status = "inactive";
+    current.mollie_subscription_id = null;
+    current.subscription_access_until = null;
+  }
+  if (current.subscription_status === "active" || current.subscription_status === "activation_pending" ||
+      (current.subscription_status === "canceled" && current.subscription_access_until &&
+       new Date(current.subscription_access_until).getTime() > Date.now())) {
+    return send(res, 409, { error: "A NEXORA subscription is already active or being activated" });
+  }
+  const pendingPayment = await pool.query(
+    `SELECT order_id,status,checkout_url FROM own_payments
+     WHERE user_id=$1 AND description='NEXORA All Access monthly subscription'
+       AND status IN ('creating','open','pending','authorized')
+     ORDER BY created_at DESC LIMIT 1`,
+    [user.id]
+  );
+  if (pendingPayment.rowCount) {
+    const pending = pendingPayment.rows[0];
+    if (pending.checkout_url) return send(res,200,{
+      order_id:pending.order_id,status:pending.status,checkout_url:pending.checkout_url,
+      amount:{currency:"EUR",value:"29.99"},plan:"NEXORA All Access",interval:"1 month"
+    });
+    return send(res,409,{error:"Your subscription checkout is already being prepared. Please try again shortly."});
+  }
+  let customerId = current.mollie_customer_id;
+  if (!customerId) {
+    const customer = await mollieRequest("/customers", {
+      method: "POST",
+      body: JSON.stringify({ name: current.email, email: current.email })
+    });
+    if (!customer?.id || !/^cst_[A-Za-z0-9]+$/.test(customer.id)) {
+      throw new Error("Mollie did not return a valid customer identifier");
+    }
+    customerId = customer.id;
+    await pool.query("UPDATE app_users SET mollie_customer_id=$1,subscription_status='inactive',subscription_updated_at=NOW() WHERE id=$2", [customerId,user.id]);
+  }
+  const orderId = crypto.randomUUID();
+  const amount = "29.99";
+  await pool.query(
+    `INSERT INTO own_payments (order_id,user_id,amount,currency,description,status)
+     VALUES ($1,$2,$3,'EUR','NEXORA All Access monthly subscription','creating')`,
+    [orderId,user.id,amount]
+  );
+  try {
+    const payment = await mollieRequest("/payments", {
+      method: "POST",
+      headers: { "Idempotency-Key": "nexora-first-" + orderId },
+      body: JSON.stringify({
+        amount: { currency: "EUR", value: amount },
+        description: "NEXORA All Access - first monthly payment",
+        redirectUrl: PAYMENT_RETURN_URL + "?subscription_payment=" + encodeURIComponent(orderId),
+        webhookUrl: PUBLIC_API_URL + "/v1/payments/mollie-webhook",
+        customerId,
+        sequenceType: "first",
+        metadata: { order_id: orderId, user_id: String(user.id), product: "nexora_all_access" }
+      })
+    });
+    const checkoutUrl = payment?._links?.checkout?.href;
+    if (!payment?.id || !checkoutUrl) throw new Error("Mollie returned an incomplete subscription checkout");
+    await pool.query(
+      "UPDATE own_payments SET mollie_payment_id=$1,status=$2,checkout_url=$3,updated_at=NOW() WHERE order_id=$4",
+      [payment.id,payment.status || "open",checkoutUrl,orderId]
+    );
+    return send(res,201,{
+      order_id:orderId,payment_id:payment.id,status:payment.status || "open",
+      amount:{currency:"EUR",value:amount},checkout_url:checkoutUrl,
+      plan:"NEXORA All Access",interval:"1 month",mode:payment.mode || "unknown"
+    });
+  } catch(error) {
+    await pool.query("UPDATE own_payments SET status='creation_failed',updated_at=NOW() WHERE order_id=$1",[orderId]);
+    throw error;
+  }
+}
+async function handleGetSubscription(req,res) {
+  if(!pool) return send(res,503,{error:"Subscription service requires the database"});
+  const user=await getAuthenticatedUser(req);
+  if(!user) return send(res,401,{error:"Authentication required"});
+  const result=await pool.query(
+    "SELECT subscription_status,subscription_started_at,subscription_updated_at,subscription_access_until FROM app_users WHERE id=$1",
+    [user.id]
+  );
+  const row=result.rows[0];
+  const accessUntil=row.subscription_access_until;
+  const access=row.subscription_status==="active" ||
+    (row.subscription_status==="canceled" && accessUntil && new Date(accessUntil).getTime()>Date.now());
+  return send(res,200,{
+    plan:"NEXORA All Access",amount:{currency:"EUR",value:"29.99"},interval:"1 month",
+    status:row.subscription_status,started_at:row.subscription_started_at,updated_at:row.subscription_updated_at,
+    access,access_until:accessUntil,canceled_at_period_end:row.subscription_status==="canceled" && Boolean(access)
+  });
+}
+async function handleCancelSubscription(req,res) {
+  if(!pool) return send(res,503,{error:"Subscription service requires the database"});
+  const user=await getAuthenticatedUser(req);
+  if(!user) return send(res,401,{error:"Authentication required"});
+  const result=await pool.query("SELECT mollie_customer_id,mollie_subscription_id,subscription_status,subscription_access_until FROM app_users WHERE id=$1",[user.id]);
+  const row=result.rows[0];
+  if(row.subscription_status==="canceled") {
+    const access=Boolean(row.subscription_access_until && new Date(row.subscription_access_until).getTime()>Date.now());
+    return send(res,200,{status:"canceled",access,access_until:row.subscription_access_until,message:"Your NEXORA subscription is already canceled."});
+  }
+  if(!row.mollie_subscription_id || !row.mollie_customer_id) return send(res,409,{error:"There is no active Mollie subscription to cancel"});
+  const subscriptionPath="/customers/"+encodeURIComponent(row.mollie_customer_id)+"/subscriptions/"+encodeURIComponent(row.mollie_subscription_id);
+  const current=await mollieRequest(subscriptionPath);
+  if(current.status!=="active" && current.status!=="pending") {
+    return send(res,409,{error:"Mollie does not report this subscription as active. Refresh the subscription status before retrying."});
+  }
+  if(typeof current.nextPaymentDate!=="string" || !/^\d{4}-\d{2}-\d{2}$/.test(current.nextPaymentDate)) {
+    return send(res,409,{error:"Mollie did not provide the next payment date. The subscription was not canceled so paid access is not lost."});
+  }
+  const accessUntil=new Date(current.nextPaymentDate+"T00:00:00.000Z");
+  if(Number.isNaN(accessUntil.getTime())) return send(res,409,{error:"Mollie returned an invalid next payment date. The subscription was not canceled."});
+  const canceled=await mollieRequest(subscriptionPath,{method:"DELETE"});
+  if(canceled.status!=="canceled") throw new Error("Mollie did not confirm subscription cancellation");
+  await pool.query(
+    "UPDATE app_users SET subscription_status='canceled',subscription_access_until=$1,subscription_updated_at=NOW() WHERE id=$2",
+    [accessUntil.toISOString(),user.id]
+  );
+  return send(res,200,{
+    status:"canceled",access:accessUntil.getTime()>Date.now(),access_until:accessUntil.toISOString(),
+    message:"Your subscription is canceled. Access remains available until the end of the already-paid period."
+  });
+}
 async function handleMollieWebhook(req, res) {
   if (!pool || !process.env.MOLLIE_API_KEY) return send(res, 503, { error: "Payment webhook is not configured" });
   const rawBody = await readBody(req);
@@ -275,25 +418,78 @@ async function handleMollieWebhook(req, res) {
   const molliePaymentId = params.get("id");
   if (!molliePaymentId || !/^tr_[A-Za-z0-9]+$/.test(molliePaymentId)) return send(res, 400, { error: "Invalid payment identifier" });
   const payment = await mollieRequest("/payments/" + encodeURIComponent(molliePaymentId));
-  const orderId = payment?.metadata?.order_id;
-  if (payment?.resource !== "payment" || typeof orderId !== "string") return send(res, 400, { error: "Payment metadata is invalid" });
-  const existing = await pool.query(
-    "SELECT order_id,amount,currency,mollie_payment_id FROM own_payments WHERE order_id=$1",
-    [orderId]
-  );
-  if (!existing.rowCount || existing.rows[0].mollie_payment_id !== molliePaymentId) return send(res, 404, { error: "Payment order not found" });
-  const expectedAmount = Number(existing.rows[0].amount).toFixed(2);
-  if (payment.amount?.currency !== existing.rows[0].currency || payment.amount?.value !== expectedAmount) {
-    console.error("Mollie payment amount mismatch", molliePaymentId);
-    return send(res, 409, { error: "Payment amount mismatch" });
-  }
+  if (payment?.resource !== "payment" || typeof payment.status !== "string") return send(res, 400, { error: "Payment details are invalid" });
   const allowed = new Set(["open","pending","authorized","paid","canceled","expired","failed"]);
   if (!allowed.has(payment.status)) return send(res, 422, { error: "Unsupported payment status" });
-  await pool.query(
-    "UPDATE own_payments SET status=$1,updated_at=NOW() WHERE order_id=$2",
-    [payment.status, orderId]
-  );
-  return send(res, 200, { received: true });
+  const orderId = payment?.metadata?.order_id;
+  if (typeof orderId === "string") {
+    const existing = await pool.query(
+      "SELECT order_id,user_id,amount,currency,description,mollie_payment_id FROM own_payments WHERE order_id=$1",
+      [orderId]
+    );
+    if (!existing.rowCount || existing.rows[0].mollie_payment_id !== molliePaymentId) return send(res, 404, { error: "Payment order not found" });
+    const order=existing.rows[0];
+    const expectedAmount = Number(order.amount).toFixed(2);
+    if (payment.amount?.currency !== order.currency || payment.amount?.value !== expectedAmount) {
+      console.error("Mollie payment amount mismatch",molliePaymentId);
+      return send(res,409,{error:"Payment amount mismatch"});
+    }
+    await pool.query("UPDATE own_payments SET status=$1,updated_at=NOW() WHERE order_id=$2",[payment.status,orderId]);
+    if (order.description === "NEXORA All Access monthly subscription" && payment.status === "paid") {
+      const account=await pool.query("SELECT id,mollie_customer_id,mollie_subscription_id FROM app_users WHERE id=$1",[order.user_id]);
+      if (!account.rowCount) return send(res,200,{received:true,account:"deleted"});
+      const member=account.rows[0];
+      if (!member.mollie_subscription_id) {
+        await pool.query("UPDATE app_users SET subscription_status='activation_pending',subscription_updated_at=NOW() WHERE id=$1",[member.id]);
+        const subscription=await mollieRequest("/customers/"+encodeURIComponent(member.mollie_customer_id)+"/subscriptions",{
+          method:"POST",
+          headers:{"Idempotency-Key":"nexora-subscription-"+orderId},
+          body:JSON.stringify({
+            amount:{currency:"EUR",value:"29.99"},
+            interval:"1 month",
+            description:"NEXORA All Access",
+            webhookUrl:PUBLIC_API_URL+"/v1/payments/mollie-webhook",
+            metadata:{user_id:String(member.id),product:"nexora_all_access"}
+          })
+        });
+        if(!subscription?.id) throw new Error("Mollie did not confirm the recurring subscription");
+        const mollieStatus = subscription.status === "active" ? "active" : "activation_pending";
+        await pool.query(
+          "UPDATE app_users SET mollie_subscription_id=$1,subscription_status=$2,subscription_access_until=NULL,subscription_started_at=CASE WHEN $2='active' THEN COALESCE(subscription_started_at,NOW()) ELSE subscription_started_at END,subscription_updated_at=NOW() WHERE id=$3",
+          [subscription.id,mollieStatus,member.id]
+        );
+      } else {
+        // Mollie may retry the first-payment webhook. Never treat a duplicate
+        // first-payment notification as proof that the recurring subscription
+        // itself is active: read its current provider-side status first.
+        const subscription = await mollieRequest(
+          "/customers/" + encodeURIComponent(member.mollie_customer_id) +
+          "/subscriptions/" + encodeURIComponent(member.mollie_subscription_id)
+        );
+        const confirmedStatus = subscription.status === "active"
+          ? "active"
+          : subscription.status === "canceled"
+            ? "canceled"
+            : "activation_pending";
+        await pool.query(
+          "UPDATE app_users SET subscription_status=$1,subscription_started_at=CASE WHEN $1='active' THEN COALESCE(subscription_started_at,NOW()) ELSE subscription_started_at END,subscription_updated_at=NOW() WHERE id=$2",
+          [confirmedStatus,member.id]
+        );
+      }
+    }
+    return send(res,200,{received:true});
+  }
+  const subscriptionId=payment.subscriptionId || payment.subscription_id;
+  if (typeof subscriptionId === "string") {
+    const member=await pool.query("SELECT id,subscription_status FROM app_users WHERE mollie_subscription_id=$1",[subscriptionId]);
+    if (!member.rowCount) return send(res,404,{error:"Recurring subscription not found"});
+    const nextStatus=payment.status==="paid"?"active":(["failed","canceled","expired"].includes(payment.status)?"past_due":null);
+    if(nextStatus && member.rows[0].subscription_status!=="canceled") {
+      await pool.query("UPDATE app_users SET subscription_status=$1,subscription_updated_at=NOW() WHERE id=$2",[nextStatus,member.rows[0].id]);
+    }
+    return send(res,200,{received:true,subscription:true});
+  }
+  return send(res,400,{error:"Payment is not linked to a known NEXORA order or subscription"});
 }
 async function handleGetPayment(req, res, orderId) {
   if (!pool) return send(res, 503, { error: "Payment service requires the database" });
@@ -313,60 +509,146 @@ async function handleGetPayment(req, res, orderId) {
   });
 }
 
-async function handleRegister(req, res) {
-  if (!pool) return send(res, 503, { error: "Account service is not configured; database is required" });
-  if (authRateLimited(req)) return send(res, 429, { error: "Too many account attempts; try again in 15 minutes" });
-  const rawBody = await readBody(req);
-  let input;
-  try { input = JSON.parse(rawBody.toString("utf8")); } catch { return send(res, 400, { error: "Invalid JSON" }); }
-  const email = typeof input?.email === "string" ? input.email.trim().toLowerCase() : "";
-  const password = typeof input?.password === "string" ? input.password : "";
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) return send(res, 422, { error: "Enter a valid email address" });
-  if (password.length < 12 || password.length > 128) return send(res, 422, { error: "Password must contain 12 to 128 characters" });
+async function issueEmailActionToken(userId,purpose,lifetime) {
+  const token=createActionToken();
+  await pool.query("UPDATE email_action_tokens SET consumed_at=NOW() WHERE user_id=$1 AND purpose=$2 AND consumed_at IS NULL",[userId,purpose]);
+  await pool.query("INSERT INTO email_action_tokens (user_id,token_hash,purpose,expires_at) VALUES ($1,$2,$3,NOW()+($4 * INTERVAL '1 second'))",[userId,hashActionToken(token),purpose,lifetime]);
+  return token;
+}
+async function consumeEmailActionToken(token,purpose) {
+  if(typeof token!=="string"||token.length<30||token.length>200) return null;
+  const result=await pool.query("UPDATE email_action_tokens SET consumed_at=NOW() WHERE token_hash=$1 AND purpose=$2 AND consumed_at IS NULL AND expires_at>NOW() RETURNING user_id",[hashActionToken(token),purpose]);
+  return result.rows[0]?.user_id||null;
+}
+
+async function handleRegister(req,res) {
+  if(!pool) return send(res,503,{error:"Account service is not configured; database is required"});
+  if(authRateLimited(req)) return send(res,429,{error:"Too many account attempts; try again in 15 minutes"});
+  const raw=await readBody(req); let input;
+  try { input=JSON.parse(raw.toString("utf8")); } catch { return send(res,400,{error:"Invalid JSON"}); }
+  const email=typeof input?.email==="string"?input.email.trim().toLowerCase():"";
+  const password=typeof input?.password==="string"?input.password:"";
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)||email.length>254) return send(res,422,{error:"Enter a valid email address"});
+  if(password.length<12||password.length>128) return send(res,422,{error:"Password must contain 12 to 128 characters"});
   try {
-    const passwordHash = await hashPassword(password);
-    const created = await pool.query(
-      "INSERT INTO app_users (email, password_hash) VALUES ($1,$2) RETURNING id, email, created_at",
-      [email, passwordHash]
-    );
-    const user = created.rows[0];
-    const token = await createUserSession(user.id);
-    return send(res, 201, { token, token_type: "Bearer", expires_in: 2592000, user: { id: String(user.id), email: user.email, created_at: user.created_at } });
-  } catch (error) {
-    if (error.code === "23505") return send(res, 409, { error: "An account with this email already exists" });
+    const passwordHash=await hashPassword(password);
+    const created=await pool.query("INSERT INTO app_users (email,password_hash) VALUES ($1,$2) RETURNING id,email,created_at",[email,passwordHash]);
+    const user=created.rows[0];
+    const token=await issueEmailActionToken(user.id,"verify_email",86400);
+    try { await sendVerificationEmail(user.email,token); }
+    catch(error) {
+      console.error("Verification email delivery failed:",error.message);
+      return send(res,503,{error:"Account created but verification email could not be sent. Configure Gmail SMTP, then request a new verification email."});
+    }
+    return send(res,201,{status:"verification_required",message:"Check your inbox and confirm your email address before signing in.",email:user.email});
+  } catch(error) {
+    if(error.code==="23505") return send(res,409,{error:"An account with this email already exists. Try signing in or requesting a verification email."});
     throw error;
   }
 }
-async function handleLogin(req, res) {
-  if (!pool) return send(res, 503, { error: "Account service is not configured; database is required" });
-  if (authRateLimited(req)) return send(res, 429, { error: "Too many account attempts; try again in 15 minutes" });
-  const rawBody = await readBody(req);
-  let input;
-  try { input = JSON.parse(rawBody.toString("utf8")); } catch { return send(res, 400, { error: "Invalid JSON" }); }
-  const email = typeof input?.email === "string" ? input.email.trim().toLowerCase() : "";
-  const password = typeof input?.password === "string" ? input.password : "";
-  if (!email || email.length > 254 || !password || password.length > 128) return send(res, 401, { error: "Email or password is incorrect" });
-  const found = await pool.query("SELECT id, email, password_hash, created_at FROM app_users WHERE email=$1", [email]);
-  if (!found.rowCount || !(await verifyPassword(password, found.rows[0].password_hash))) {
-    return send(res, 401, { error: "Email or password is incorrect" });
-  }
-  const user = found.rows[0];
-  const token = await createUserSession(user.id);
-  return send(res, 200, { token, token_type: "Bearer", expires_in: 2592000, user: { id: String(user.id), email: user.email, created_at: user.created_at } });
+
+async function handleLogin(req,res) {
+  if(!pool) return send(res,503,{error:"Account service is not configured; database is required"});
+  if(authRateLimited(req)) return send(res,429,{error:"Too many account attempts; try again in 15 minutes"});
+  const raw=await readBody(req); let input;
+  try { input=JSON.parse(raw.toString("utf8")); } catch { return send(res,400,{error:"Invalid JSON"}); }
+  const email=typeof input?.email==="string"?input.email.trim().toLowerCase():"";
+  const password=typeof input?.password==="string"?input.password:"";
+  if(!email||email.length>254||!password||password.length>128) return send(res,401,{error:"Email or password is incorrect"});
+  const found=await pool.query("SELECT id,email,password_hash,created_at,email_verified_at FROM app_users WHERE email=$1",[email]);
+  if(!found.rowCount||!(await verifyPassword(password,found.rows[0].password_hash))) return send(res,401,{error:"Email or password is incorrect"});
+  const user=found.rows[0];
+  if(!user.email_verified_at) return send(res,403,{error:"Confirm your email address before signing in. You can request a new verification email.",code:"email_not_verified"});
+  const token=await createUserSession(user.id);
+  return send(res,200,{token,token_type:"Bearer",expires_in:2592000,user:{id:String(user.id),email:user.email,created_at:user.created_at}});
 }
+
+async function handleVerifyEmail(req,res) {
+  if(!pool) return send(res,503,{error:"Account service is not configured"});
+  const raw=await readBody(req); let input;
+  try { input=JSON.parse(raw.toString("utf8")); } catch { return send(res,400,{error:"Invalid JSON"}); }
+  const token=input?.token;
+  if(typeof token!=="string"||token.length<30||token.length>200) return send(res,400,{error:"This verification link is invalid, expired or already used. Request a new link."});
+  const client=await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const consumed=await client.query("UPDATE email_action_tokens SET consumed_at=NOW() WHERE token_hash=$1 AND purpose='verify_email' AND consumed_at IS NULL AND expires_at>NOW() RETURNING user_id",[hashActionToken(token)]);
+    if(!consumed.rowCount) { await client.query("ROLLBACK"); return send(res,400,{error:"This verification link is invalid, expired or already used. Request a new link."}); }
+    await client.query("UPDATE app_users SET email_verified_at=COALESCE(email_verified_at,NOW()),updated_at=NOW() WHERE id=$1",[consumed.rows[0].user_id]);
+    await client.query("COMMIT");
+    return send(res,200,{status:"email_verified",message:"Email address confirmed. You can now sign in."});
+  } catch(error) { await client.query("ROLLBACK"); throw error; }
+  finally { client.release(); }
+}
+async function handleResendVerification(req,res) {
+  if(!pool) return send(res,503,{error:"Account service is not configured"});
+  if(authRateLimited(req)) return send(res,429,{error:"Too many account attempts; try again in 15 minutes"});
+  const raw=await readBody(req); let input;
+  try { input=JSON.parse(raw.toString("utf8")); } catch { return send(res,400,{error:"Invalid JSON"}); }
+  const email=typeof input?.email==="string"?input.email.trim().toLowerCase():"";
+  if(email&&email.length<=254) {
+    const found=await pool.query("SELECT id,email,email_verified_at FROM app_users WHERE email=$1",[email]);
+    if(found.rowCount&&!found.rows[0].email_verified_at) {
+      const token=await issueEmailActionToken(found.rows[0].id,"verify_email",86400);
+      await sendVerificationEmail(email,token);
+    }
+  }
+  return send(res,200,{status:"if_pending_sent",message:"If this address has an account awaiting verification, a new link has been sent."});
+}
+
+async function handleRequestPasswordReset(req,res) {
+  if(!pool) return send(res,503,{error:"Account service is not configured"});
+  if(authRateLimited(req)) return send(res,429,{error:"Too many account attempts; try again in 15 minutes"});
+  const raw=await readBody(req); let input;
+  try { input=JSON.parse(raw.toString("utf8")); } catch { return send(res,400,{error:"Invalid JSON"}); }
+  const email=typeof input?.email==="string"?input.email.trim().toLowerCase():"";
+  if(email&&email.length<=254) {
+    const found=await pool.query("SELECT id,email,email_verified_at FROM app_users WHERE email=$1",[email]);
+    if(found.rowCount&&found.rows[0].email_verified_at) {
+      const token=await issueEmailActionToken(found.rows[0].id,"reset_password",3600);
+      await sendPasswordResetEmail(email,token);
+    }
+  }
+  return send(res,200,{status:"if_account_sent",message:"If a verified account exists for this address, password reset instructions have been sent."});
+}
+
+async function handleResetPassword(req,res) {
+  if(!pool) return send(res,503,{error:"Account service is not configured"});
+  const raw=await readBody(req); let input;
+  try { input=JSON.parse(raw.toString("utf8")); } catch { return send(res,400,{error:"Invalid JSON"}); }
+  const password=typeof input?.password==="string"?input.password:"";
+  const token=input?.token;
+  if(password.length<12||password.length>128) return send(res,422,{error:"Password must contain 12 to 128 characters"});
+  if(typeof token!=="string"||token.length<30||token.length>200) return send(res,400,{error:"This reset link is invalid, expired or already used. Request a new one."});
+  const passwordHash=await hashPassword(password);
+  const client=await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const consumed=await client.query("UPDATE email_action_tokens SET consumed_at=NOW() WHERE token_hash=$1 AND purpose='reset_password' AND consumed_at IS NULL AND expires_at>NOW() RETURNING user_id",[hashActionToken(token)]);
+    if(!consumed.rowCount) { await client.query("ROLLBACK"); return send(res,400,{error:"This reset link is invalid, expired or already used. Request a new one."}); }
+    const userId=consumed.rows[0].user_id;
+    await client.query("UPDATE app_users SET password_hash=$1,updated_at=NOW() WHERE id=$2",[passwordHash,userId]);
+    await client.query("UPDATE app_sessions SET revoked_at=NOW() WHERE user_id=$1 AND revoked_at IS NULL",[userId]);
+    await client.query("UPDATE email_action_tokens SET consumed_at=NOW() WHERE user_id=$1 AND purpose='reset_password' AND consumed_at IS NULL",[userId]);
+    await client.query("COMMIT");
+    return send(res,200,{status:"password_reset",message:"Password changed. Sign in using your new password."});
+  } catch(error) { await client.query("ROLLBACK"); throw error; }
+  finally { client.release(); }
+}
+
 async function handleMe(req, res) {
   if (!pool) return send(res, 503, { error: "Account service is not configured; database is required" });
   const token = bearerToken(req);
   if (!token) return send(res, 401, { error: "Authentication required" });
   const result = await pool.query(
-    `SELECT u.id, u.email, u.created_at
+    `SELECT u.id, u.email, u.created_at, u.subscription_status
      FROM app_sessions s JOIN app_users u ON u.id=s.user_id
      WHERE s.token_hash=$1 AND s.revoked_at IS NULL AND s.expires_at > NOW()`,
     [hashSessionToken(token)]
   );
   if (!result.rowCount) return send(res, 401, { error: "Session is invalid or expired" });
   const user = result.rows[0];
-  return send(res, 200, { user: { id: String(user.id), email: user.email, created_at: user.created_at } });
+  return send(res, 200, { user: { id: String(user.id), email: user.email, created_at: user.created_at, subscription_status: user.subscription_status } });
 }
 async function handleLogout(req, res) {
   if (!pool) return send(res, 503, { error: "Account service is not configured; database is required" });
@@ -377,6 +659,15 @@ async function handleLogout(req, res) {
 }
 
 async function deleteUserAccount(userId) {
+  const billing = await pool.query(
+    "SELECT mollie_customer_id,mollie_subscription_id,subscription_status FROM app_users WHERE id=$1",
+    [userId]
+  );
+  const account = billing.rows[0];
+  if (account?.mollie_subscription_id && account?.mollie_customer_id && account.subscription_status !== "canceled" && account.subscription_status !== "inactive") {
+    if (!process.env.MOLLIE_API_KEY) throw new Error("Cancel the recurring Mollie subscription before deleting this account.");
+    await mollieRequest("/customers/"+encodeURIComponent(account.mollie_customer_id)+"/subscriptions/"+encodeURIComponent(account.mollie_subscription_id),{method:"DELETE"});
+  }
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -422,6 +713,13 @@ async function requireUser(req, res) {
   if (!pool) { send(res, 503, { error: "Database is not configured" }); return null; }
   const user = await getAuthenticatedUser(req);
   if (!user) { send(res, 401, { error: "Sign in to use this feature" }); return null; }
+  const subscriptionAccess = user.subscription_status === "active" ||
+    (user.subscription_status === "canceled" && user.subscription_access_until &&
+      new Date(user.subscription_access_until).getTime() > Date.now());
+  if (!subscriptionAccess) {
+    send(res, 402, { error: "NEXORA All Access is required. Activate your €29.99/month subscription to use this feature.", code: "subscription_required" });
+    return null;
+  }
   return user;
 }
 async function handleCommunity(req, res) {
@@ -559,6 +857,10 @@ const server = createServer(async (req, res) => {
     }
     if (req.method === "POST" && req.url === "/v1/auth/register") return await handleRegister(req, res);
     if (req.method === "POST" && req.url === "/v1/auth/login") return await handleLogin(req, res);
+    if (req.method === "POST" && req.url === "/v1/auth/verify-email") return await handleVerifyEmail(req,res);
+    if (req.method === "POST" && req.url === "/v1/auth/resend-verification") return await handleResendVerification(req,res);
+    if (req.method === "POST" && req.url === "/v1/auth/request-password-reset") return await handleRequestPasswordReset(req,res);
+    if (req.method === "POST" && req.url === "/v1/auth/reset-password") return await handleResetPassword(req,res);
     if (req.method === "GET" && req.url === "/v1/auth/me") return await handleMe(req, res);
     if (req.method === "POST" && req.url === "/v1/auth/logout") return await handleLogout(req, res);
     if (req.method === "DELETE" && req.url === "/v1/auth/account") return await handleDeleteAccount(req, res);
@@ -568,6 +870,9 @@ const server = createServer(async (req, res) => {
     if (req.url === "/v1/business/workspace") return await handleBusinessWorkspace(req,res);
     if (req.url === "/v1/business/ai-plan") return await handleBusinessAIPlan(req,res);
     if (req.method === "POST" && req.url === "/v1/payments") return await handleCreatePayment(req, res);
+    if (req.method === "POST" && req.url === "/v1/subscriptions/checkout") return await handleCreateSubscriptionCheckout(req,res);
+    if (req.method === "GET" && req.url === "/v1/subscriptions/me") return await handleGetSubscription(req,res);
+    if (req.method === "POST" && req.url === "/v1/subscriptions/cancel") return await handleCancelSubscription(req,res);
     if (req.method === "POST" && req.url === "/v1/payments/mollie-webhook") return await handleMollieWebhook(req, res);
     const paymentStatusMatch = /^\/v1\/payments\/([0-9a-f-]{36})$/.exec(req.url || "");
     if (req.method === "GET" && paymentStatusMatch) return await handleGetPayment(req, res, paymentStatusMatch[1]);

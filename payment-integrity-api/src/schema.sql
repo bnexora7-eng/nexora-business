@@ -93,3 +93,26 @@ CREATE TABLE IF NOT EXISTS business_workspaces (
   goals TEXT NOT NULL DEFAULT '',
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE app_users ADD COLUMN IF NOT EXISTS email_verified_at TIMESTAMPTZ;
+ALTER TABLE app_users ADD COLUMN IF NOT EXISTS mollie_customer_id TEXT UNIQUE;
+ALTER TABLE app_users ADD COLUMN IF NOT EXISTS mollie_subscription_id TEXT UNIQUE;
+ALTER TABLE app_users ADD COLUMN IF NOT EXISTS subscription_status TEXT NOT NULL DEFAULT 'inactive';
+ALTER TABLE app_users ADD COLUMN IF NOT EXISTS subscription_started_at TIMESTAMPTZ;
+ALTER TABLE app_users ADD COLUMN IF NOT EXISTS subscription_updated_at TIMESTAMPTZ;
+ALTER TABLE app_users ADD COLUMN IF NOT EXISTS subscription_access_until TIMESTAMPTZ;
+ALTER TABLE app_users DROP CONSTRAINT IF EXISTS app_users_subscription_status_check;
+ALTER TABLE app_users ADD CONSTRAINT app_users_subscription_status_check
+  CHECK (subscription_status IN ('inactive','activation_pending','active','past_due','canceled'));
+
+CREATE TABLE IF NOT EXISTS email_action_tokens (
+  id BIGSERIAL PRIMARY KEY,
+  user_id BIGINT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
+  token_hash CHAR(64) NOT NULL UNIQUE,
+  purpose TEXT NOT NULL CHECK (purpose IN ('verify_email','reset_password')),
+  expires_at TIMESTAMPTZ NOT NULL,
+  consumed_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS email_action_tokens_user_purpose_idx
+  ON email_action_tokens (user_id, purpose, created_at DESC);

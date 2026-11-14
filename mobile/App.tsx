@@ -6,7 +6,7 @@ import { Alert, BackHandler, SafeAreaView, ScrollView, StatusBar, StyleSheet, Te
 
 type Tab = "Home" | "Community" | "Marketplace" | "Business" | "Integrity" | "Payments" | "Profile";
 type Decision = "ACCEPT" | "REVIEW" | "REJECT";
-type Account = { id: string; email: string; created_at: string };
+type Account = { id: string; email: string; created_at: string; subscription_status?: string };
 
 const C = { bg:"#08111F", panel:"#111E30", panel2:"#17263B", line:"#263A53", text:"#F3F7FC", muted:"#91A4BA", cyan:"#4DE1D2", blue:"#6EA8FF", green:"#43D19E", amber:"#F5BD58", red:"#FF7777" };
 
@@ -27,15 +27,12 @@ export default function App() {
   const [authMode,setAuthMode] = useState<"login"|"register">("register");
   const [authBusy,setAuthBusy] = useState(false);
   const [authMessage,setAuthMessage] = useState("");
+  const [pendingVerificationEmail,setPendingVerificationEmail] = useState("");
   const [account,setAccount] = useState<Account|null>(null);
   const [decision,setDecision] = useState<Decision|null>(null);
-  const [plan,setPlan] = useState("Free");
-  const [paymentAmount,setPaymentAmount] = useState("19.90");
-  const [paymentDescription,setPaymentDescription] = useState("NEXORA service");
-  const [paymentBusy,setPaymentBusy] = useState(false);
-  const [paymentMessage,setPaymentMessage] = useState("");
-  const [paymentOrderId,setPaymentOrderId] = useState("");
-  const [paymentStatus,setPaymentStatus] = useState("");
+  const [subscriptionStatus,setSubscriptionStatus] = useState("inactive");
+  const [subscriptionBusy,setSubscriptionBusy] = useState(false);
+  const [subscriptionMessage,setSubscriptionMessage] = useState("");
 
 
   useEffect(() => {
@@ -56,6 +53,11 @@ export default function App() {
     return () => { active = false; };
   }, []);
 
+  useEffect(() => {
+    if (account) refreshSubscription();
+    else { setSubscriptionStatus("inactive"); setSubscriptionMessage(""); }
+  }, [account]);
+
   const submitAuth = async () => {
     setAuthMessage("");
     if (!API_BASE) { setAuthMessage("Logowanie będzie dostępne po podłączeniu serwera NEXORA."); return; }
@@ -68,46 +70,92 @@ export default function App() {
         body: JSON.stringify({ email: email.trim(), password })
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Nie udało się zalogować.");
+      if (!response.ok) {
+        if (data.code === "email_not_verified") setPendingVerificationEmail(email.trim());
+        throw new Error(data.error || "Nie udało się zalogować.");
+      }
+      if (data.status === "verification_required") {
+        setPendingVerificationEmail(data.email || email.trim());
+        setPassword("");
+        setAuthMessage("Konto utworzone. Otwórz wiadomość e-mail od NEXORA i potwierdź adres. Dopiero wtedy możesz się zalogować.");
+        return;
+      }
       await SecureStore.setItemAsync("nexora_session", data.token);
       setAccount(data.user);
       setPassword("");
-      setAuthMessage(authMode === "register" ? "Konto zostało utworzone." : "Zalogowano pomyślnie.");
+      setPendingVerificationEmail("");
+      setAuthMessage("Zalogowano pomyślnie.");
     } catch (error) {
+      if (error instanceof Error && /verification email could not be sent/i.test(error.message)) setPendingVerificationEmail(email.trim());
       setAuthMessage(error instanceof Error ? error.message : "Błąd połączenia.");
     } finally {
       setAuthBusy(false);
     }
   };
 
-  const startPayment = async () => {
-    setPaymentMessage("");
-    if (!account) { setPaymentMessage("Najpierw zaloguj się na konto NEXORA w zakładce Profil."); return; }
-    setPaymentBusy(true);
+  async function refreshSubscription() {
+    if (!API_BASE) return;
     try {
       const token = await SecureStore.getItemAsync("nexora_session");
-      const response = await fetch(API_BASE + "/v1/payments", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + token }, body: JSON.stringify({ amount: paymentAmount, description: paymentDescription }) });
+      if (!token) return;
+      const response = await fetch(API_BASE + "/v1/subscriptions/me", { headers: { Authorization: "Bearer " + token } });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Nie udało się utworzyć płatności.");
-      setPaymentOrderId(data.order_id); setPaymentStatus(data.status);
+      if (!response.ok) throw new Error(data.error || "Nie można sprawdzić abonamentu.");
+      setSubscriptionStatus(data.status || "inactive");
+    } catch (error) {
+      setSubscriptionMessage(error instanceof Error ? error.message : "Nie można sprawdzić abonamentu.");
+    }
+  }
+
+  const startSubscription = async () => {
+    setSubscriptionMessage("");
+    if (!account) { setSubscriptionMessage("Najpierw zaloguj się w zakładce Profil."); setTab("Profile"); return; }
+    setSubscriptionBusy(true);
+    try {
+      const token = await SecureStore.getItemAsync("nexora_session");
+      const response = await fetch(API_BASE + "/v1/subscriptions/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+        body: "{}"
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Nie udało się uruchomić bezpiecznej płatności.");
+      if (!data.checkout_url) throw new Error("Operator nie zwrócił adresu płatności.");
       await Linking.openURL(data.checkout_url);
-      setPaymentMessage(data.mode === "test" ? "Otworzono testową płatność Mollie. Nie są pobierane prawdziwe pieniądze." : "Otworzono stronę płatności. Po powrocie sprawdź status.");
-    } catch (error) { setPaymentMessage(error instanceof Error ? error.message : "Błąd połączenia z płatnościami."); }
-    finally { setPaymentBusy(false); }
+      setSubscriptionMessage(data.mode === "test" ? "Otwarto testową płatność Mollie. Nie są pobierane prawdziwe pieniądze." : "Otwarto bezpieczną płatność. Dostęp zostanie aktywowany po potwierdzeniu przez Mollie.");
+    } catch (error) {
+      setSubscriptionMessage(error instanceof Error ? error.message : "Błąd połączenia z płatnościami.");
+    } finally {
+      setSubscriptionBusy(false);
+    }
   };
 
-  const refreshPayment = async () => {
-    if (!paymentOrderId) return;
-    setPaymentBusy(true);
-    try {
-      const token = await SecureStore.getItemAsync("nexora_session");
-      const response = await fetch(API_BASE + "/v1/payments/" + paymentOrderId, { headers: { Authorization: "Bearer " + token } });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Nie można sprawdzić płatności.");
-      setPaymentStatus(data.status); setPaymentMessage(data.paid ? "Płatność potwierdzona przez operatora." : "Aktualny status: " + data.status);
-    } catch (error) { setPaymentMessage(error instanceof Error ? error.message : "Nie udało się sprawdzić statusu."); }
-    finally { setPaymentBusy(false); }
+  const cancelSubscription = () => {
+    Alert.alert("Anulować NEXORA All Access?", "Po anulowaniu kolejne miesięczne płatności zostaną zatrzymane.", [
+      { text: "Wróć", style: "cancel" },
+      { text: "Anuluj abonament", style: "destructive", onPress: async () => {
+        setSubscriptionBusy(true);
+        try {
+          const token = await SecureStore.getItemAsync("nexora_session");
+          const response = await fetch(API_BASE + "/v1/subscriptions/cancel", { method: "POST", headers: { Authorization: "Bearer " + token } });
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.error || "Nie udało się anulować abonamentu.");
+          setSubscriptionStatus("canceled");
+          setSubscriptionMessage(data.message || "Abonament został anulowany.");
+        } catch (error) {
+          setSubscriptionMessage(error instanceof Error ? error.message : "Nie udało się anulować abonamentu.");
+        } finally {
+          setSubscriptionBusy(false);
+        }
+      }}
+    ]);
   };
+
+  const subscriptionLabel = subscriptionStatus === "active" ? "AKTYWNY — pełny dostęp do NEXORA" :
+    subscriptionStatus === "activation_pending" ? "PŁATNOŚĆ POTWIERDZONA — aktywacja w toku" :
+    subscriptionStatus === "past_due" ? "PŁATNOŚĆ WYMAGA UWAGI" :
+    subscriptionStatus === "canceled" ? "ABONAMENT ANULOWANY" : "BRAK AKTYWNEGO ABONAMENTU";
+
   const signOut = async () => {
     try {
       const token = await SecureStore.getItemAsync("nexora_session");
@@ -121,7 +169,7 @@ export default function App() {
   const deleteAccount = () => {
     Alert.alert(
       "Delete NEXORA account?",
-      "This permanently deletes your account, posts, marketplace listings and business workspace. Payment records may be retained without your account link where legally required.",
+      "This permanently deletes your account, posts, marketplace listings and business workspace. Any active NEXORA recurring subscription is canceled first. Payment records may be retained without your account link where legally required.",
       [
         { text: "Cancel", style: "cancel" },
         { text: "Delete account", style: "destructive", onPress: async () => {
@@ -164,7 +212,7 @@ export default function App() {
     Marketplace:"NEXORA Marketplace",
     Business:"Business Tools",
     Integrity:"Payment Integrity",
-    Payments:"Pay for NEXORA services",
+    Payments:"NEXORA All Access",
     Profile:"Your NEXORA account"
   };
 
@@ -204,18 +252,17 @@ export default function App() {
       </>}
       {tab==="Payments" && <>
         <Card>
-          <Text style={styles.kicker}>NEXORA PAYMENTS • MOLLIE</Text>
-          <Text style={styles.hero}>Secure checkout for NEXORA services.</Text>
-          <Text style={styles.muted}>Payments are handled on a secure provider checkout page. NEXORA never stores card or bank login details.</Text>
-          <Text style={styles.label}>AMOUNT (EUR)</Text>
-          <TextInput value={paymentAmount} onChangeText={setPaymentAmount} keyboardType="decimal-pad" placeholder="19.90" placeholderTextColor={C.muted} style={styles.input}/>
-          <Text style={styles.label}>SERVICE DESCRIPTION</Text>
-          <TextInput value={paymentDescription} onChangeText={setPaymentDescription} maxLength={100} placeholder="NEXORA service" placeholderTextColor={C.muted} style={styles.input}/>
-          <TouchableOpacity style={[styles.primary,paymentBusy&&{opacity:0.6}]} disabled={paymentBusy} onPress={startPayment}><Text style={styles.primaryText}>{paymentBusy?"PLEASE WAIT":"CONTINUE TO SECURE PAYMENT"}</Text></TouchableOpacity>
-          {!!paymentOrderId && <TouchableOpacity style={styles.action} onPress={refreshPayment} disabled={paymentBusy}><View style={{flex:1}}><Text style={styles.actionTitle}>Check payment status</Text><Text style={styles.muted}>Current status: {paymentStatus || "unknown"}</Text></View><Text style={styles.arrow}>↻</Text></TouchableOpacity>}
-          {!!paymentMessage && <Text style={styles.note}>{paymentMessage}</Text>}
+          <Text style={styles.kicker}>NEXORA ALL ACCESS</Text>
+          <Text style={styles.hero}>One plan. The full platform.</Text>
+          <Text style={[styles.hero,{color:C.cyan,fontSize:30}]}>€29.99<Text style={{fontSize:14,color:C.muted,fontWeight:"500"}}> / month</Text></Text>
+          <Text style={styles.muted}>One monthly membership unlocks the NEXORA platform: Business Studio, opportunities, community and productivity tools. Secure recurring checkout is handled by Mollie.</Text>
+          <Text style={[styles.note,{marginTop:16}]}>{subscriptionLabel}</Text>
+          {subscriptionStatus==="active" ?
+            <TouchableOpacity style={[styles.action,{marginTop:12,borderColor:C.red}]} onPress={cancelSubscription} disabled={subscriptionBusy}><Text style={{color:C.red,fontWeight:"800"}}>{subscriptionBusy?"PLEASE WAIT":"CANCEL SUBSCRIPTION"}</Text></TouchableOpacity> :
+            <TouchableOpacity style={[styles.primary,subscriptionBusy&&{opacity:0.6}]} disabled={subscriptionBusy||subscriptionStatus==="activation_pending"} onPress={startSubscription}><Text style={styles.primaryText}>{subscriptionBusy?"PLEASE WAIT":subscriptionStatus==="activation_pending"?"ACTIVATION IN PROGRESS":"ACTIVATE ALL ACCESS — €29.99 / MONTH"}</Text></TouchableOpacity>}
+          <TouchableOpacity style={styles.action} onPress={refreshSubscription}><View style={{flex:1}}><Text style={styles.actionTitle}>Refresh membership status</Text><Text style={styles.muted}>The server confirms access after Mollie payment webhooks.</Text></View><Text style={styles.arrow}>↻</Text></TouchableOpacity>
+          {!!subscriptionMessage&&<Text style={styles.note}>{subscriptionMessage}</Text>}
         </Card>
-        <Text style={styles.note}>This feature is enabled only after the NEXORA server has a Mollie API key and a verified merchant account. Test-mode payments do not transfer real money.</Text>
       </>}
       {tab==="Profile" && <>
         <Card>
@@ -240,13 +287,13 @@ export default function App() {
             {authMode==="register"&&<Text style={styles.note}>Use at least 12 characters. Your password is stored as a salted secure hash, not as plain text.</Text>}
             <TouchableOpacity style={[styles.primary,authBusy&&{opacity:0.6}]} disabled={authBusy} onPress={submitAuth}><Text style={styles.primaryText}>{authBusy?"PLEASE WAIT":authMode==="register"?"CREATE ACCOUNT":"SIGN IN"}</Text></TouchableOpacity>
             {!!authMessage&&<Text style={[styles.note,{marginBottom:0}]}>{authMessage}</Text>}
+            {!!pendingVerificationEmail&&<TouchableOpacity style={styles.action} onPress={async()=>{try{const response=await fetch(API_BASE+"/v1/auth/resend-verification",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:pendingVerificationEmail})});const data=await response.json();if(!response.ok)throw new Error(data.error||"Nie udało się wysłać wiadomości.");setAuthMessage("Jeśli konto oczekuje na potwierdzenie, wysłaliśmy nowy link na "+pendingVerificationEmail+".");}catch(error){setAuthMessage(error instanceof Error?error.message:"Błąd połączenia.");}}}><View style={{flex:1}}><Text style={styles.actionTitle}>Wyślij ponownie link aktywacyjny</Text><Text style={styles.muted}>{pendingVerificationEmail}</Text></View><Text style={styles.arrow}>›</Text></TouchableOpacity>}
+            <TouchableOpacity onPress={()=>Linking.openURL("https://bnexora7-eng.github.io/nexora-business/account/forgot-password.html")}><Text style={styles.note}>Nie pamiętasz hasła? Odzyskaj konto</Text></TouchableOpacity>
             <TouchableOpacity onPress={()=>Linking.openURL("https://bnexora7-eng.github.io/nexora-business/privacy/")}><Text style={styles.note}>Read NEXORA Privacy Policy</Text></TouchableOpacity>
             {!API_BASE&&<Text style={styles.note}>The account server must be deployed and connected before registration can work.</Text>}
           </>}
         </Card>
-        <Card><Text style={styles.kicker}>MEMBERSHIP</Text><Text style={styles.hero}>Choose how you grow with NEXORA.</Text><Text style={styles.muted}>These plans are previews only. No subscription is charged in this build.</Text></Card>
-        {["Free","Premium","Business"].map(p=><TouchableOpacity key={p} style={[styles.plan,plan===p&&styles.planSelected]} onPress={()=>setPlan(p)}><View style={{flex:1}}><Text style={styles.actionTitle}>{p}</Text><Text style={styles.muted}>{p==="Free"?"Core platform access":p==="Premium"?"Enhanced personal features":"Tools for companies and sellers"}</Text></View><Text style={{color:plan===p?C.cyan:C.muted,fontWeight:"800"}}>{plan===p?"SELECTED":"SELECT"}</Text></TouchableOpacity>)}
-        <Text style={styles.note}>Paid memberships will be activated only after a compliant payment provider and subscription management are integrated. No bank details are requested here.</Text>
+        <Card><Text style={styles.kicker}>NEXORA ALL ACCESS</Text><Text style={styles.hero}>One membership for everything.</Text><Text style={[styles.hero,{color:C.cyan,fontSize:27}]}>€29.99<Text style={{fontSize:13,color:C.muted,fontWeight:"500"}}> / month</Text></Text><Text style={styles.muted}>{subscriptionLabel}</Text>{subscriptionStatus==="active" ? <TouchableOpacity style={[styles.action,{marginTop:12,borderColor:C.red}]} onPress={cancelSubscription} disabled={subscriptionBusy}><Text style={{color:C.red,fontWeight:"800"}}>{subscriptionBusy?"PLEASE WAIT":"CANCEL SUBSCRIPTION"}</Text></TouchableOpacity> : <TouchableOpacity style={[styles.primary,subscriptionBusy&&{opacity:0.6}]} disabled={subscriptionBusy||subscriptionStatus==="activation_pending"} onPress={()=>setTab("Payments")}><Text style={styles.primaryText}>VIEW ALL ACCESS CHECKOUT</Text></TouchableOpacity>}{!!subscriptionMessage&&<Text style={styles.note}>{subscriptionMessage}</Text>}</Card>
       </>}
     </ScrollView>
     <View style={styles.nav}>{(["Home","Community","Marketplace","Business","Integrity","Payments","Profile"] as Tab[]).map(t=><TouchableOpacity key={t} onPress={()=>go(t)} style={styles.navItem}><View style={[styles.navMark,tab===t&&styles.navMarkActive]}/><Text numberOfLines={1} style={[styles.navText,tab===t&&{color:C.cyan}]}>{t==="Marketplace"?"Market":t==="Community"?"Social":t==="Integrity"?"Check":t==="Payments"?"Pay":t}</Text></TouchableOpacity>)}</View>
