@@ -40,7 +40,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm install
+      - run: npm install --no-audit --no-fund
+      - name: Preserve generated API dependency lock for review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexora-api-package-lock
+          path: payment-integrity-api/package-lock.json
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Audit production dependencies
         run: |
           npm audit --omit=dev --audit-level=high --json > /tmp/nexora-npm-audit.json || audit_status=$?
