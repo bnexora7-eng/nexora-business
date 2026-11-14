@@ -35,7 +35,7 @@ This file is the current release-gate summary. A green CI check validates only t
 ### B. Transactional email
 
 - Brevo HTTPS delivery is implemented; unit tests cover sender, recipient, message payload and provider failure handling.
-- Actual delivery is **not verified** because `BREVO_API_KEY` and a verified `BREVO_FROM` sender have not been configured.
+- Actual delivery is **not verified** because `BREVO_API_KEY` and a verified `BREVO_FROM` sender have not been configured. `NEXORA_ACCOUNT_URL` and `PUBLIC_API_URL` have been explicitly set in Render and redeployed.
 - Render Free blocks outbound SMTP ports 25, 465 and 587; use Brevo HTTPS rather than relying on SMTP.
 - Required: create a Brevo API key, verify the sender/domain, enter secrets directly into Render, then test registration, resend verification, password reset and delivery to real inboxes. Never send API keys in chat.
 
@@ -59,7 +59,7 @@ This file is the current release-gate summary. A green CI check validates only t
 ### E. AI provider and cost controls
 
 - AI route is authenticated and All Access-gated.
-- No production provider key or approved monthly budget is configured. AI remains disabled by default (`AI_MONTHLY_TOKEN_LIMIT=0`).
+- No production provider key or approved monthly budget is configured. Render now explicitly sets `AI_MONTHLY_TOKEN_LIMIT=0`; `ENABLE_LIVE_PAYMENTS=false` is also explicitly set. The environment update was deployed and the Render readiness smoke test passed (run 43620259235).
 - Required before enabling: add the server-side key directly to Render, set a conservative monthly token limit, configure provider-side spending alerts/limits, verify quota reservation/reconciliation and test abuse/rate-limit behavior. No paid AI usage without explicit budget approval.
 
 ### F. Legal, privacy and business identity
