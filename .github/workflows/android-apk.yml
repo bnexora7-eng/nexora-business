@@ -36,7 +36,18 @@ jobs:
           java-version: "17"
       - name: Install dependencies
         working-directory: mobile
-        run: npm install
+        run: npm install --no-audit --no-fund
+      - name: Preserve generated dependency lock for review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexora-mobile-package-lock
+          path: mobile/package-lock.json
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Audit production dependencies
+        working-directory: mobile
+        run: npm audit --omit=dev --audit-level=high
       - name: Check TypeScript
         working-directory: mobile
         run: npm run typecheck
