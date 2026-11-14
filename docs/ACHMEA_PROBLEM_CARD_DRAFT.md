@@ -42,7 +42,7 @@ A separate Node.js/PostgreSQL backend scaffold explores HMAC-SHA256 request auth
 **Important technical limitation:** the public demonstrator and the separate backend scaffold are not yet connected into one deployed product. There are no live bank or payment-provider integrations, no production deployment, no live payment data, no paying customers and no revenue. The current demonstrator is not a production fraud-detection system and does not use a live AI/ML model.
 
 - Project overview: https://bnexora7-eng.github.io/nexora-business/company/
-- Demonstrator: https://splendid-lokum-02523e.netlify.app/
+- Demonstrator: https://bnexora7-eng.github.io/nexora-business/payment-integrity-demo/demo.html
 - Source repository: https://github.com/bnexora7-eng/nexora-business
 
 ## 5. Why this could matter
