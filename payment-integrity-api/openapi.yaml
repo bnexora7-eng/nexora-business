@@ -1,88 +1,297 @@
 openapi: 3.1.0
 info:
-  title: NEXORA Payment Integrity API
-  version: 0.1.0
-  description: Pre-production API scaffold for authenticated synthetic payment-event screening. Not a production payment service.
+  title: NEXORA API
+  version: 0.2.0
+  description: >
+    Pre-production NEXORA account, subscription, workspace and synthetic
+    Payment Integrity API. Real customer billing, live AI and public launch
+    remain disabled until the production-readiness gates are complete.
 servers:
+  - url: https://nexora-payment-integrity-api.onrender.com
+    description: Render pre-production API
   - url: http://localhost:8080
+    description: Local development
 components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
+  schemas:
+    Error:
+      type: object
+      properties:
+        error: { type: string }
+        code: { type: string }
+    EmailPassword:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email, maxLength: 254 }
+        password: { type: string, minLength: 12, maxLength: 128 }
+    Status:
+      type: object
+      properties:
+        status: { type: string }
+    Subscription:
+      type: object
+      properties:
+        status: { type: string, enum: [inactive, activation_pending, active, past_due, canceled] }
+        access: { type: boolean }
+        access_until: { type: [string, "null"], format: date-time }
+        price: { type: string, example: "29.99" }
+        currency: { type: string, example: EUR }
 paths:
   /health:
     get:
-      summary: Check API and PostgreSQL connectivity
+      summary: Process health
       responses:
-        "200":
-          description: Service and database are reachable
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status: { type: string, const: ok }
-                  service: { type: string }
+        "200": { description: API process is running }
+  /ready:
+    get:
+      summary: Database readiness
+      responses:
+        "200": { description: API and PostgreSQL are ready }
+        "503": { description: Database is not ready }
   /v1/auth/register:
     post:
-      summary: Create a NEXORA account
+      summary: Register an account and send an email verification link
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              required: [email, password]
-              properties:
-                email: { type: string, format: email, maxLength: 254 }
-                password: { type: string, minLength: 12, maxLength: 128 }
+              $ref: "#/components/schemas/EmailPassword"
       responses:
-        "201": { description: Account created and bearer session issued }
+        "201": { description: Pending account created; no session is issued before email verification }
         "409": { description: Email is already registered }
         "422": { description: Invalid email or password length }
-        "429": { description: Too many account attempts }
-        "503": { description: Account database is not configured }
-  /v1/auth/login:
+        "429": { description: Rate limit reached }
+        "503": { description: Account database or email delivery is unavailable }
+  /v1/auth/verify-email:
     post:
-      summary: Sign in to a NEXORA account
+      summary: Consume a one-time email verification token
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [email, password]
+              required: [token]
               properties:
-                email: { type: string, format: email }
-                password: { type: string }
+                token: { type: string, minLength: 30, maxLength: 200 }
       responses:
-        "200": { description: Bearer session issued }
+        "200": { description: Email verified }
+        "400": { description: Invalid, expired or already used token }
+        "429": { description: Rate limit reached }
+  /v1/auth/resend-verification:
+    post:
+      summary: Resend a verification link without account enumeration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email, maxLength: 254 }
+      responses:
+        "200": { description: Generic response for known and unknown addresses }
+        "429": { description: Rate limit reached }
+  /v1/auth/login:
+    post:
+      summary: Sign in after email verification
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmailPassword"
+      responses:
+        "200": { description: Verified account session issued }
         "401": { description: Invalid credentials }
-        "429": { description: Too many account attempts }
-        "503": { description: Account database is not configured }
+        "403": { description: Email verification required }
+        "429": { description: Rate limit reached }
   /v1/auth/me:
     get:
-      summary: Get the signed-in account profile
-      security:
-        - bearerAuth: []
+      summary: Get current account profile and subscription status
+      security: [{ bearerAuth: [] }]
       responses:
         "200": { description: Current account profile }
         "401": { description: Missing, invalid or expired session }
-        "503": { description: Account database is not configured }
   /v1/auth/logout:
     post:
-      summary: Revoke the current account session
-      security:
-        - bearerAuth: []
+      summary: Revoke current session
+      security: [{ bearerAuth: [] }]
       responses:
         "200": { description: Session revoked }
         "401": { description: Missing or invalid session }
-        "503": { description: Account database is not configured }
+  /v1/auth/request-password-reset:
+    post:
+      summary: Request a one-hour password reset link without account enumeration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email, maxLength: 254 }
+      responses:
+        "200": { description: Generic response for known and unknown addresses }
+        "429": { description: Rate limit reached }
+  /v1/auth/reset-password:
+    post:
+      summary: Consume a one-time password reset token and revoke existing sessions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, password]
+              properties:
+                token: { type: string, minLength: 30, maxLength: 200 }
+                password: { type: string, minLength: 12, maxLength: 128 }
+      responses:
+        "200": { description: Password changed and old sessions revoked }
+        "400": { description: Invalid, expired or already used token }
+        "422": { description: Password length is invalid }
+  /v1/auth/account:
+    delete:
+      summary: Delete authenticated account and associated user content
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Account deleted; unlinked legally required payment records may remain }
+        "401": { description: Authentication required }
+        "409": { description: Billing state could not be safely reconciled or canceled }
+  /v1/auth/delete-request:
+    post:
+      summary: Web account deletion using email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmailPassword"
+      responses:
+        "200": { description: Account deleted }
+        "401": { description: Invalid credentials }
+        "409": { description: Billing state could not be safely reconciled or canceled }
+        "429": { description: Rate limit reached }
+  /v1/subscriptions/checkout:
+    post:
+      summary: Create first Mollie payment for NEXORA All Access
+      description: >
+        €29.99 EUR monthly subscription. Requires server-side Mollie configuration.
+        Live payments must remain disabled until merchant onboarding and all
+        legal, support and end-to-end test gates pass.
+      security: [{ bearerAuth: [] }]
+      responses:
+        "201": { description: Mollie checkout created in the configured mode }
+        "401": { description: Authentication required }
+        "402": { description: Existing entitlement or payment state prevents a new checkout }
+        "409": { description: Pending payment or provider result requires reconciliation }
+        "503": { description: Mollie checkout is not configured }
+  /v1/subscriptions/me:
+    get:
+      summary: Read server-confirmed All Access entitlement
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Subscription state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Subscription"
+        "401": { description: Authentication required }
+  /v1/subscriptions/cancel:
+    post:
+      summary: Cancel recurring Mollie subscription
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Subscription canceled; access remains through paid-through date }
+        "401": { description: Authentication required }
+        "409": { description: Provider status could not be safely reconciled }
+  /v1/payments:
+    post:
+      summary: Create a one-off Mollie payment
+      security: [{ bearerAuth: [] }]
+      responses:
+        "201": { description: Payment order created }
+        "401": { description: Authentication required }
+        "503": { description: Payment provider is not configured }
+  /v1/payments/{order_id}:
+    get:
+      summary: Read the authenticated user's payment status
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: order_id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200": { description: Payment status }
+        "401": { description: Authentication required }
+        "404": { description: Order not found }
+  /v1/payments/mollie-webhook:
+    post:
+      summary: Mollie payment webhook
+      description: Provider notification; the API fetches the payment from Mollie before updating local state.
+      responses:
+        "200": { description: Notification processed or safely ignored }
+        "400": { description: Invalid provider notification }
+        "500": { description: Provider reconciliation failed; retry may be required }
+  /v1/community/posts:
+    get:
+      summary: Read public Community posts
+      responses:
+        "200": { description: Public post list }
+    post:
+      summary: Publish a Community post
+      security: [{ bearerAuth: [] }]
+      responses:
+        "201": { description: Post created for an eligible All Access account }
+        "402": { description: Active All Access entitlement required }
+  /v1/marketplace/listings:
+    get:
+      summary: Read public Marketplace listings
+      responses:
+        "200": { description: Public listing list }
+    post:
+      summary: Publish a Marketplace listing
+      security: [{ bearerAuth: [] }]
+      responses:
+        "201": { description: Listing created for an eligible All Access account }
+        "402": { description: Active All Access entitlement required }
+  /v1/business/workspace:
+    get:
+      summary: Read authenticated Business Studio workspace
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Workspace data }
+        "402": { description: Active All Access entitlement required }
+    put:
+      summary: Update Business Studio workspace
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Workspace saved }
+        "402": { description: Active All Access entitlement required }
+  /v1/business/ai-plan:
+    post:
+      summary: Generate an AI business plan
+      description: Requires a server-side provider key and non-zero configured monthly token budget; AI remains disabled otherwise.
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Generated plan }
+        "402": { description: Active All Access entitlement required }
+        "429": { description: Per-account or monthly AI quota reached }
+        "503": { description: AI provider is not configured or AI is disabled }
   /v1/events:
     post:
-      summary: Authenticate and screen a provider event
-      description: The request body must be signed as HMAC-SHA256(timestamp + "." + exact raw request bytes). Timestamp tolerance is five minutes.
+      summary: Authenticate and screen a synthetic provider event
+      description: HMAC-SHA256(timestamp + "." + exact raw request bytes), with a five-minute timestamp tolerance. Not a live bank/payment integration.
       parameters:
         - in: header
           name: x-nexora-timestamp
@@ -91,7 +300,7 @@ paths:
         - in: header
           name: x-nexora-signature
           required: true
-          description: "sha256=<64-character lowercase or uppercase hex digest>"
+          description: "sha256=<64-character hex digest>"
           schema: { type: string }
       requestBody:
         required: true
@@ -118,13 +327,15 @@ paths:
                   decision: { type: string, enum: [ACCEPT, REVIEW, REJECT] }
                   reason: { type: string }
                   duplicate: { type: boolean }
-                  reference:
-                    type: object
-                    properties:
-                      provider_id: { type: string }
-                      event_id: { type: string }
+                  reference: { type: object }
         "400": { description: Invalid JSON }
         "401": { description: Unknown provider or invalid/expired signature }
         "413": { description: Payload too large }
         "422": { description: Missing or invalid event fields }
-        "500": { description: Screening could not be completed }
+  /v1/demo/events:
+    post:
+      summary: Submit a synthetic browser-demo event
+      description: Available only when the public demo is enabled and restricted to its configured origin.
+      responses:
+        "200": { description: Demo decision }
+        "403": { description: Demo disabled or origin not allowed }
