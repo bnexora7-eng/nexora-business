@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import * as SecureStore from "expo-secure-store";
 import NexoraModules from "./NexoraModules";
 import { API_BASE } from "./api";
-import { Alert, BackHandler, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View, Linking } from "react-native";
+import { Alert, BackHandler, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 type Tab = "Home" | "Community" | "Marketplace" | "Business" | "Integrity" | "Payments" | "Profile";
 type Decision = "ACCEPT" | "REVIEW" | "REJECT";
@@ -107,27 +107,8 @@ export default function App() {
     }
   }
 
-  const startSubscription = async () => {
-    setSubscriptionMessage("");
-    if (!account) { setSubscriptionMessage("Najpierw zaloguj się w zakładce Profil."); setTab("Profile"); return; }
-    setSubscriptionBusy(true);
-    try {
-      const token = await SecureStore.getItemAsync("nexora_session");
-      const response = await fetch(API_BASE + "/v1/subscriptions/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
-        body: "{}"
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Nie udało się uruchomić bezpiecznej płatności.");
-      if (!data.checkout_url) throw new Error("Operator nie zwrócił adresu płatności.");
-      await Linking.openURL(data.checkout_url);
-      setSubscriptionMessage(data.mode === "test" ? "Otwarto testową płatność Mollie. Nie są pobierane prawdziwe pieniądze." : "Otwarto bezpieczną płatność. Dostęp zostanie aktywowany po potwierdzeniu przez Mollie.");
-    } catch (error) {
-      setSubscriptionMessage(error instanceof Error ? error.message : "Błąd połączenia z płatnościami.");
-    } finally {
-      setSubscriptionBusy(false);
-    }
+  const startSubscription = () => {
+    setSubscriptionMessage("Płatności w aplikacji Android są obecnie wyłączone. Przed uruchomieniem abonamentu wdrożymy i zweryfikujemy Google Play Billing. Nie otwieramy tutaj zewnętrznego checkoutu Mollie.");
   };
 
   const cancelSubscription = () => {
@@ -255,11 +236,11 @@ export default function App() {
           <Text style={styles.kicker}>NEXORA ALL ACCESS</Text>
           <Text style={styles.hero}>One plan. The full platform.</Text>
           <Text style={[styles.hero,{color:C.cyan,fontSize:30}]}>€29.99<Text style={{fontSize:14,color:C.muted,fontWeight:"500"}}> / month</Text></Text>
-          <Text style={styles.muted}>One monthly membership unlocks the NEXORA platform: Business Studio, opportunities, community and productivity tools. Secure recurring checkout is handled by Mollie.</Text>
+          <Text style={styles.muted}>One monthly membership unlocks the NEXORA platform: Business Studio, opportunities, community and productivity tools. Android checkout is disabled until Google Play Billing is implemented and verified.</Text>
           <Text style={[styles.note,{marginTop:16}]}>{subscriptionLabel}</Text>
           {subscriptionStatus==="active" ?
             <TouchableOpacity style={[styles.action,{marginTop:12,borderColor:C.red}]} onPress={cancelSubscription} disabled={subscriptionBusy}><Text style={{color:C.red,fontWeight:"800"}}>{subscriptionBusy?"PLEASE WAIT":"CANCEL SUBSCRIPTION"}</Text></TouchableOpacity> :
-            <TouchableOpacity style={[styles.primary,subscriptionBusy&&{opacity:0.6}]} disabled={subscriptionBusy||subscriptionStatus==="activation_pending"} onPress={startSubscription}><Text style={styles.primaryText}>{subscriptionBusy?"PLEASE WAIT":subscriptionStatus==="activation_pending"?"ACTIVATION IN PROGRESS":"ACTIVATE ALL ACCESS — €29.99 / MONTH"}</Text></TouchableOpacity>}
+            <TouchableOpacity style={[styles.primary,{opacity:0.55}]} disabled onPress={startSubscription}><Text style={styles.primaryText}>ANDROID SUBSCRIPTION NOT AVAILABLE YET</Text></TouchableOpacity>}
           <TouchableOpacity style={styles.action} onPress={refreshSubscription}><View style={{flex:1}}><Text style={styles.actionTitle}>Refresh membership status</Text><Text style={styles.muted}>The server confirms access after Mollie payment webhooks.</Text></View><Text style={styles.arrow}>↻</Text></TouchableOpacity>
           {!!subscriptionMessage&&<Text style={styles.note}>{subscriptionMessage}</Text>}
         </Card>
