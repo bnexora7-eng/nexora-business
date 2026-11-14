@@ -1,8 +1,15 @@
-## Project status and handover
+# NEXORA BUSINESS — Interactive Concept Prototype
 
-For the current verified state, key links, limitations and next steps, see [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md). For an external-facing overview, see [docs/PROJECT_BRIEF.md](docs/PROJECT_BRIEF.md). The prepared outreach and advertising materials are in [docs/NEXORA_LAUNCH_CAMPAIGN.md](docs/NEXORA_LAUNCH_CAMPAIGN.md).
+**Current status:** Pre-production prototype. The Payment Integrity sandbox is publicly demonstrable, but it is not a production payment or fraud-detection service.
 
-# NEXORA Business — Interactive Concept Prototype
+## Live links
+
+- **Payment Integrity demo:** https://bnexora7-eng.github.io/nexora-business/payment-integrity-demo/demo.html
+- **Project overview:** https://bnexora7-eng.github.io/nexora-business/company/
+- **API health:** https://nexora-payment-integrity-api.onrender.com/health
+- **Source code:** https://github.com/bnexora7-eng/nexora-business
+
+## NEXORA concept
 
 NEXORA is a proposed digital ecosystem bringing four connected experiences into one place:
 
@@ -11,69 +18,45 @@ NEXORA is a proposed digital ecosystem bringing four connected experiences into 
 3. **Marketplace** — service offers and collaboration opportunities.
 4. **Business tools** — guided AI-style planning and a business workspace concept.
 
-## Live demonstration
-
-The prototype is designed to be published with GitHub Pages from the repository root. Once deployment is active, the demo URL is:
-
-https://bnexora7-eng.github.io/nexora-business/
+The wider ecosystem remains an interactive concept prototype. It does not yet provide production user accounts, shared persistence, live AI connectivity, real-time messaging, or monetary rewards.
 
 ## Payment Integrity sandbox
 
-A separate interactive sandbox is available at:
+The public demo submits synthetic payment-event data to a sandbox API and displays deterministic **ACCEPT**, **REVIEW**, or **REJECT** decisions. It also demonstrates duplicate-event detection.
 
-https://splendid-lokum-02523e.netlify.app/
+The public demo/API checks and automated browser verification have passed for ACCEPT, REVIEW and REJECT; backend checks also passed for DUPLICATE. These results verify the current demonstration path only.
 
-It demonstrates deterministic screening of simulated payment events and a session-only audit log. It is a browser-only prototype, not a live payment service. See [the demo documentation](payment-integrity-demo/README.md) for scope and limitations.
+**Important limitations:**
+- No connection to banks or live payment-provider accounts.
+- No real payment processing, payouts, or movement of money.
+- Rules are deterministic; this is not a validated machine-learning fraud model.
+- Demo storage is temporary and is not a durable production audit trail.
+- Do not submit real personal, banking, or payment data.
 
-## What can be demonstrated
+## Separate backend scaffold
 
-- Navigate between the product areas.
-- Publish a local community post.
-- Open sample member conversation previews.
-- Complete sample challenges and see points update.
-- Add a sample marketplace offer.
-- Test the guided business assistant.
-- Export a concise investor concept brief.
+The repository also contains a Node.js API backend scaffold with provider HMAC-SHA256 webhook authentication, timestamp-window checks, PostgreSQL idempotency and audit-related tables, account endpoints, and automated tests. Its production deployment, provider-specific integration, independent security review, privacy/legal review, and operational controls remain outstanding. Do not treat the scaffold or sandbox as production-ready.
 
-## Important prototype limitations
+## What can be demonstrated now
 
-This is an interactive front-end concept, not a production platform. Demo content and metrics are illustrative. Interactions are stored only in the current browser session and are not shared with other users.
-
-The prototype does **not** currently include production user accounts, server-side persistence, real-time messaging, live AI model connectivity, payment processing, cash rewards, verified user numbers, revenue or traction.
-
-Reward points have no monetary value. No paid entry, deposits, cash prizes or withdrawals are implemented.
+- Submit a synthetic payment event and inspect its decision.
+- Exercise ACCEPT, REVIEW, REJECT and duplicate-event scenarios.
+- Navigate the wider NEXORA concept areas.
+- Explore sample community, rewards, marketplace and business-workspace interactions.
 
 ## Proposed next development phase
 
-1. Validate the initial target audience and highest-value use case.
-2. Design secure registration, authentication and user profiles.
-3. Add a backend database and real messaging with moderation and reporting.
-4. Build a compliant marketplace and integrate payments only after legal and security review.
-5. Connect a production AI service with privacy controls.
-6. Validate reward mechanics, operating costs and unit economics before introducing any monetary rewards.
+1. Validate one narrow payment-operations use case with potential design partners.
+2. Define measurable MVP acceptance criteria and a provider-neutral event contract.
+3. Connect and deploy the durable backend as a single reviewed architecture.
+4. Complete threat modelling, independent security testing, privacy and legal/compliance review before any real-data pilot.
+5. Only then consider a provider-specific integration and controlled pilot.
 
 ## Technology and deployment
 
 - Static HTML, CSS and JavaScript front end.
-- No build step or package installation required.
-- GitHub Actions deploys the repository root to GitHub Pages.
-- The workflow is configured to enable GitHub Pages automatically on its first deployment.
-- Workflow: `.github/workflows/deploy.yml`.
+- GitHub Actions deploys the public site to GitHub Pages.
+- Payment Integrity demo API is hosted separately on Render.
+- The separate backend scaffold and public demo API are not yet one production service.
 
-## Project status
-
-**Interactive concept prototype — pre-production.** This repository is suitable for demonstrating the proposed user experience and discussing a scoped MVP. It should not be represented as a launched financial, payment or rewards service.
-
-
-
-## Payment Integrity API backend scaffold
-
-A separate pre-production backend scaffold now lives in [payment-integrity-api](payment-integrity-api/README.md). It includes a Node.js API, PostgreSQL schema, provider HMAC-SHA256 webhook authentication, five-minute replay protection, database-backed idempotency, a screening audit table, Docker Compose configuration and automated unit tests.
-
-The backend is not deployed and is not connected to the browser demo. It has not yet been validated against a running PostgreSQL instance or a real payment provider. Do not send real payment data or describe it as production-ready.
-
-
-
-## Startup application preparation
-
-The factual readiness checklist and current Google for Startups gaps are documented in [docs/GOOGLE_STARTUP_READINESS.md](docs/GOOGLE_STARTUP_READINESS.md). This is a preparation document, not evidence of eligibility or an application submission.
+For the current detailed handover, see [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md). For the external-facing overview, see [docs/PROJECT_BRIEF.md](docs/PROJECT_BRIEF.md).
