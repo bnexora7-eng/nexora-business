@@ -212,6 +212,25 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   });
   assert.equal(badLogin.status, 401);
 
+  const throttledIP = "198.51.100.77";
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const response = await fetch(`http://127.0.0.1:${port}/v1/auth/login`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-forwarded-for": throttledIP },
+      body: JSON.stringify({ email: "rate-limit@example.invalid", password: "incorrect-password" })
+    });
+    assert.equal(response.status, 401, `auth attempt ${attempt + 1} should be allowed`);
+  }
+  const blockedAttempt = await fetch(`http://127.0.0.1:${port}/v1/auth/login`, {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-forwarded-for": throttledIP },
+    body: JSON.stringify({ email: "rate-limit@example.invalid", password: "incorrect-password" })
+  });
+  assert.equal(blockedAttempt.status, 429, "the 11th auth attempt in 15 minutes must be blocked");
+  const ipHash = crypto.createHash("sha256").update(throttledIP).digest("hex");
+  const durableLimit = await pool.query("SELECT attempt_count FROM auth_rate_limits WHERE ip_hash=$1", [ipHash]);
+  assert.equal(Number(durableLimit.rows[0].attempt_count), 11, "auth attempt count must persist in PostgreSQL");
+
   const lockedFeature = await fetch(`http://127.0.0.1:${port}/v1/community/posts`, {
     method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + loggedIn.token },
     body: JSON.stringify({ body: "must require a paid subscription" })
