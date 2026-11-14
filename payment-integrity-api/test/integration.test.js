@@ -264,6 +264,9 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   assert.equal(aiRequestObserved.body.model, "gpt-4.1-mini");
   assert.equal(aiRequestObserved.body.max_tokens, 1400);
   assert.match(aiRequestObserved.body.messages[1].content, /Small firms need simple automation/);
+  const reservedAIUsage = await pool.query("SELECT reserved_tokens FROM ai_monthly_usage WHERE period_start=date_trunc('month', NOW() AT TIME ZONE 'UTC')::date");
+  const observedInputBytes = Buffer.byteLength(aiRequestObserved.body.messages[0].content, "utf8") + Buffer.byteLength(aiRequestObserved.body.messages[1].content, "utf8");
+  assert.ok(Number(reservedAIUsage.rows[0].reserved_tokens) >= observedInputBytes + 1400, "AI budget reservation must cover UTF-8 input bytes and maximum output tokens");
 
   // Oversized provider responses must be rejected without unbounded buffering.
   const oversizedAI = await fetch("http://127.0.0.1:" + port + "/v1/business/ai-plan", {
