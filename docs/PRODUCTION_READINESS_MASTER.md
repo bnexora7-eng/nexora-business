@@ -102,7 +102,7 @@ The current screening_audit table records Payment Integrity webhook decisions; i
 
 ## 7. Investment plan — cost approval required
 
-No paid resource is authorized by this document. Obtain current vendor pricing and choose only after backup and workload requirements are measured.
+The owner has approved a maximum of **$1/month for the NEXORA PostgreSQL backup Cron service only**. No other paid resource is authorized. Obtain current vendor pricing and present any additional cost before creating or upgrading resources.
 
 **Potentially required for a safe launch**
 - Durable managed PostgreSQL plan with automated backups/PITR appropriate to expected data and recovery objectives.
@@ -154,3 +154,8 @@ An encrypted PostgreSQL 18 backup runner and restore helper have been committed 
 - Commit d8f9b6b makes account deletion fail closed unless any linked Mollie subscription is verified canceled; active/activation_pending/past_due states without a provider subscription ID block deletion for reconciliation.
 - Commit 48228a9 adds integration coverage proving an active Mollie subscription is canceled before account deletion.
 - PostgreSQL 18 API CI run 43616808694 passed; independent verification 43616808693 passed; Render backend smoke test 43616808724 passed. The latest production API source commit d8f9b6b is deployed live; commit 48228a9 adds test-only coverage on top.
+
+
+## Android release pipeline hardening — 14 November 2026
+
+The Play AAB workflow now performs a generated-Gradle target SDK check before signing/building. The first implementation failed to resolve the Expo-generated target SDK; the check has been replaced with a Gradle runtime inspection. Latest workflow run 43617263749 is in progress. GitHub Actions reports the Play signing secrets are present (`HAS_PLAY_SIGNING=true`), but the keystore alias/password and signed AAB are not yet verified. Do not mark Android release-ready until the workflow confirms the alias, builds the AAB, and verifies its signature.
