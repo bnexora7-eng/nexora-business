@@ -1,33 +1,46 @@
 # NEXORA account email delivery
 
-Account registration now requires email verification. Password reset links are single-use and expire after one hour; verification links are single-use and expire after 24 hours. Password reset revokes every active session for that account.
+Account registration requires email verification. Verification links are single-use and expire after 24 hours. Password-reset links are single-use and expire after one hour; a password reset revokes every active session for that account.
 
-## Gmail SMTP configuration
+## Recommended provider for the current Render deployment: Brevo API
 
-The API sends transactional messages through the NEXORA mailbox using Gmail SMTP and a Google App Password. Never put these values in the repository, website JavaScript, mobile app, or a GitHub Actions file.
+The NEXORA API currently runs as a **Free Render web service**. Render blocks outbound SMTP traffic on ports 465 and 587 for Free web services, so Gmail SMTP on port 465 will not work from this deployment. The API already supports Brevo's HTTPS API, which uses outbound HTTPS rather than SMTP.
 
-1. Sign in to the Google account `bnexora7@gmail.com`.
-2. Enable Google 2-Step Verification if it is not already enabled.
-3. In the Google Account security settings, create an App Password for the NEXORA server. Google may not show App Passwords for some account/security configurations.
-4. In the API hosting provider's server-side environment settings, add:
+Before enabling live account registration:
+
+1. Create/verify a sender identity in Brevo. The sender address must be verified by Brevo; do not assume the Gmail mailbox can be used until Brevo confirms it.
+2. Create a Brevo API key. Keep it private.
+3. In Render Dashboard → `nexora-payment-integrity-api` → Environment, add these server-side variables:
+
+| Variable | Value |
+|---|---|
+| `BREVO_API_KEY` | The private Brevo API key |
+| `BREVO_FROM` | The verified sender email address in Brevo |
+| `NEXORA_ACCOUNT_URL` | `https://bnexora7-eng.github.io/nexora-business/account` |
+
+4. Save and redeploy the API. Do not paste the API key into chat, GitHub, website JavaScript, mobile app, or screenshots.
+5. Verify delivery by registering with an email address you control, then confirm the message arrives and the link opens the NEXORA verification page. Also test password reset.
+
+The code gives Brevo precedence when `BREVO_API_KEY` is configured. Gmail SMTP variables remain available for a future paid host or another environment that permits SMTP; they are not the recommended transport for the current Free Render service.
+
+## Gmail SMTP (not usable on the current Free Render web service)
+
+For a future host that permits outbound SMTP, the API supports Gmail SMTP with a Google App Password:
 
 | Variable | Value |
 |---|---|
 | `SMTP_HOST` | `smtp.gmail.com` |
 | `SMTP_PORT` | `465` |
 | `SMTP_SECURE` | `true` |
-| `SMTP_USER` | `bnexora7@gmail.com` |
-| `SMTP_APP_PASSWORD` | The generated Google App Password (not the normal Gmail password) |
-| `SMTP_FROM` | `NEXORA <bnexora7@gmail.com>` |
-| `NEXORA_ACCOUNT_URL` | `https://bnexora7-eng.github.io/nexora-business/account` |
+| `SMTP_USER` | NEXORA mailbox address |
+| `SMTP_APP_PASSWORD` | Google App Password, never the normal Gmail password |
+| `SMTP_FROM` | Verified sender identity |
 
-5. Save the environment settings and redeploy/restart the API. Do not send the App Password in chat or commit it to GitHub.
-
-If Gmail App Passwords are unavailable for this Google account, stop here and use a dedicated transactional email provider rather than weakening Google account security.
+Never weaken Google account security if App Passwords are unavailable.
 
 ## Database and deployment
 
-The API startup runs `src/schema.sql`, which adds the email verification timestamp and one-use token table. Deploy the API branch only after reviewing the pull request and ensuring the production database is backed up.
+The API startup executes `src/schema.sql` and logs `NEXORA database schema is ready` when database initialization succeeds. Database migrations must be reviewed and backed up before deployment. The current Free Render Postgres instance has no backups and expires on 12 December 2026; follow `docs/POSTGRESQL_BACKUP_AND_MIGRATION.md` before relying on it for production data.
 
 ## Endpoints
 
