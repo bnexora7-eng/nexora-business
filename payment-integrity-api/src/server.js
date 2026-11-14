@@ -483,6 +483,12 @@ async function handleMollieWebhook(req, res) {
   if (typeof subscriptionId === "string") {
     const member=await pool.query("SELECT id,subscription_status FROM app_users WHERE mollie_subscription_id=$1",[subscriptionId]);
     if (!member.rowCount) return send(res,404,{error:"Recurring subscription not found"});
+    // A paid renewal only grants membership when Mollie confirms the exact
+    // NEXORA All Access amount and currency configured for this product.
+    if (payment.amount?.currency !== "EUR" || payment.amount?.value !== "29.99") {
+      console.error("Mollie recurring payment amount mismatch",molliePaymentId);
+      return send(res,409,{error:"Recurring payment amount mismatch"});
+    }
     const nextStatus=payment.status==="paid"?"active":(["failed","canceled","expired"].includes(payment.status)?"past_due":null);
     if(nextStatus && member.rows[0].subscription_status!=="canceled") {
       await pool.query("UPDATE app_users SET subscription_status=$1,subscription_updated_at=NOW() WHERE id=$2",[nextStatus,member.rows[0].id]);
@@ -590,7 +596,12 @@ async function handleResendVerification(req,res) {
     const found=await pool.query("SELECT id,email,email_verified_at FROM app_users WHERE email=$1",[email]);
     if(found.rowCount&&!found.rows[0].email_verified_at) {
       const token=await issueEmailActionToken(found.rows[0].id,"verify_email",86400);
-      await sendVerificationEmail(email,token);
+      try {
+        await sendVerificationEmail(email,token);
+      } catch(error) {
+        // Keep the response identical for known and unknown addresses.
+        console.error("Verification email resend failed:",error.message);
+      }
     }
   }
   return send(res,200,{status:"if_pending_sent",message:"If this address has an account awaiting verification, a new link has been sent."});
@@ -606,7 +617,12 @@ async function handleRequestPasswordReset(req,res) {
     const found=await pool.query("SELECT id,email,email_verified_at FROM app_users WHERE email=$1",[email]);
     if(found.rowCount&&found.rows[0].email_verified_at) {
       const token=await issueEmailActionToken(found.rows[0].id,"reset_password",3600);
-      await sendPasswordResetEmail(email,token);
+      try {
+        await sendPasswordResetEmail(email,token);
+      } catch(error) {
+        // Do not reveal whether an account exists when SMTP delivery fails.
+        console.error("Password reset email delivery failed:",error.message);
+      }
     }
   }
   return send(res,200,{status:"if_account_sent",message:"If a verified account exists for this address, password reset instructions have been sent."});
@@ -614,6 +630,7 @@ async function handleRequestPasswordReset(req,res) {
 
 async function handleResetPassword(req,res) {
   if(!pool) return send(res,503,{error:"Account service is not configured"});
+  if(authRateLimited(req)) return send(res,429,{error:"Too many account attempts; try again in 15 minutes"});
   const raw=await readBody(req); let input;
   try { input=JSON.parse(raw.toString("utf8")); } catch { return send(res,400,{error:"Invalid JSON"}); }
   const password=typeof input?.password==="string"?input.password:"";
@@ -643,7 +660,8 @@ async function handleMe(req, res) {
   const result = await pool.query(
     `SELECT u.id, u.email, u.created_at, u.subscription_status
      FROM app_sessions s JOIN app_users u ON u.id=s.user_id
-     WHERE s.token_hash=$1 AND s.revoked_at IS NULL AND s.expires_at > NOW()`,
+     WHERE s.token_hash=$1 AND s.revoked_at IS NULL AND s.expires_at > NOW()
+       AND u.email_verified_at IS NOT NULL`,
     [hashSessionToken(token)]
   );
   if (!result.rowCount) return send(res, 401, { error: "Session is invalid or expired" });

@@ -5,6 +5,7 @@ import { createServer } from "node:http";
 import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { signPayload } from "../src/screening.js";
+import { createActionToken, hashActionToken } from "../src/email.js";
 
 const enabled = process.env.RUN_INTEGRATION === "1";
 test("HTTP API persists minimized event data and rejects duplicates", { skip: !enabled, timeout: 30000 }, async (t) => {
@@ -12,6 +13,7 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   const pool = new Pool({ connectionString: process.env.DATABASE_URL });
   let firstPaymentStatus = "open";
   let recurringPaymentStatus = "failed";
+  let recurringPaymentAmount = { currency: "EUR", value: "29.99" };
   let mollieSubscriptionStatus = "active";
   const mollieMock = createServer(async (req, res) => {
     const chunks = [];
@@ -39,7 +41,7 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
         data = { id: "sub_nexoratest", status: mollieSubscriptionStatus };
       }
     } else if (req.method === "GET" && path === "/v2/payments/tr_nexorarecurring") {
-      data = { resource: "payment", id: "tr_nexorarecurring", status: recurringPaymentStatus, subscriptionId: "sub_nexoratest", amount: { currency: "EUR", value: "29.99" } };
+      data = { resource: "payment", id: "tr_nexorarecurring", status: recurringPaymentStatus, subscriptionId: "sub_nexoratest", amount: recurringPaymentAmount };
     } else if (req.method === "GET" && path === "/v2/customers/cst_nexoratest/subscriptions/sub_nexoratest") {
       data = { id: "sub_nexoratest", status: mollieSubscriptionStatus, nextPaymentDate: "2099-12-31" };
     } else if (req.method === "DELETE" && path === "/v2/customers/cst_nexoratest/subscriptions/sub_nexoratest") {
@@ -131,6 +133,44 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   assert.equal(profile.status, 200);
   assert.equal((await profile.json()).user.email, accountEmail);
 
+  // Password-reset tokens are single-use, expire, and revoke existing sessions.
+  const resetToken = createActionToken();
+  await pool.query(
+    "INSERT INTO email_action_tokens (user_id,token_hash,purpose,expires_at) VALUES ($1,$2,'reset_password',NOW()+INTERVAL '1 hour')",
+    [accountId, hashActionToken(resetToken)]
+  );
+  const resetResponse = await fetch(`http://127.0.0.1:${port}/v1/auth/reset-password`, {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ token: resetToken, password: "NEXORA-new-password-2026!" })
+  });
+  assert.equal(resetResponse.status, 200);
+  assert.equal((await resetResponse.json()).status, "password_reset");
+  const reusedResetToken = await fetch(`http://127.0.0.1:${port}/v1/auth/reset-password`, {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ token: resetToken, password: "NEXORA-another-password-2026!" })
+  });
+  assert.equal(reusedResetToken.status, 400);
+  const revokedProfile = await fetch(`http://127.0.0.1:${port}/v1/auth/me`, {
+    headers: { authorization: "Bearer " + loggedIn.token }
+  });
+  assert.equal(revokedProfile.status, 401);
+  const newLogin = await fetch(`http://127.0.0.1:${port}/v1/auth/login`, {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ email: accountEmail, password: "NEXORA-new-password-2026!" })
+  });
+  assert.equal(newLogin.status, 200);
+  const newSessionToken = (await newLogin.json()).token;
+  loggedIn.token = newSessionToken;
+
+  // The profile endpoint must enforce the same verified-email guard as all
+  // other authenticated endpoints, including for sessions issued earlier.
+  await pool.query("UPDATE app_users SET email_verified_at=NULL WHERE id=$1", [accountId]);
+  const unverifiedProfile = await fetch(`http://127.0.0.1:${port}/v1/auth/me`, {
+    headers: { authorization: "Bearer " + loggedIn.token }
+  });
+  assert.equal(unverifiedProfile.status, 401);
+  await pool.query("UPDATE app_users SET email_verified_at=NOW() WHERE id=$1", [accountId]);
+
   const duplicateAccount = await fetch(`http://127.0.0.1:${port}/v1/auth/register`, {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -210,6 +250,17 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   assert.equal((await subscriptionState.json()).status, "past_due");
 
   recurringPaymentStatus = "paid";
+  recurringPaymentAmount = { currency: "EUR", value: "0.01" };
+  const mismatchedRenewal = await fetch(`http://127.0.0.1:${port}/v1/payments/mollie-webhook`, {
+    method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: "id=tr_nexorarecurring"
+  });
+  assert.equal(mismatchedRenewal.status, 409);
+  subscriptionState = await fetch(`http://127.0.0.1:${port}/v1/subscriptions/me`, {
+    headers: { authorization: "Bearer " + loggedIn.token }
+  });
+  assert.equal((await subscriptionState.json()).status, "past_due");
+
+  recurringPaymentAmount = { currency: "EUR", value: "29.99" };
   const successfulRenewal = await fetch(`http://127.0.0.1:${port}/v1/payments/mollie-webhook`, {
     method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: "id=tr_nexorarecurring"
   });
