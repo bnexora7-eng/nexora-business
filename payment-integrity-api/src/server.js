@@ -52,7 +52,7 @@ const BACKUP_TOKEN = process.env.BACKUP_TRIGGER_TOKEN || "";
 
 function backupAuthorized(req) {
   const supplied = bearerToken(req);
-  if (!BACKUP_TOKEN || !supplied) return false;
+  if (BACKUP_TOKEN.length < 32 || !supplied) return false;
   const expected = Buffer.from(BACKUP_TOKEN, "utf8");
   const actual = Buffer.from(supplied, "utf8");
   return expected.length === actual.length && crypto.timingSafeEqual(expected, actual);
@@ -1337,7 +1337,7 @@ const server = createServer(async (req, res) => {
       if (pool) await pool.query("SELECT 1");
       return send(res, 200, { status: "ok", service: "nexora-payment-integrity-api", mode: pool ? "database" : "demo-only" });
     }
-    const backupStatusMatch = /^\\/internal\\/backup\\/([0-9a-f-]{36})$/.exec(pathname);
+    const backupStatusMatch = /^\/internal\/backup\/([0-9a-f-]{36})$/.exec(pathname);
     if (req.method === "POST" && pathname === "/internal/backup") return startBackup(req, res);
     if (req.method === "GET" && backupStatusMatch) return handleBackupStatus(req, res, backupStatusMatch[1]);
     if (req.method === "GET" && pathname === "/ready") {
