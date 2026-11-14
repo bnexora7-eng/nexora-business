@@ -18,7 +18,7 @@ NEXORA is a proposed digital ecosystem bringing four connected experiences into 
 3. **Marketplace** — service offers and collaboration opportunities.
 4. **Business tools** — guided AI-style planning and a business workspace concept.
 
-The wider ecosystem remains a pre-production concept with partial account and backend functionality. Community, Marketplace and Business modules are not yet protected by verified All Access entitlements; live AI connectivity, real-time messaging and monetary rewards are not ready for production.
+The wider ecosystem remains a pre-production concept with partial account and backend functionality. Community publishing, Marketplace publishing, Business workspace operations and AI planning are already guarded server-side by the active All Access entitlement check; expand regression coverage across every paid route before launch; live AI connectivity, real-time messaging and monetary rewards are not ready for production.
 
 ## Payment Integrity sandbox
 
