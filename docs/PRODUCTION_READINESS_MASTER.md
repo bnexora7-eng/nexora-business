@@ -10,14 +10,14 @@ This file is the current release-gate summary. A green CI check validates only t
 
 | Gate | Evidence | Current result |
 |---|---|---|
-| API integration tests | PostgreSQL 18 integration suite; latest passing run 43619535572 | **PASS** |
-| Independent API verification | Run 43619535682 | **PASS** |
+| API integration tests | PostgreSQL 18 integration suite; latest passing run 43620232693 (includes OpenAPI YAML syntax check, npm ci and production dependency audit) | **PASS** |
+| Independent API verification | Run 43620259241 | **PASS** |
 | Render API + PostgreSQL readiness | Run 43619535564 and scheduled monitor 43619617134 | **PASS** |
 | API dependency integrity | Committed `payment-integrity-api/package-lock.json`; `npm ci`; production audit | **PASS** |
 | Account security | Email verification required before login; one-use verification/reset tokens; reset revokes sessions; rate limiting; password hashing | **PASS in automated tests** |
 | Mollie lifecycle logic | Concurrent checkout, first-payment webhook, recurring renewals, amount mismatch, cancellation and deletion safeguards covered by mocked-provider integration tests | **PASS in mocked tests only** |
 | Backup runner image and cryptography | Backup runner CI 43618325150: Docker build, PostgreSQL 18.7 tools, AES-256-GCM round-trip and tamper rejection | **PASS in CI only** |
-| Public Pages smoke check | Run 43619617134 checked homepage, account, verification, recovery, deletion and privacy pages plus API readiness | **PASS** |
+| Public Pages smoke check | Run 43620113826 checked homepage, account, verification, recovery, deletion and privacy pages plus API readiness | **PASS** |
 | Android target SDK and signing setup | Run 43619553655: Expo config, TypeScript, SDK 36 baseline and upload-key alias validation | **PASS; signed AAB build still in progress at last check** |
 | Android billing safety | External Mollie checkout button disabled in the Android client until compliant Play billing is implemented | **PASS as a safety block** |
 
