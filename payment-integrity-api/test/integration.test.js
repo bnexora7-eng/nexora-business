@@ -385,6 +385,19 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   mockFirstPaymentMetadata = { order_id: checkoutBody.order_id, user_id: String(accountId), product: "nexora_all_access" };
 
   firstPaymentStatus = "paid";
+  await pool.query("UPDATE own_payments SET status='paid' WHERE order_id=$1", [checkoutBody.order_id]);
+  const prematureDelete = await fetch(`http://127.0.0.1:${port}/v1/auth/account`, {
+    method: "DELETE", headers: { authorization: "Bearer " + loggedIn.token }
+  });
+  assert.equal(prematureDelete.status, 409);
+  assert.match((await prematureDelete.json()).error, /subscription activation is not yet reconciled/i);
+  const stillExistingAccount = await pool.query(
+    "SELECT id,mollie_subscription_id,subscription_status FROM app_users WHERE id=$1",
+    [accountId]
+  );
+  assert.equal(stillExistingAccount.rowCount, 1);
+  assert.equal(stillExistingAccount.rows[0].mollie_subscription_id, null);
+
   const firstWebhook = await fetch(`http://127.0.0.1:${port}/v1/payments/mollie-webhook`, {
     method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: "id=tr_nexorafirst"
   });
