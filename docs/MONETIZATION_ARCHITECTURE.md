@@ -1,13 +1,14 @@
 # NEXORA Monetization & Payout Architecture
 
-Status: Mollie checkout scaffold implemented in code; not activated. No live payment processing is enabled.
+Status: NEXORA has chosen one membership only — **All Access at €29.99/month**. Mollie recurring-subscription checkout exists as a preliminary web-billing scaffold but is not end-to-end tested or activated. No live payment processing is enabled.
 
-## 1. Revenue streams
+## 1. Current commercial decision
 
-1. **Premium subscription** — digital access/features inside the Android app.
-2. **Business subscription** — digital business tools and account functionality.
-3. **Marketplace commission** — a disclosed platform fee on eligible third-party marketplace transactions.
-4. **Optional promoted listings** — only after the product and applicable store/payment rules are reviewed.
+- One public membership only: **NEXORA All Access — €29.99 per month**.
+- No separate Business tier, premium tier or alternative monthly price is planned at this stage.
+- NEXORA retains ownership of the platform, source code, brand and roadmap; the whole project is not being sold as a one-off asset.
+- The membership should unlock only features that are implemented, tested and available. Future modules join All Access only after completion.
+- Marketplace commissions or promoted listings are deferred future business-model options, not current live revenue streams.
 
 ## 2. Keep payment rails separate
 
@@ -58,10 +59,10 @@ No bank account details are needed for the current prototype. Do not attempt rea
 ## 6. Current implementation status
 
 - NEXORA mobile app now contains an own-service checkout screen.
-- Backend creates Mollie-hosted one-off EUR payments for an authenticated NEXORA account, stores an order record, and retrieves the payment from Mollie when the webhook arrives before updating status.
+- Backend contains authenticated Mollie-hosted checkout for one-off EUR payments and a separate preliminary recurring All Access subscription flow. The subscription flow creates a first payment, then attempts to create a monthly Mollie subscription after a verified paid webhook.
 - The payment screen supports checking the stored payment status after returning from checkout.
 - Required server configuration: `MOLLIE_API_KEY` (start with a test key), `PUBLIC_API_URL`, and a reachable `NEXORA_PAYMENT_RETURN_URL`. The API key must remain in Render environment variables and must never be placed in the APK or GitHub.
-- This is an integration scaffold, not a verified live payment flow. It has not yet been deployed, exercised against Mollie test mode, or independently security-reviewed.
+- The one-off and recurring billing paths are integration scaffolds, not verified live payment flows. The recurring All Access lifecycle has not yet passed Mollie test-mode end-to-end testing, and neither path is enabled for live charges or independently security-reviewed.
 - A Mollie merchant account and provider verification are required before live payouts. The operating business and payout bank account must pass Mollie onboarding.
 - Google Play Billing remains separate for applicable in-app digital subscriptions. Seller accounts, marketplace split payments, refunds and disputes are not implemented.
 - No real payment or payout is currently possible until test verification, business onboarding and live configuration are complete.
