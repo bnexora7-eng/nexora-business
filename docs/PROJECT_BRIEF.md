@@ -1,14 +1,15 @@
 # NEXORA BUSINESS — Project Brief
 
 **Status:** Early-stage, pre-production prototype  
-**Location:** Netherlands  
+**Project location:** Netherlands  
 **Repository:** https://github.com/bnexora7-eng/nexora-business  
-**Interactive Payment Integrity demo:** https://splendid-lokum-02523e.netlify.app/  
-**Project information:** https://bnexora7-eng.github.io/nexora-business/company/
+**Interactive Payment Integrity demo:** https://bnexora7-eng.github.io/nexora-business/payment-integrity-demo/demo.html  
+**Project information:** https://bnexora7-eng.github.io/nexora-business/company/  
+**Sandbox API health:** https://nexora-payment-integrity-api.onrender.com/health
 
 ## Overview
 
-NEXORA is a founder-led digital product project. Its first focused technical workstream, **NEXORA Payment Integrity**, explores screening payment-event notifications and returning explainable ACCEPT, REVIEW or REJECT decisions while identifying duplicate event identifiers.
+NEXORA is a founder-led digital product project. Its first focused technical workstream, **NEXORA Payment Integrity**, explores screening simulated payment-event notifications and returning explainable ACCEPT, REVIEW or REJECT decisions while identifying duplicate event identifiers.
 
 The current public sandbox uses synthetic data and deterministic rules. It is intended for technical discussion and early customer discovery, not live financial operations.
 
@@ -16,29 +17,23 @@ The current public sandbox uses synthetic data and deterministic rules. It is in
 
 - Submit a synthetic payment event through the interactive browser demo.
 - See ACCEPT, REVIEW or REJECT decisions with an explanation.
-- Detect a repeated provider/event identifier as a duplicate.
-- Review a session-only audit view in the browser.
-- Run public API checks for ACCEPT, REVIEW, REJECT and DUPLICATE.
+- Exercise duplicate-event detection in backend tests.
+- Review the browser session's illustrative event log.
+- Inspect the public sandbox API health endpoint.
+
+The latest automated GitHub Actions run verified the public site, API decisions, and browser rendering of ACCEPT, REVIEW and REJECT. Backend checks also verified DUPLICATE. These checks apply only to the current synthetic-data demonstration.
 
 ## Engineering work completed
 
 The repository contains:
-- A public interactive browser demo and a Netlify-hosted demo API.
-- A separate Node.js API backend scaffold.
-- HMAC-SHA256 webhook signature verification and timestamp-window checks.
+- A public interactive browser demo hosted on GitHub Pages.
+- A separate demo API hosted on Render.
+- A Node.js backend scaffold with provider HMAC-SHA256 signature verification and timestamp-window checks.
 - PostgreSQL schema and database-backed uniqueness for provider/event idempotency.
-- A screening audit table and automated unit/integration tests.
-- GitHub Actions deployment and verification workflows.
+- Screening audit-related tables and automated unit/integration tests.
+- GitHub Actions deployment and browser/API verification workflows.
 
-The public demo API and the separate PostgreSQL backend scaffold are not yet connected. The public demo uses temporary function memory; the separate backend scaffold is not publicly deployed.
-
-## Current verification
-
-- GitHub Pages deployment workflow has verified the public demo page.
-- Automated API checks have successfully exercised ACCEPT, REVIEW, REJECT and DUPLICATE against the public demo endpoint.
-- PostgreSQL-backed integration tests have passed in GitHub Actions.
-
-These checks apply to synthetic data and the current prototype only. They do not establish production readiness, payment-provider integration, fraud-detection accuracy, regulatory certification, customer usage or commercial traction.
+The public demo API and the separate PostgreSQL backend scaffold are not yet connected as one production service. The demo uses temporary storage; it is not a durable production audit trail.
 
 ## Limitations
 
@@ -48,12 +43,12 @@ The wider NEXORA community, marketplace, rewards and AI-assisted business areas 
 
 ## Proposed next step
 
-The immediate objective is to validate one narrow use case with payment operations or software businesses, identify a consenting design partner, and define a scoped MVP with measurable acceptance criteria. Any pilot using real data would require a secured deployment, provider-specific integration, independent security/privacy review and appropriate legal/compliance review.
+Validate one narrow payment-operations use case with potential design partners. Identify a consenting design partner, document the workflow and pain point, and define a scoped MVP with measurable acceptance criteria. Any pilot using real data would require a secured unified deployment, provider-specific integration, independent security/privacy review and appropriate legal/compliance review.
 
 ## What we are seeking
 
 NEXORA is seeking:
-- Technical feedback from payment operations and fintech teams.
+- Technical feedback from payment operations and software teams.
 - Introductions to potential design partners for customer discovery.
 - Guidance on a suitable early-stage startup or innovation support route.
 - A discussion about a narrowly scoped prototype/pilot, subject to technical and security review.
