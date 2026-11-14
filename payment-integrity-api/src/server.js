@@ -389,7 +389,7 @@ async function handleMollieWebhook(req, res) {
   const orderId = payment?.metadata?.order_id;
   if (typeof orderId === "string") {
     const existing = await pool.query(
-      "SELECT order_id,user_id,amount,currency,mollie_payment_id FROM own_payments WHERE order_id=$1",
+      "SELECT order_id,user_id,amount,currency,description,mollie_payment_id FROM own_payments WHERE order_id=$1",
       [orderId]
     );
     if (!existing.rowCount || existing.rows[0].mollie_payment_id !== molliePaymentId) return send(res, 404, { error: "Payment order not found" });
