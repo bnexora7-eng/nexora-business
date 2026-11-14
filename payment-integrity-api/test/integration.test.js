@@ -65,6 +65,10 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
       body: JSON.parse(Buffer.concat(chunks).toString("utf8"))
     };
     res.writeHead(200, { "content-type": "application/json" });
+    if (aiRequestObserved.body.messages[1].content.includes("business_name: Oversized response test")) {
+      res.end(JSON.stringify({ choices: [{ message: { role: "assistant", content: "x".repeat(270 * 1024) } }] }));
+      return;
+    }
     res.end(JSON.stringify({
       choices: [{ message: { role: "assistant", content: "NEXORA AI TEST PLAN: validate the offer with five target customers." } }]
     }));
@@ -260,6 +264,14 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   assert.equal(aiRequestObserved.body.model, "gpt-4.1-mini");
   assert.equal(aiRequestObserved.body.max_tokens, 1400);
   assert.match(aiRequestObserved.body.messages[1].content, /Small firms need simple automation/);
+
+  // Oversized provider responses must be rejected without unbounded buffering.
+  const oversizedAI = await fetch("http://127.0.0.1:" + port + "/v1/business/ai-plan", {
+    method: "POST", headers: { Authorization: "Bearer " + newSessionToken, "Content-Type": "application/json" },
+    body: JSON.stringify({ business_name: "Oversized response test", industry: "software", problem: "Test response limits", offer: "Bounded output" })
+  });
+  assert.equal(oversizedAI.status, 502);
+  assert.match((await oversizedAI.json()).error, /exceeded the allowed size/i);
 
   // Four valid AI requests per account per minute are allowed; the fifth is rejected before provider usage.
   for (let attempt = 0; attempt < 3; attempt++) {
