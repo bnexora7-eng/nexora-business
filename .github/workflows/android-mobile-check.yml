@@ -45,6 +45,10 @@ jobs:
         working-directory: mobile
         run: npm install --no-audit --no-fund
 
+      - name: Apply non-breaking dependency security fixes
+        working-directory: mobile
+        run: npm audit fix --no-fund
+
       - name: TypeScript validation
         working-directory: mobile
         run: npm run typecheck
