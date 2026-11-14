@@ -53,3 +53,9 @@ The API startup executes `src/schema.sql` and logs `NEXORA database schema is re
 - `GET /v1/auth/me` and authenticated feature routes — require a verified account.
 
 The public account pages are `account/verify.html`, `account/forgot-password.html`, and `account/reset-password.html`.
+
+## Automated delivery test evidence — 14 November 2026
+
+- Brevo HTTPS delivery has unit coverage for the exact API endpoint, configured verified sender, recipient, verification/reset link payload, success response and sanitized provider failure. The API test workflow passed on commit `f0f1684843` (run 43618838900).
+- The PostgreSQL integration suite now exercises the actual one-time `POST /v1/auth/verify-email` endpoint and rejects reuse of the same token; password-reset tests also verify one-time use and session revocation. API suite passed on commit `68047c8b57` (run 43619057006).
+- These are automated tests with mocked provider responses and a test mail transport. They do **not** prove that Brevo has accepted the sender or that a real message reaches an inbox. Live delivery remains blocked on the owner configuring `BREVO_API_KEY` and `BREVO_FROM` directly in Render.
