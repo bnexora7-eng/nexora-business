@@ -6,7 +6,7 @@ This folder contains a browser-only technical demonstrator for a proposed paymen
 ## Run
 Open `index.html` in a browser, or publish the repository with GitHub Pages and visit:
 
-`https://splendid-lokum-02523e.netlify.app/`
+`https://bnexora7-eng.github.io/nexora-business/payment-integrity-demo/demo.html`
 
 ## Demonstrated behavior
 - Screens simulated event data using explicit deterministic rules.
