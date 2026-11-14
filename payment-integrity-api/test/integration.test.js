@@ -555,7 +555,7 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
     "INSERT INTO marketplace_listings (user_id,title,description,category,price) VALUES ($1,'Delete listing','Private test listing','service',10.00)",
     [accountId]
   );
-  await pool.query("INSERT INTO ai_usage_windows (user_id,request_count) VALUES ($1,1)", [accountId]);
+  await pool.query("INSERT INTO ai_usage_windows (user_id,request_count) VALUES ($1,1) ON CONFLICT (user_id) DO NOTHING", [accountId]);
   // Account deletion must verify and cancel an active provider-side
   // subscription before removing the account and its customer reference.
   mollieSubscriptionStatus = "active";
