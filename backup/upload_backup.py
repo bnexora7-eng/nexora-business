@@ -50,7 +50,7 @@ def request(method, path, payload=None):
         raise RuntimeError(f"GitHub API {method} failed ({exc.code}): {detail}") from exc
 
 def git_blob_sha(content_bytes):
-    header = f"blob {len(content_bytes)}\\0".encode("ascii")
+    header = f"blob {len(content_bytes)}\0".encode("ascii")
     return hashlib.sha1(header + content_bytes).hexdigest()
 
 def put_file(path, content_bytes, message):
@@ -66,12 +66,16 @@ def put_file(path, content_bytes, message):
         raise SystemExit("GitHub returned an unexpected content hash for " + path)
     return result
 
+repo_metadata = request("GET", "")
+if repo_metadata.get("private") is not True:
+    raise SystemExit("Backup destination repository must be private; refusing to upload")
+
 base = f"backups/nexora-{stamp}"
 encrypted_path = base + ".dump.enc"
 manifest_path = base + ".manifest.json"
 cipher_hash = hashlib.sha256(raw).hexdigest()
 manifest = {
-    "format": "PostgreSQL custom archive encrypted with OpenSSL AES-256-CBC + PBKDF2",
+    "format": "PostgreSQL custom archive encrypted with AES-256-GCM + PBKDF2-HMAC-SHA256",
     "created_at_utc": stamp,
     "postgres_major_version": 18,
     "encrypted_file": encrypted_path,
