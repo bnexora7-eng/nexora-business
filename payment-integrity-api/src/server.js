@@ -364,7 +364,7 @@ async function handleCreateSubscriptionCheckout(req, res) {
       const pendingPayment = await client.query(
         `SELECT order_id,status,checkout_url FROM own_payments
          WHERE user_id=$1 AND description='NEXORA All Access monthly subscription'
-           AND status IN ('creating','open','pending','authorized')
+           AND status IN ('creating','creation_unknown','open','pending','authorized')
          ORDER BY created_at DESC LIMIT 1`,
         [user.id]
       );
@@ -436,7 +436,7 @@ async function handleCreateSubscriptionCheckout(req, res) {
     });
   } catch (error) {
     await pool.query(
-      "UPDATE own_payments SET status='creation_failed',updated_at=NOW() WHERE order_id=$1 AND status='creating'",
+      "UPDATE own_payments SET status='creation_unknown',updated_at=NOW() WHERE order_id=$1 AND status='creating'",
       [orderId]
     );
     throw error;
@@ -758,42 +758,85 @@ async function handleLogout(req, res) {
 }
 
 async function deleteUserAccount(userId) {
-  const billing = await pool.query(
-    "SELECT mollie_customer_id,mollie_subscription_id,subscription_status FROM app_users WHERE id=$1",
-    [userId]
-  );
-  const account = billing.rows[0];
-  if (!account) return;
-  const subscriptionMayBeActive = ["active", "activation_pending", "past_due"].includes(account.subscription_status);
-  if (subscriptionMayBeActive && !account.mollie_subscription_id) {
-    throw new Error("The recurring subscription status cannot be safely verified yet. Retry account deletion after subscription reconciliation.");
-  }
-  if (account.mollie_subscription_id) {
-    if (!account.mollie_customer_id) {
-      throw new Error("The recurring subscription is missing its Mollie customer reference. Account deletion is paused for reconciliation.");
-    }
-    if (!process.env.MOLLIE_API_KEY) {
-      throw new Error("The recurring Mollie subscription must be verified and canceled before deleting this account.");
-    }
-    const subscriptionPath = "/customers/" + encodeURIComponent(account.mollie_customer_id) +
-      "/subscriptions/" + encodeURIComponent(account.mollie_subscription_id);
-    const current = await mollieRequest(subscriptionPath);
-    if (current.status !== "canceled") {
-      const canceled = await mollieRequest(subscriptionPath, { method: "DELETE" });
-      if (canceled.status !== "canceled") {
-        throw new Error("Mollie did not confirm recurring subscription cancellation. Account deletion is paused.");
-      }
-    }
-  }
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
+    // Lock the account before checking billing state. Checkout creation uses
+    // the same row lock, so deletion cannot race a new first payment.
+    const billing = await client.query(
+      "SELECT mollie_customer_id,mollie_subscription_id,subscription_status FROM app_users WHERE id=$1 FOR UPDATE",
+      [userId]
+    );
+    const account = billing.rows[0];
+    if (!account) {
+      await client.query("COMMIT");
+      return;
+    }
+
+    const pendingPayments = await client.query(
+      `SELECT order_id,mollie_payment_id,status FROM own_payments
+       WHERE user_id=$1 AND description='NEXORA All Access monthly subscription'
+         AND status IN ('creating','creation_unknown','open','pending','authorized')
+       ORDER BY created_at DESC`,
+      [userId]
+    );
+    for (const pending of pendingPayments.rows) {
+      if (!pending.mollie_payment_id) {
+        throw new Error("A NEXORA subscription payment is still being created or its provider result is uncertain. Account deletion is paused until payment reconciliation completes.");
+      }
+      if (!process.env.MOLLIE_API_KEY) {
+        throw new Error("A pending Mollie payment must be verified and canceled before deleting this account.");
+      }
+      const paymentPath = "/payments/" + encodeURIComponent(pending.mollie_payment_id);
+      const providerPayment = await mollieRequest(paymentPath);
+      if (["paid", "canceled", "expired", "failed"].includes(providerPayment.status)) {
+        await client.query(
+          "UPDATE own_payments SET status=$1,updated_at=NOW() WHERE order_id=$2",
+          [providerPayment.status, pending.order_id]
+        );
+        continue;
+      }
+      if (providerPayment.isCancelable !== true) {
+        throw new Error("Mollie reports that the pending first payment cannot be canceled safely. Account deletion is paused for reconciliation.");
+      }
+      const canceledPayment = await mollieRequest(paymentPath, { method: "DELETE" });
+      if (canceledPayment.status !== "canceled") {
+        throw new Error("Mollie did not confirm cancellation of the pending first payment. Account deletion is paused.");
+      }
+      await client.query(
+        "UPDATE own_payments SET status='canceled',updated_at=NOW() WHERE order_id=$1",
+        [pending.order_id]
+      );
+    }
+
+    const subscriptionMayBeActive = ["active", "activation_pending", "past_due"].includes(account.subscription_status);
+    if (subscriptionMayBeActive && !account.mollie_subscription_id) {
+      throw new Error("The recurring subscription status cannot be safely verified yet. Retry account deletion after subscription reconciliation.");
+    }
+    if (account.mollie_subscription_id) {
+      if (!account.mollie_customer_id) {
+        throw new Error("The recurring subscription is missing its Mollie customer reference. Account deletion is paused for reconciliation.");
+      }
+      if (!process.env.MOLLIE_API_KEY) {
+        throw new Error("The recurring Mollie subscription must be verified and canceled before deleting this account.");
+      }
+      const subscriptionPath = "/customers/" + encodeURIComponent(account.mollie_customer_id) +
+        "/subscriptions/" + encodeURIComponent(account.mollie_subscription_id);
+      const current = await mollieRequest(subscriptionPath);
+      if (current.status !== "canceled") {
+        const canceled = await mollieRequest(subscriptionPath, { method: "DELETE" });
+        if (canceled.status !== "canceled") {
+          throw new Error("Mollie did not confirm recurring subscription cancellation. Account deletion is paused.");
+        }
+      }
+    }
+
     // Keep only legally required payment ledger fields; permanently detach them from the deleted account.
     await client.query("UPDATE own_payments SET user_id=NULL WHERE user_id=$1", [userId]);
     await client.query("DELETE FROM app_users WHERE id=$1", [userId]);
     await client.query("COMMIT");
   } catch (error) {
-    await client.query("ROLLBACK");
+    await client.query("ROLLBACK").catch(() => {});
     throw error;
   } finally {
     client.release();
