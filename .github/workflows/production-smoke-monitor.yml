@@ -6,6 +6,9 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/production-smoke-monitor.yml"
+      - "privacy/index.html"
+      - "account-deletion/**"
+      - "account/**"
   schedule:
     - cron: "17 6 * * *"
 
