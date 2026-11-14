@@ -140,3 +140,8 @@ Release status remains **PRE-PRODUCTION / NOT CLEARED FOR PAID PUBLIC LAUNCH** u
 
 - 2026-11-14 — Opened master readiness record; consolidated verified foundation, account lifecycle, payment/AI state, critical PostgreSQL expiry, audit requirements, and investment gates. No new paid infrastructure or live payment/AI activation authorized.
 - 2026-11-14 — Fixed account-deletion DELETE CORS preflight; upgraded Nodemailer to 10.1.4; added a production dependency audit gate. Latest API CI run 43614151644 passed 15/15 tests against PostgreSQL 18 and dependency audit reported zero vulnerabilities. Latest Render deployment dep-dbs8ftm7bikc73epipl0 is live. Pages workflow run 43614151602 completed successfully; the full public checks were previously verified in run 43613792428. No paid infrastructure, live payments, or live AI were enabled.
+
+
+## Backup runner progress — 14 November 2026
+
+An encrypted PostgreSQL 18 backup runner and restore helper have been committed under `backup/`; the Render Blueprint is `render-backup.yaml`. The runner validates the pg_dump archive, encrypts it with AES-256-GCM/PBKDF2, uploads ciphertext to a private GitHub repository, verifies Git blob hashes, and prunes backups older than 30 days. It is not yet deployed: Render Blueprint planning returned `need_payment_info`, so no cron resource was created and no charge occurred. The private backup repository and fine-grained Contents read/write token also remain to be configured. The first successful backup and separate-database restore test are still mandatory release gates.
