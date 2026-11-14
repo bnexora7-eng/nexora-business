@@ -852,6 +852,36 @@ async function handleBusinessWorkspace(req,res) {
   return send(res,405,{error:"Method not allowed"});
 }
 
+async function readAIProviderJson(response, maxBytes = 256 * 1024) {
+  const declaredLength = Number(response.headers.get("content-length"));
+  if (Number.isFinite(declaredLength) && declaredLength > maxBytes) {
+    throw Object.assign(new Error("AI provider response exceeded the allowed size"), { code: "AI_RESPONSE_TOO_LARGE" });
+  }
+  if (!response.body) return {};
+  const reader = response.body.getReader();
+  const chunks = [];
+  let size = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > maxBytes) {
+        await reader.cancel().catch(() => {});
+        throw Object.assign(new Error("AI provider response exceeded the allowed size"), { code: "AI_RESPONSE_TOO_LARGE" });
+      }
+      chunks.push(Buffer.from(value));
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  try {
+    return JSON.parse(Buffer.concat(chunks).toString("utf8"));
+  } catch {
+    return {};
+  }
+}
+
 async function handleBusinessAIPlan(req,res) {
   const user=await requireUser(req,res); if(!user) return;
   if(req.method!=="POST") return send(res,405,{error:"Method not allowed"});
@@ -892,12 +922,16 @@ async function handleBusinessAIPlan(req,res) {
         {role:"user",content:"Prepare my business plan using these details:\n"+prompt}
       ]})
     });
-    const data=await response.json().catch(()=>({}));
+    const data=await readAIProviderJson(response);
     if(!response.ok) { console.error("AI provider error",response.status); return send(res,502,{error:"The AI provider could not complete the request. Please try again later."}); }
     const plan=data?.choices?.[0]?.message?.content;
     if(typeof plan!=="string"||!plan.trim()) return send(res,502,{error:"The AI provider returned an empty plan"});
     return send(res,200,{plan:plan.trim(),model:AI_MODEL,generated_at:new Date().toISOString()});
-  } catch(error) { console.error("AI request failed",error.name||"Error"); return send(res,504,{error:"AI planning timed out or is temporarily unavailable"}); }
+  } catch(error) {
+    if (error.code === "AI_RESPONSE_TOO_LARGE") return send(res,502,{error:"The AI provider response exceeded the allowed size."});
+    console.error("AI request failed",error.name||"Error");
+    return send(res,504,{error:"AI planning timed out or is temporarily unavailable"});
+  }
   finally { clearTimeout(timeout); }
 }
 const server = createServer(async (req, res) => {
