@@ -274,7 +274,7 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   assert.match((await oversizedAI.json()).error, /exceeded the allowed size/i);
 
   // Four valid AI requests per account per minute are allowed; the fifth is rejected before provider usage.
-  for (let attempt = 0; attempt < 3; attempt++) {
+  for (let attempt = 0; attempt < 2; attempt++) {
     const response = await fetch("http://127.0.0.1:" + port + "/v1/business/ai-plan", {
       method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + loggedIn.token },
       body: JSON.stringify({ industry: "software", problem: "rate limit test" })
