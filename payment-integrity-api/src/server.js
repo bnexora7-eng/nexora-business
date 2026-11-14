@@ -882,36 +882,6 @@ async function readAIProviderJson(response, maxBytes = 256 * 1024) {
   }
 }
 
-async function readBoundedProviderJson(response, maxBytes = 262144) {
-  const declaredLength = Number(response.headers.get("content-length"));
-  if (Number.isFinite(declaredLength) && declaredLength > maxBytes) {
-    throw Object.assign(new Error("Provider response too large"), { code: "AI_RESPONSE_TOO_LARGE" });
-  }
-  if (!response.body) return {};
-  const reader = response.body.getReader();
-  const chunks = [];
-  let size = 0;
-  try {
-    while (true) {
-      const part = await reader.read();
-      if (part.done) break;
-      size += part.value.byteLength;
-      if (size > maxBytes) {
-        await reader.cancel().catch(() => {});
-        throw Object.assign(new Error("Provider response too large"), { code: "AI_RESPONSE_TOO_LARGE" });
-      }
-      chunks.push(Buffer.from(part.value));
-    }
-  } finally {
-    reader.releaseLock();
-  }
-  try {
-    return JSON.parse(Buffer.concat(chunks).toString("utf8"));
-  } catch {
-    return {};
-  }
-}
-
 async function handleBusinessAIPlan(req,res) {
   const user=await requireUser(req,res); if(!user) return;
   if(req.method!=="POST") return send(res,405,{error:"Method not allowed"});
