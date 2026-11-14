@@ -612,7 +612,25 @@ async function handleMollieWebhook(req, res) {
       console.error("Mollie recurring payment amount mismatch",molliePaymentId);
       return send(res,409,{error:"Recurring payment amount mismatch"});
     }
-    const nextStatus=payment.status==="paid"?"active":(["failed","canceled","expired"].includes(payment.status)?"past_due":null);
+    let nextStatus = payment.status === "paid" ? "active" : null;
+    if (["failed", "canceled", "expired"].includes(payment.status)) {
+      // Mollie retries failed subscription payments (up to five attempts in
+      // eligible cases). A failed payment attempt alone does not mean that the
+      // recurring subscription has ended. Confirm the provider-side status
+      // before revoking All Access.
+      const providerSubscription = await mollieRequest(
+        "/customers/" + encodeURIComponent(
+          (await pool.query("SELECT mollie_customer_id FROM app_users WHERE mollie_subscription_id=$1", [subscriptionId])).rows[0]?.mollie_customer_id || ""
+        ) + "/subscriptions/" + encodeURIComponent(subscriptionId)
+      );
+      if (providerSubscription?.resource !== "subscription" || providerSubscription.id !== subscriptionId ||
+          !["pending", "active", "canceled", "suspended", "completed"].includes(providerSubscription.status)) {
+        return send(res, 502, { error: "Mollie subscription status could not be verified" });
+      }
+      if (["canceled", "suspended", "completed"].includes(providerSubscription.status)) {
+        nextStatus = "past_due";
+      }
+    }
     if(nextStatus) {
       const client=await pool.connect();
       try {
