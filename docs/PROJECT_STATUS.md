@@ -62,11 +62,12 @@ A prior Google for Startups application/support request received an automated ac
 
 ## Next actions — in order
 
-1. Keep this status file and PROJECT_BRIEF.md updated after every material code or deployment change.
-2. Confirm the live demo and latest deployment workflow after any new release.
-3. Secure a suitable business domain and domain-based email if pursuing the Google for Startups route.
-4. Continue partner follow-up and request technical feedback/design-partner discussions.
-5. Before any real-data pilot, connect and deploy the backend properly, implement provider-specific integrations, and complete independent security, privacy and legal/compliance review.
+1. Complete the All Access feature inventory and verify real member entitlements against the intended €29.99/month plan. See [ALL_ACCESS_SUBSCRIPTION_PLAN.md](ALL_ACCESS_SUBSCRIPTION_PLAN.md).
+2. Configure Mollie test credentials privately in Render and complete the website subscription lifecycle tests; keep live payments disabled.
+3. Verify the current Google Play Billing requirements and implement the correct Android billing route for digital membership access.
+4. Complete customer-facing recurring-payment terms, cancellation/refund handling, privacy/legal details, production persistence, backups and monitoring.
+5. Only after the functional and billing gates pass, perform the final full visual-design and UX polish.
+6. Keep this status file and PROJECT_BRIEF.md updated after every material code or deployment change; continue partner follow-up without claiming production readiness.
 
 ## Continuity rule
 
