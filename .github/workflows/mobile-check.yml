@@ -28,6 +28,8 @@ jobs:
           cache: npm
           cache-dependency-path: mobile/package.json
       - name: Install dependencies
-        run: npm install
+        run: npm install --no-audit --no-fund
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
       - name: TypeScript check
         run: npx tsc --noEmit
