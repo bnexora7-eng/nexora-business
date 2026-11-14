@@ -1,12 +1,12 @@
 # NEXORA — Google for Startups readiness file
 
-Last reviewed: 2026-11-11
+Last reviewed: 2026-11-14
 
 ## Verified project status
 
 - Public GitHub repository: https://github.com/bnexora7-eng/nexora-business
 - Public GitHub Pages deployment workflow completed successfully on 2026-11-11.
-- Canonical interactive Payment Integrity browser demo: https://splendid-lokum-02523e.netlify.app/ (Netlify-hosted; GitHub Pages mirror remains available).
+- Canonical interactive Payment Integrity browser demo: https://bnexora7-eng.github.io/nexora-business/payment-integrity-demo/demo.html (GitHub Pages).
 - Public project information page: https://bnexora7-eng.github.io/nexora-business/company/
 - Payment Integrity backend scaffold: Node.js HTTP API, PostgreSQL schema, HMAC-SHA256 request authentication, five-minute timestamp tolerance, database uniqueness on provider_id + event_id, audit table, Docker Compose and automated tests.
 - GitHub Actions integration workflow against PostgreSQL completed successfully.
@@ -16,17 +16,18 @@ Last reviewed: 2026-11-11
 
 ## Public demo API verification — 2026-11-11
 
-The Netlify-hosted Payment Integrity demo endpoint was verified by the project owner using the public browser interface.
+The public GitHub Pages browser demo and separate Render-hosted sandbox API were verified by GitHub Actions on 14 November 2026.
 
 Public demo:
-- Website: https://splendid-lokum-02523e.netlify.app/
-- API route: https://splendid-lokum-02523e.netlify.app/v1/demo/events
-- Health check: HTTP GET returned status `ok`, service name `NEXORA Payment Integrity Demo API`, version `0.1.0`.
+- Website: https://bnexora7-eng.github.io/nexora-business/payment-integrity-demo/demo.html
+- Sandbox API health: https://nexora-payment-integrity-api.onrender.com/health
+- The browser demo is hosted on GitHub Pages; its configured sandbox API is hosted separately on Render.
+- GitHub Actions run 43596568731 verified the public site, privacy and account-deletion pages, API health and demo decisions, and browser-visible ACCEPT, REVIEW and REJECT outcomes.
 - Synthetic event test: ACCEPT — passed.
 - Automated browser-triggered API regression checks: REVIEW (pending event) — PASS; REJECT (failed event) — PASS; DUPLICATE (same provider/event identifier submitted twice) — PASS.
 - Owner-reported result: ALL TESTS PASSED (three regression checks; four decision scenarios including the separately verified ACCEPT).
 
-This verification applies only to the Netlify demo endpoint and its synthetic, deterministic screening rules. The separate Node.js + PostgreSQL backend scaffold described below has not been publicly deployed and is not connected to this Netlify demo. The Netlify demo uses temporary function memory, not persistent PostgreSQL storage. These tests do not establish production readiness, payment-provider integration, fraud-detection accuracy, security certification, customer usage or commercial traction.
+This verification applies only to the GitHub Pages browser demonstration and its separately hosted synthetic-data sandbox API. The separate Node.js + PostgreSQL account/payment backend is a distinct service and must not be assumed to power the browser demo or to be a production payment system. The browser demo uses temporary session storage. These tests do not establish production payment processing, fraud-detection accuracy, security certification, customer usage or commercial traction.
 
 ## Current domain and email status
 
@@ -75,7 +76,7 @@ Official sources:
 
 NEXORA is an early-stage digital product project. Its initial technical workstream, Payment Integrity, explores provider-neutral screening of payment event notifications. The prototype applies deterministic validation rules and returns ACCEPT, REVIEW or REJECT decisions. The backend scaffold adds signed request authentication, replay-window checks, database-backed duplicate prevention and an audit record.
 
-The current implementation is a pre-production prototype. It has passed automated unit and PostgreSQL-backed integration tests in GitHub Actions, but it is not deployed, does not connect to real payment providers, and has not been used with customers or live payment data.
+The current implementation is a pre-production prototype. Automated unit, PostgreSQL-backed integration and public demo/browser checks have passed in GitHub Actions. The subscription checkout has not passed an end-to-end Mollie test-mode lifecycle, does not connect to real payment providers for live processing, and has not been used with paying customers or live payment data.
 
 ## Required next milestones
 
