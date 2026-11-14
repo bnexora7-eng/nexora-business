@@ -784,6 +784,12 @@ async function handleLogout(req, res) {
   return send(res, 200, { status: "signed_out" });
 }
 
+function accountDeletionConflict(message) {
+  const error = new Error(message);
+  error.statusCode = 409;
+  return error;
+}
+
 async function deleteUserAccount(userId) {
   const client = await pool.connect();
   try {
@@ -809,10 +815,10 @@ async function deleteUserAccount(userId) {
     );
     for (const pending of pendingPayments.rows) {
       if (!pending.mollie_payment_id) {
-        throw new Error("A NEXORA subscription payment is still being created or its provider result is uncertain. Account deletion is paused until payment reconciliation completes.");
+        throw accountDeletionConflict("A NEXORA subscription payment is still being created or its provider result is uncertain. Account deletion is paused until payment reconciliation completes.");
       }
       if (!process.env.MOLLIE_API_KEY) {
-        throw new Error("A pending Mollie payment must be verified and canceled before deleting this account.");
+        throw accountDeletionConflict("A pending Mollie payment must be verified and canceled before deleting this account.");
       }
       const paymentPath = "/payments/" + encodeURIComponent(pending.mollie_payment_id);
       const providerPayment = await mollieRequest(paymentPath);
@@ -824,11 +830,11 @@ async function deleteUserAccount(userId) {
         continue;
       }
       if (providerPayment.isCancelable !== true) {
-        throw new Error("Mollie reports that the pending first payment cannot be canceled safely. Account deletion is paused for reconciliation.");
+        throw accountDeletionConflict("Mollie reports that the pending first payment cannot be canceled safely. Account deletion is paused for reconciliation.");
       }
       const canceledPayment = await mollieRequest(paymentPath, { method: "DELETE" });
       if (canceledPayment.status !== "canceled") {
-        throw new Error("Mollie did not confirm cancellation of the pending first payment. Account deletion is paused.");
+        throw accountDeletionConflict("Mollie did not confirm cancellation of the pending first payment. Account deletion is paused.");
       }
       await client.query(
         "UPDATE own_payments SET status='canceled',updated_at=NOW() WHERE order_id=$1",
@@ -843,19 +849,19 @@ async function deleteUserAccount(userId) {
       [userId]
     );
     if (paidFirstPayment.rowCount && !account.mollie_subscription_id) {
-      throw new Error("A first subscription payment has been received but recurring subscription activation is not yet reconciled. Account deletion is paused.");
+      throw accountDeletionConflict("A first subscription payment has been received but recurring subscription activation is not yet reconciled. Account deletion is paused.");
     }
 
     const subscriptionMayBeActive = ["active", "activation_pending", "past_due"].includes(account.subscription_status);
     if (subscriptionMayBeActive && !account.mollie_subscription_id) {
-      throw new Error("The recurring subscription status cannot be safely verified yet. Retry account deletion after subscription reconciliation.");
+      throw accountDeletionConflict("The recurring subscription status cannot be safely verified yet. Retry account deletion after subscription reconciliation.");
     }
     if (account.mollie_subscription_id) {
       if (!account.mollie_customer_id) {
-        throw new Error("The recurring subscription is missing its Mollie customer reference. Account deletion is paused for reconciliation.");
+        throw accountDeletionConflict("The recurring subscription is missing its Mollie customer reference. Account deletion is paused for reconciliation.");
       }
       if (!process.env.MOLLIE_API_KEY) {
-        throw new Error("The recurring Mollie subscription must be verified and canceled before deleting this account.");
+        throw accountDeletionConflict("The recurring Mollie subscription must be verified and canceled before deleting this account.");
       }
       const subscriptionPath = "/customers/" + encodeURIComponent(account.mollie_customer_id) +
         "/subscriptions/" + encodeURIComponent(account.mollie_subscription_id);
@@ -863,7 +869,7 @@ async function deleteUserAccount(userId) {
       if (current.status !== "canceled") {
         const canceled = await mollieRequest(subscriptionPath, { method: "DELETE" });
         if (canceled.status !== "canceled") {
-          throw new Error("Mollie did not confirm recurring subscription cancellation. Account deletion is paused.");
+          throw accountDeletionConflict("Mollie did not confirm recurring subscription cancellation. Account deletion is paused.");
         }
       }
     }
@@ -1169,7 +1175,12 @@ const server = createServer(async (req, res) => {
     return send(res, 404, { error: "Not found" });
   } catch (error) {
     console.error("request failed", error);
-    return send(res, error.statusCode || 500, { error: error.statusCode === 413 ? "Payload too large" : "Internal server error" });
+    const publicMessage = error.statusCode === 413
+      ? "Payload too large"
+      : error.statusCode === 409
+        ? error.message
+        : "Internal server error";
+    return send(res, error.statusCode || 500, { error: publicMessage });
   }
 });
 server.headersTimeout = 15_000;
