@@ -52,7 +52,7 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
       data = { resource: "subscription", id: "sub_nexoratest", customerId: "cst_nexoratest", status: mollieSubscriptionStatus, nextPaymentDate: "2099-12-31" };
     } else if (req.method === "DELETE" && path === "/v2/customers/cst_nexoratest/subscriptions/sub_nexoratest") {
       mollieSubscriptionStatus = "canceled";
-      data = { id: "sub_nexoratest", status: "canceled" };
+      data = { resource: "subscription", id: "sub_nexoratest", customerId: "cst_nexoratest", status: "canceled" };
     } else {
       status = 404; data = { title: "Mock Mollie route not found", detail: path };
     }
@@ -504,6 +504,24 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   const canceledState = await subscriptionState.json();
   assert.equal(canceledState.status, "canceled");
   assert.equal(canceledState.access, true);
+
+  // Recover the case where Mollie canceled successfully but the local status
+  // write did not complete. Mollie omits nextPaymentDate after cancellation,
+  // so the API must use the paid-through date persisted before the DELETE.
+  await pool.query("UPDATE app_users SET subscription_status='active' WHERE id=$1", [accountId]);
+  const reconcileCanceledSubscription = await fetch(`http://127.0.0.1:${port}/v1/subscriptions/cancel`, {
+    method: "POST", headers: { authorization: "Bearer " + loggedIn.token }
+  });
+  assert.equal(reconcileCanceledSubscription.status, 200);
+  const reconciledCancellation = await reconcileCanceledSubscription.json();
+  assert.equal(reconciledCancellation.status, "canceled");
+  assert.equal(reconciledCancellation.access, true);
+  const reconciledLocalState = await pool.query(
+    "SELECT subscription_status,subscription_access_until FROM app_users WHERE id=$1",
+    [accountId]
+  );
+  assert.equal(reconciledLocalState.rows[0].subscription_status, "canceled");
+  assert.ok(reconciledLocalState.rows[0].subscription_access_until);
 
   // A later-arriving paid notification must never resurrect a canceled plan.
   recurringPaymentStatus = "paid";
