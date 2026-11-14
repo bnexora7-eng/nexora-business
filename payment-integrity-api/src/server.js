@@ -468,34 +468,80 @@ async function handleCancelSubscription(req,res) {
   if(!pool) return send(res,503,{error:"Subscription service requires the database"});
   const user=await getAuthenticatedUser(req);
   if(!user) return send(res,401,{error:"Authentication required"});
-  const result=await pool.query("SELECT mollie_customer_id,mollie_subscription_id,subscription_status,subscription_access_until FROM app_users WHERE id=$1",[user.id]);
+
+  const result=await pool.query(
+    "SELECT mollie_customer_id,mollie_subscription_id,subscription_status,subscription_access_until FROM app_users WHERE id=$1",
+    [user.id]
+  );
   const row=result.rows[0];
+  if(!row) return send(res,404,{error:"Account not found"});
   if(row.subscription_status==="canceled") {
     const access=Boolean(row.subscription_access_until && new Date(row.subscription_access_until).getTime()>Date.now());
     return send(res,200,{status:"canceled",access,access_until:row.subscription_access_until,message:"Your NEXORA subscription is already canceled."});
   }
-  if(!row.mollie_subscription_id || !row.mollie_customer_id) return send(res,409,{error:"There is no active Mollie subscription to cancel"});
+  if(!row.mollie_subscription_id || !row.mollie_customer_id) {
+    return send(res,409,{error:"There is no active Mollie subscription to cancel"});
+  }
+
   const subscriptionPath="/customers/"+encodeURIComponent(row.mollie_customer_id)+"/subscriptions/"+encodeURIComponent(row.mollie_subscription_id);
   const current=await mollieRequest(subscriptionPath);
-  if(current.status!=="active" && current.status!=="pending") {
-    return send(res,409,{error:"Mollie does not report this subscription as active. Refresh the subscription status before retrying."});
+  if(current?.resource!=="subscription" || current.id!==row.mollie_subscription_id ||
+     current.customerId!==row.mollie_customer_id) {
+    return send(res,502,{error:"Mollie subscription identity could not be verified"});
   }
-  if(typeof current.nextPaymentDate!=="string" || !/^\d{4}-\d{2}-\d{2}$/.test(current.nextPaymentDate)) {
+
+  // Recover a prior request where Mollie confirmed cancellation but the local
+  // database update did not complete. Mollie omits nextPaymentDate once canceled,
+  // so the paid-through date must have been persisted before the DELETE call.
+  if(current.status==="canceled") {
+    if(!row.subscription_access_until || Number.isNaN(new Date(row.subscription_access_until).getTime())) {
+      return send(res,409,{error:"The subscription is canceled at Mollie but its paid-through date is missing. Manual reconciliation is required."});
+    }
+    await pool.query(
+      "UPDATE app_users SET subscription_status='canceled',subscription_updated_at=NOW() WHERE id=$1 AND mollie_subscription_id=$2 AND subscription_status <> 'canceled'",
+      [user.id,row.mollie_subscription_id]
+    );
+    const accessUntil=new Date(row.subscription_access_until);
+    return send(res,200,{
+      status:"canceled",access:accessUntil.getTime()>Date.now(),access_until:accessUntil.toISOString(),
+      message:"Your subscription cancellation was reconciled. Access remains available until the end of the already-paid period."
+    });
+  }
+
+  if(current.status!=="active" && current.status!=="pending") {
+    return send(res,409,{error:"Mollie reports a subscription state that cannot be canceled safely through this request"});
+  }
+  if(typeof current.nextPaymentDate!=="string" || !/^\\d{4}-\\d{2}-\\d{2}$/.test(current.nextPaymentDate)) {
     return send(res,409,{error:"Mollie did not provide the next payment date. The subscription was not canceled so paid access is not lost."});
   }
   const accessUntil=new Date(current.nextPaymentDate+"T00:00:00.000Z");
   if(Number.isNaN(accessUntil.getTime())) return send(res,409,{error:"Mollie returned an invalid next payment date. The subscription was not canceled."});
-  const canceled=await mollieRequest(subscriptionPath,{method:"DELETE"});
-  if(canceled.status!=="canceled") throw new Error("Mollie did not confirm subscription cancellation");
-  await pool.query(
-    "UPDATE app_users SET subscription_status='canceled',subscription_access_until=$1,subscription_updated_at=NOW() WHERE id=$2",
-    [accessUntil.toISOString(),user.id]
+
+  // Persist the paid-through date first. If the provider cancellation succeeds
+  // but our following database write fails, a retry can safely reconcile it.
+  const saved=await pool.query(
+    "UPDATE app_users SET subscription_access_until=$1,subscription_updated_at=NOW() WHERE id=$2 AND mollie_subscription_id=$3 AND subscription_status <> 'canceled'",
+    [accessUntil.toISOString(),user.id,row.mollie_subscription_id]
   );
+  if(!saved.rowCount) return send(res,409,{error:"Subscription changed while cancellation was being prepared. Refresh and retry."});
+
+  const canceled=await mollieRequest(subscriptionPath,{method:"DELETE"});
+  if(canceled?.resource!=="subscription" || canceled.id!==row.mollie_subscription_id ||
+     canceled.customerId!==row.mollie_customer_id || canceled.status!=="canceled") {
+    throw new Error("Mollie did not confirm cancellation of the expected subscription");
+  }
+  const updated=await pool.query(
+    "UPDATE app_users SET subscription_status='canceled',subscription_access_until=$1,subscription_updated_at=NOW() WHERE id=$2 AND mollie_subscription_id=$3",
+    [accessUntil.toISOString(),user.id,row.mollie_subscription_id]
+  );
+  if(!updated.rowCount) throw new Error("Mollie canceled the subscription but local account reconciliation is required");
+
   return send(res,200,{
     status:"canceled",access:accessUntil.getTime()>Date.now(),access_until:accessUntil.toISOString(),
     message:"Your subscription is canceled. Access remains available until the end of the already-paid period."
   });
 }
+
 async function handleMollieWebhook(req, res) {
   if (!pool || !process.env.MOLLIE_API_KEY) return send(res, 503, { error: "Payment webhook is not configured" });
   const rawBody = await readBody(req);
