@@ -14,7 +14,7 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   const providerId = "integration-provider";
   const child = spawn(process.execPath, ["src/server.js"], {
     cwd: process.cwd(),
-    env: { ...process.env, PORT: String(port), PROVIDER_SECRETS: JSON.stringify({ [providerId]: secret }), ENABLE_PUBLIC_DEMO: "true", DEMO_ORIGIN: "https://bnexora7-eng.github.io" },
+    env: { ...process.env, NODE_ENV: "test", SMTP_TEST_MODE: "true", PORT: String(port), PROVIDER_SECRETS: JSON.stringify({ [providerId]: secret }), ENABLE_PUBLIC_DEMO: "true", DEMO_ORIGIN: "https://bnexora7-eng.github.io" },
     stdio: "ignore"
   });
   t.after(async () => {
@@ -49,12 +49,39 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   });
   assert.equal(register.status, 201);
   const registered = await register.json();
-  assert.equal(registered.user.email, accountEmail);
-  assert.equal(typeof registered.token, "string");
-  assert.equal(registered.token.length >= 40, true);
+  assert.equal(registered.status, "verification_required");
+  assert.equal(registered.email, accountEmail);
+  assert.equal("token" in registered, false);
+
+  const unverifiedLogin = await fetch(`http://127.0.0.1:${port}/v1/auth/login`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ email: accountEmail, password: accountPassword })
+  });
+  assert.equal(unverifiedLogin.status, 403);
+  assert.equal((await unverifiedLogin.json()).code, "email_not_verified");
+
+  // Verify the account in the database so the rest of this integration test
+  // can exercise authenticated endpoints without depending on an inbox.
+  const verifiedAccount = await pool.query(
+    "UPDATE app_users SET email_verified_at=NOW() WHERE email=$1 RETURNING id,email",
+    [accountEmail]
+  );
+  assert.equal(verifiedAccount.rowCount, 1);
+  const accountId = verifiedAccount.rows[0].id;
+
+  const login = await fetch(`http://127.0.0.1:${port}/v1/auth/login`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ email: accountEmail, password: accountPassword })
+  });
+  assert.equal(login.status, 200);
+  const loggedIn = await login.json();
+  assert.equal(typeof loggedIn.token, "string");
+  assert.equal(loggedIn.token.length >= 40, true);
 
   const profile = await fetch(`http://127.0.0.1:${port}/v1/auth/me`, {
-    headers: { authorization: "Bearer " + registered.token }
+    headers: { authorization: "Bearer " + loggedIn.token }
   });
   assert.equal(profile.status, 200);
   assert.equal((await profile.json()).user.email, accountEmail);
@@ -83,24 +110,24 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
 
   // Create user-owned content, then verify account deletion removes it.
   const createPost = await fetch(`http://127.0.0.1:${port}/v1/community/posts`, {
-    method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + registered.token },
+    method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + loggedIn.token },
     body: JSON.stringify({ body: "delete me with my account" })
   });
   assert.equal(createPost.status, 201);
   const createWorkspace = await fetch(`http://127.0.0.1:${port}/v1/business/workspace`, {
-    method: "PUT", headers: { "content-type": "application/json", authorization: "Bearer " + registered.token },
+    method: "PUT", headers: { "content-type": "application/json", authorization: "Bearer " + loggedIn.token },
     body: JSON.stringify({ business_name: "Delete test", tagline: "", goals: "private notes" })
   });
   assert.equal(createWorkspace.status, 200);
   const paymentOrderId = randomUUID();
-  await pool.query("INSERT INTO own_payments (order_id,user_id,amount,description,status) VALUES ($1,$2,25.00,$3,$4)", [paymentOrderId, registered.user.id, "Integration test payment", "paid"]);
+  await pool.query("INSERT INTO own_payments (order_id,user_id,amount,description,status) VALUES ($1,$2,25.00,$3,$4)", [paymentOrderId, accountId, "Integration test payment", "paid"]);
   const deleteResponse = await fetch(`http://127.0.0.1:${port}/v1/auth/account`, {
-    method: "DELETE", headers: { authorization: "Bearer " + registered.token }
+    method: "DELETE", headers: { authorization: "Bearer " + loggedIn.token }
   });
   assert.equal(deleteResponse.status, 200);
   assert.equal((await deleteResponse.json()).status, "account_deleted");
   const deletedProfile = await fetch(`http://127.0.0.1:${port}/v1/auth/me`, {
-    headers: { authorization: "Bearer " + registered.token }
+    headers: { authorization: "Bearer " + loggedIn.token }
   });
   assert.equal(deletedProfile.status, 401);
   const deletedRows = await pool.query(
