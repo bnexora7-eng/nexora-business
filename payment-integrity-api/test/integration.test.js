@@ -14,6 +14,7 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   let firstPaymentStatus = "open";
   let recurringPaymentStatus = "failed";
   let recurringPaymentAmount = { currency: "EUR", value: "29.99" };
+  let recurringPaymentCreatedAt = "2026-11-14T10:00:00Z";
   let mollieSubscriptionStatus = "active";
   let mollieSubscriptionCreateCount = 0;
   const mollieMock = createServer(async (req, res) => {
@@ -46,7 +47,7 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
         data = { id: "sub_nexoratest", status: mollieSubscriptionStatus };
       }
     } else if (req.method === "GET" && path === "/v2/payments/tr_nexorarecurring") {
-      data = { resource: "payment", id: "tr_nexorarecurring", status: recurringPaymentStatus, subscriptionId: "sub_nexoratest", amount: recurringPaymentAmount };
+      data = { resource: "payment", id: "tr_nexorarecurring", status: recurringPaymentStatus, subscriptionId: "sub_nexoratest", amount: recurringPaymentAmount, createdAt: recurringPaymentCreatedAt };
     } else if (req.method === "GET" && path === "/v2/customers/cst_nexoratest/subscriptions/sub_nexoratest") {
       data = { id: "sub_nexoratest", status: mollieSubscriptionStatus, nextPaymentDate: "2099-12-31" };
     } else if (req.method === "DELETE" && path === "/v2/customers/cst_nexoratest/subscriptions/sub_nexoratest") {
@@ -459,6 +460,21 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
     headers: { authorization: "Bearer " + loggedIn.token }
   });
   assert.equal((await subscriptionState.json()).status, "active");
+
+  // An older failed notification arriving after a newer paid renewal must not
+  // downgrade the membership. Mollie's createdAt, not webhook arrival order,
+  // determines which payment event is newest.
+  recurringPaymentStatus = "failed";
+  recurringPaymentCreatedAt = "2026-11-13T10:00:00Z";
+  const delayedFailedRenewal = await fetch(`http://127.0.0.1:${port}/v1/payments/mollie-webhook`, {
+    method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: "id=tr_nexorarecurring"
+  });
+  assert.equal(delayedFailedRenewal.status, 200);
+  subscriptionState = await fetch(`http://127.0.0.1:${port}/v1/subscriptions/me`, {
+    headers: { authorization: "Bearer " + loggedIn.token }
+  });
+  assert.equal((await subscriptionState.json()).status, "active",
+    "a delayed older failed payment must not downgrade a newer paid subscription");
 
   const cancelSubscription = await fetch(`http://127.0.0.1:${port}/v1/subscriptions/cancel`, {
     method: "POST", headers: { authorization: "Bearer " + loggedIn.token, "content-type": "application/json" },
