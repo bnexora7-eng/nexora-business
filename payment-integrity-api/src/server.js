@@ -191,9 +191,8 @@ async function getAuthenticatedUser(req) {
   const token = bearerToken(req);
   if (!token) return null;
   const result = await pool.query(
-    `SELECT u.id, u.email FROM app_sessions s JOIN app_users u ON u.id=s.user_id
+    `SELECT u.id, u.email, u.subscription_status FROM app_sessions s JOIN app_users u ON u.id=s.user_id
      WHERE s.token_hash=$1 AND s.revoked_at IS NULL AND s.expires_at > NOW()
-       AND u.email_verified_at IS NOT NULL
        AND u.email_verified_at IS NOT NULL`,
     [hashSessionToken(token)]
   );
@@ -637,6 +636,10 @@ async function requireUser(req, res) {
   if (!pool) { send(res, 503, { error: "Database is not configured" }); return null; }
   const user = await getAuthenticatedUser(req);
   if (!user) { send(res, 401, { error: "Sign in to use this feature" }); return null; }
+  if (user.subscription_status !== "active") {
+    send(res, 402, { error: "NEXORA All Access is required. Activate your €29.99/month subscription to use this feature.", code: "subscription_required" });
+    return null;
+  }
   return user;
 }
 async function handleCommunity(req, res) {
