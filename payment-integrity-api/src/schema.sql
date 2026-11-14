@@ -100,6 +100,7 @@ ALTER TABLE app_users ADD COLUMN IF NOT EXISTS mollie_subscription_id TEXT UNIQU
 ALTER TABLE app_users ADD COLUMN IF NOT EXISTS subscription_status TEXT NOT NULL DEFAULT 'inactive';
 ALTER TABLE app_users ADD COLUMN IF NOT EXISTS subscription_started_at TIMESTAMPTZ;
 ALTER TABLE app_users ADD COLUMN IF NOT EXISTS subscription_updated_at TIMESTAMPTZ;
+ALTER TABLE app_users ADD COLUMN IF NOT EXISTS subscription_access_until TIMESTAMPTZ;
 ALTER TABLE app_users DROP CONSTRAINT IF EXISTS app_users_subscription_status_check;
 ALTER TABLE app_users ADD CONSTRAINT app_users_subscription_status_check
   CHECK (subscription_status IN ('inactive','activation_pending','active','past_due','canceled'));
