@@ -88,3 +88,9 @@ As of 14 November 2026:
 - The project remains pre-production.
 
 This plan is the source of truth for the subscription model and release sequence.
+
+## Android billing safety implementation — 14 November 2026
+
+The Android client now disables the external Mollie subscription checkout button and displays that Android subscriptions are unavailable until Google Play Billing or a fully approved EEA alternative-billing integration is implemented. Existing subscribers can still view their status and cancel a website-originated subscription. This is an intentional policy guard, not a completed billing implementation.
+
+Internal terms and subscription disclosure draft: [TERMS_AND_SUBSCRIPTION_DISCLOSURES_DRAFT.md](TERMS_AND_SUBSCRIPTION_DISCLOSURES_DRAFT.md). It is not published or legally approved. Operator legal identity, KVK, postal address, VAT treatment, customer support, withdrawal/refund handling and final feature matrix remain required before launch.
