@@ -79,9 +79,9 @@ This file is the current release-gate summary. A green CI check validates only t
 
 ## 3. Mobile dependency security exception
 
-The mobile CI audit passes with a narrowly scoped exception for `image-size` used by Metro during local build asset inspection. The two current high-severity advisories are GHSA-5p2g-fcmc-qvqq and GHSA-w3rx-r6r6-pgpr; no patched npm release is currently published. The package is a build-tool dependency and is not shipped as app runtime code. The audit script permits only those exact advisories and package path; all other high/critical findings fail CI.
+Both API and mobile dependency lockfiles are now committed, and CI uses `npm ci` for reproducible installs. The mobile CI audit passes with a narrowly scoped exception for `image-size` used by Metro during local build asset inspection. The two current high-severity advisories are GHSA-5p2g-fcmc-qvqq and GHSA-w3rx-r6r6-pgpr; no patched npm release is currently published. The package is a build-tool dependency and is not shipped as app runtime code. The audit script permits only those exact advisories and package path; all other high/critical findings fail CI.
 
-PostCSS is pinned to 8.5.33 to address the current PostCSS advisories. Reassess this exception on every Expo/Metro upgrade and remove it once a fixed `image-size` release is available. Do not use `npm audit fix --force` or jump Expo SDK major versions without a compatibility migration and full Android rebuild.
+PostCSS is pinned to 8.5.33 to address the current PostCSS advisories. Full rationale and exact advisory scope: [DEPENDENCY_SECURITY_EXCEPTIONS.md](DEPENDENCY_SECURITY_EXCEPTIONS.md). Reassess this exception on every Expo/Metro upgrade and remove it once a fixed `image-size` release is available. Do not use `npm audit fix --force` or jump Expo SDK major versions without a compatibility migration and full Android rebuild.
 
 ## 4. Owner actions still required
 
