@@ -364,7 +364,7 @@ async function handleCreateSubscriptionCheckout(req, res) {
       const pendingPayment = await client.query(
         `SELECT order_id,status,checkout_url FROM own_payments
          WHERE user_id=$1 AND description='NEXORA All Access monthly subscription'
-           AND status IN ('creating','creation_unknown','open','pending','authorized')
+           AND status IN ('creating','creation_unknown','creation_failed','open','pending','authorized')
          ORDER BY created_at DESC LIMIT 1`,
         [user.id]
       );
@@ -803,7 +803,7 @@ async function deleteUserAccount(userId) {
     const pendingPayments = await client.query(
       `SELECT order_id,mollie_payment_id,status FROM own_payments
        WHERE user_id=$1 AND description='NEXORA All Access monthly subscription'
-         AND status IN ('creating','creation_unknown','open','pending','authorized')
+         AND status IN ('creating','creation_unknown','creation_failed','open','pending','authorized')
        ORDER BY created_at DESC`,
       [userId]
     );
