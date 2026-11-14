@@ -191,7 +191,7 @@ async function getAuthenticatedUser(req) {
   const token = bearerToken(req);
   if (!token) return null;
   const result = await pool.query(
-    `SELECT u.id, u.email, u.subscription_status FROM app_sessions s JOIN app_users u ON u.id=s.user_id
+    `SELECT u.id, u.email, u.subscription_status, u.subscription_access_until FROM app_sessions s JOIN app_users u ON u.id=s.user_id
      WHERE s.token_hash=$1 AND s.revoked_at IS NULL AND s.expires_at > NOW()
        AND u.email_verified_at IS NOT NULL`,
     [hashSessionToken(token)]
@@ -279,11 +279,19 @@ async function handleCreateSubscriptionCheckout(req, res) {
     return send(res, 503, { error: "Live payments are disabled; configure a Mollie test key first" });
   }
   const account = await pool.query(
-    "SELECT id,email,mollie_customer_id,subscription_status FROM app_users WHERE id=$1",
+    "SELECT id,email,mollie_customer_id,subscription_status,subscription_access_until FROM app_users WHERE id=$1",
     [user.id]
   );
   const current = account.rows[0];
-  if (current.subscription_status === "active" || current.subscription_status === "activation_pending") {
+  if (current.subscription_status === "canceled" && current.subscription_access_until &&
+      new Date(current.subscription_access_until).getTime() <= Date.now()) {
+    await pool.query("UPDATE app_users SET subscription_status='inactive',subscription_access_until=NULL WHERE id=$1",[user.id]);
+    current.subscription_status = "inactive";
+    current.subscription_access_until = null;
+  }
+  if (current.subscription_status === "active" || current.subscription_status === "activation_pending" ||
+      (current.subscription_status === "canceled" && current.subscription_access_until &&
+       new Date(current.subscription_access_until).getTime() > Date.now())) {
     return send(res, 409, { error: "A NEXORA subscription is already active or being activated" });
   }
   const pendingPayment = await pool.query(
@@ -355,26 +363,50 @@ async function handleGetSubscription(req,res) {
   const user=await getAuthenticatedUser(req);
   if(!user) return send(res,401,{error:"Authentication required"});
   const result=await pool.query(
-    "SELECT subscription_status,subscription_started_at,subscription_updated_at FROM app_users WHERE id=$1",
+    "SELECT subscription_status,subscription_started_at,subscription_updated_at,subscription_access_until FROM app_users WHERE id=$1",
     [user.id]
   );
   const row=result.rows[0];
+  const accessUntil=row.subscription_access_until;
+  const access=row.subscription_status==="active" ||
+    (row.subscription_status==="canceled" && accessUntil && new Date(accessUntil).getTime()>Date.now());
   return send(res,200,{
     plan:"NEXORA All Access",amount:{currency:"EUR",value:"29.99"},interval:"1 month",
     status:row.subscription_status,started_at:row.subscription_started_at,updated_at:row.subscription_updated_at,
-    access:row.subscription_status==="active"
+    access,access_until:accessUntil,canceled_at_period_end:row.subscription_status==="canceled" && Boolean(access)
   });
 }
 async function handleCancelSubscription(req,res) {
   if(!pool) return send(res,503,{error:"Subscription service requires the database"});
   const user=await getAuthenticatedUser(req);
   if(!user) return send(res,401,{error:"Authentication required"});
-  const result=await pool.query("SELECT mollie_customer_id,mollie_subscription_id,subscription_status FROM app_users WHERE id=$1",[user.id]);
+  const result=await pool.query("SELECT mollie_customer_id,mollie_subscription_id,subscription_status,subscription_access_until FROM app_users WHERE id=$1",[user.id]);
   const row=result.rows[0];
+  if(row.subscription_status==="canceled") {
+    const access=Boolean(row.subscription_access_until && new Date(row.subscription_access_until).getTime()>Date.now());
+    return send(res,200,{status:"canceled",access,access_until:row.subscription_access_until,message:"Your NEXORA subscription is already canceled."});
+  }
   if(!row.mollie_subscription_id || !row.mollie_customer_id) return send(res,409,{error:"There is no active Mollie subscription to cancel"});
-  await mollieRequest("/customers/"+encodeURIComponent(row.mollie_customer_id)+"/subscriptions/"+encodeURIComponent(row.mollie_subscription_id),{method:"DELETE"});
-  await pool.query("UPDATE app_users SET subscription_status='canceled',subscription_updated_at=NOW() WHERE id=$1",[user.id]);
-  return send(res,200,{status:"canceled",message:"Your NEXORA subscription has been canceled."});
+  const subscriptionPath="/customers/"+encodeURIComponent(row.mollie_customer_id)+"/subscriptions/"+encodeURIComponent(row.mollie_subscription_id);
+  const current=await mollieRequest(subscriptionPath);
+  if(current.status!=="active" && current.status!=="pending") {
+    return send(res,409,{error:"Mollie does not report this subscription as active. Refresh the subscription status before retrying."});
+  }
+  if(typeof current.nextPaymentDate!=="string" || !/^\\d{4}-\\d{2}-\\d{2}$/.test(current.nextPaymentDate)) {
+    return send(res,409,{error:"Mollie did not provide the next payment date. The subscription was not canceled so paid access is not lost."});
+  }
+  const accessUntil=new Date(current.nextPaymentDate+"T00:00:00.000Z");
+  if(Number.isNaN(accessUntil.getTime())) return send(res,409,{error:"Mollie returned an invalid next payment date. The subscription was not canceled."});
+  const canceled=await mollieRequest(subscriptionPath,{method:"DELETE"});
+  if(canceled.status!=="canceled") throw new Error("Mollie did not confirm subscription cancellation");
+  await pool.query(
+    "UPDATE app_users SET subscription_status='canceled',subscription_access_until=$1,subscription_updated_at=NOW() WHERE id=$2",
+    [accessUntil.toISOString(),user.id]
+  );
+  return send(res,200,{
+    status:"canceled",access:accessUntil.getTime()>Date.now(),access_until:accessUntil.toISOString(),
+    message:"Your subscription is canceled. Access remains available until the end of the already-paid period."
+  });
 }
 async function handleMollieWebhook(req, res) {
   if (!pool || !process.env.MOLLIE_API_KEY) return send(res, 503, { error: "Payment webhook is not configured" });
@@ -420,7 +452,7 @@ async function handleMollieWebhook(req, res) {
         if(!subscription?.id) throw new Error("Mollie did not confirm the recurring subscription");
         const mollieStatus = subscription.status === "active" ? "active" : "activation_pending";
         await pool.query(
-          "UPDATE app_users SET mollie_subscription_id=$1,subscription_status=$2,subscription_started_at=CASE WHEN $2='active' THEN COALESCE(subscription_started_at,NOW()) ELSE subscription_started_at END,subscription_updated_at=NOW() WHERE id=$3",
+          "UPDATE app_users SET mollie_subscription_id=$1,subscription_status=$2,subscription_access_until=NULL,subscription_started_at=CASE WHEN $2='active' THEN COALESCE(subscription_started_at,NOW()) ELSE subscription_started_at END,subscription_updated_at=NOW() WHERE id=$3",
           [subscription.id,mollieStatus,member.id]
         );
       } else {
@@ -446,10 +478,12 @@ async function handleMollieWebhook(req, res) {
   }
   const subscriptionId=payment.subscriptionId || payment.subscription_id;
   if (typeof subscriptionId === "string") {
-    const member=await pool.query("SELECT id FROM app_users WHERE mollie_subscription_id=$1",[subscriptionId]);
+    const member=await pool.query("SELECT id,subscription_status FROM app_users WHERE mollie_subscription_id=$1",[subscriptionId]);
     if (!member.rowCount) return send(res,404,{error:"Recurring subscription not found"});
     const nextStatus=payment.status==="paid"?"active":(["failed","canceled","expired"].includes(payment.status)?"past_due":null);
-    if(nextStatus) await pool.query("UPDATE app_users SET subscription_status=$1,subscription_updated_at=NOW() WHERE id=$2",[nextStatus,member.rows[0].id]);
+    if(nextStatus && member.rows[0].subscription_status!=="canceled") {
+      await pool.query("UPDATE app_users SET subscription_status=$1,subscription_updated_at=NOW() WHERE id=$2",[nextStatus,member.rows[0].id]);
+    }
     return send(res,200,{received:true,subscription:true});
   }
   return send(res,400,{error:"Payment is not linked to a known NEXORA order or subscription"});
@@ -676,7 +710,10 @@ async function requireUser(req, res) {
   if (!pool) { send(res, 503, { error: "Database is not configured" }); return null; }
   const user = await getAuthenticatedUser(req);
   if (!user) { send(res, 401, { error: "Sign in to use this feature" }); return null; }
-  if (user.subscription_status !== "active") {
+  const subscriptionAccess = user.subscription_status === "active" ||
+    (user.subscription_status === "canceled" && user.subscription_access_until &&
+      new Date(user.subscription_access_until).getTime() > Date.now());
+  if (!subscriptionAccess) {
     send(res, 402, { error: "NEXORA All Access is required. Activate your €29.99/month subscription to use this feature.", code: "subscription_required" });
     return null;
   }
