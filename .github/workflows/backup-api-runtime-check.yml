@@ -6,6 +6,7 @@ on:
       - "payment-integrity-api/Dockerfile"
       - "payment-integrity-api/src/server.js"
       - "payment-integrity-api/package*.json"
+      - "payment-integrity-api/backup-runtime/**"
       - "backup/**"
       - ".github/workflows/backup-api-runtime-check.yml"
   pull_request:
