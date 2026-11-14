@@ -26,7 +26,7 @@
 - Maximum output: 1,400 tokens per request
 - Maximum provider response body: 256 KiB; oversized responses are rejected before full buffering
 - Application limit: 4 requests per account per minute, atomically enforced in PostgreSQL across restarts and instances
-- Global monthly token budget: `AI_MONTHLY_TOKEN_LIMIT` (conservative reservation before provider calls; `0` disables generation)
+- Global monthly token budget: `AI_MONTHLY_TOKEN_LIMIT` (reservation before provider calls uses UTF-8 input-byte bounds plus the maximum output allowance; `0` disables generation)
 - Provider-reported `usage.total_tokens` reduces reservations after successful responses; missing usage or provider errors retain the full reservation
 - Provider timeout: 25 seconds
 - No automatic retries, to avoid unexpected duplicate usage
