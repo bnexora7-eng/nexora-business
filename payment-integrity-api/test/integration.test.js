@@ -222,6 +222,37 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   // Grant the test account All Access before exercising paid member endpoints.
   await pool.query("UPDATE app_users SET subscription_status='active',subscription_access_until=NULL WHERE id=$1",[accountId]);
 
+  // Exercise the member workspace, community and marketplace API used by the published UI.
+  const workspaceSave = await fetch("http://127.0.0.1:" + port + "/v1/business/workspace", {
+    method: "PUT", headers: { "content-type": "application/json", authorization: "Bearer " + loggedIn.token },
+    body: JSON.stringify({ business_name: "NEXORA Test Studio", tagline: "A test workspace", goals: "Validate member workspace persistence" })
+  });
+  assert.equal(workspaceSave.status, 200);
+  const workspaceRead = await fetch("http://127.0.0.1:" + port + "/v1/business/workspace", {
+    headers: { authorization: "Bearer " + loggedIn.token }
+  });
+  assert.equal(workspaceRead.status, 200);
+  const workspaceBody = await workspaceRead.json();
+  assert.equal(workspaceBody.workspace.business_name, "NEXORA Test Studio");
+  assert.equal(workspaceBody.workspace.tagline, "A test workspace");
+  assert.equal(workspaceBody.workspace.goals, "Validate member workspace persistence");
+
+  const marketplaceCreate = await fetch("http://127.0.0.1:" + port + "/v1/marketplace/listings", {
+    method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + loggedIn.token },
+    body: JSON.stringify({ title: "NEXORA test service", description: "A listing used to verify the member marketplace API.", category: "service", price: "19.99" })
+  });
+  assert.equal(marketplaceCreate.status, 201);
+  const createdListing = (await marketplaceCreate.json()).listing;
+  assert.equal(createdListing.title, "NEXORA test service");
+  assert.equal(Number(createdListing.price), 19.99);
+  const marketplaceRead = await fetch("http://127.0.0.1:" + port + "/v1/marketplace/listings");
+  assert.equal(marketplaceRead.status, 200);
+  assert.ok((await marketplaceRead.json()).listings.some(item => item.id === createdListing.id));
+
+  const communityRead = await fetch("http://127.0.0.1:" + port + "/v1/community/posts");
+  assert.equal(communityRead.status, 200);
+  assert.ok(Array.isArray((await communityRead.json()).posts));
+
   // Start from a clean billing state before exercising the subscription lifecycle.
   await pool.query("UPDATE app_users SET subscription_status='inactive',mollie_customer_id=NULL,mollie_subscription_id=NULL,subscription_access_until=NULL WHERE id=$1",[accountId]);
 
