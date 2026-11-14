@@ -544,7 +544,7 @@ async function handleRegister(req,res) {
     try { await sendVerificationEmail(user.email,token); }
     catch(error) {
       console.error("Verification email delivery failed:",error.message);
-      return send(res,503,{error:"Account created but verification email could not be sent. Configure Gmail SMTP, then request a new verification email."});
+      return send(res,503,{error:"Account created but verification email could not be sent. Configure the transactional email provider, then request a new verification email."});
     }
     return send(res,201,{status:"verification_required",message:"Check your inbox and confirm your email address before signing in.",email:user.email});
   } catch(error) {
