@@ -27,9 +27,9 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: mobile/package.json
+          cache-dependency-path: mobile/package-lock.json
       - name: Install dependencies
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
       - name: Audit production dependency tree
         run: |
           npm audit --omit=dev --json > /tmp/nexora-mobile-audit.json || audit_status=$?
