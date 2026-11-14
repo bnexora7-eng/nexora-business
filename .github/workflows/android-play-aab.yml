@@ -70,14 +70,14 @@ jobs:
           const gradleProperties = fs.existsSync('android/gradle.properties')
             ? fs.readFileSync('android/gradle.properties', 'utf8')
             : '';
-          const override = gradleProperties.match(/^android.targetSdkVersion\\s*=\\s*(\\d+)\\s*$/m);
+          const override = gradleProperties.match(/^android.targetSdkVersion\s*=\s*(\d+)\s*$/m);
           const buildPropertiesPlugin = (pkg.dependencies || {})['expo-build-properties'] ||
             (pkg.devDependencies || {})['expo-build-properties'];
           console.log('Expo SDK:', sdkMajor);
-          console.log('Android Gradle target declaration:', appGradle.split(/\\r?\\n/).find(line => /targetSdkVersion/.test(line)) || 'missing');
+          console.log('Android Gradle target declaration:', appGradle.split(/\r?\n/).find(line => /targetSdkVersion/.test(line)) || 'missing');
           if (sdkMajor < 54) throw new Error('Expo SDK 54 or newer is required for Android target SDK 36.');
           if (buildPropertiesPlugin) throw new Error('expo-build-properties is installed; explicitly verify that it does not override targetSdkVersion below 36.');
-          if (!/targetSdkVersion\\s+rootProject\\.ext\\.targetSdkVersion/.test(appGradle)) {
+          if (!/targetSdkVersion\s+rootProject\.ext\.targetSdkVersion/.test(appGradle)) {
             throw new Error('Unexpected Android target SDK wiring; manual verification is required.');
           }
           if (override && Number(override[1]) < 36) {
