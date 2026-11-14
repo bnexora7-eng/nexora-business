@@ -453,6 +453,19 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   assert.equal(retainedPayment.rowCount, 1);
   assert.equal(retainedPayment.rows[0].user_id, null);
 
+  const accountDeletePreflight = await fetch(`http://127.0.0.1:${port}/v1/auth/account`, {
+    method: "OPTIONS",
+    headers: {
+      origin: "https://bnexora7-eng.github.io",
+      "access-control-request-method": "DELETE",
+      "access-control-request-headers": "authorization"
+    }
+  });
+  assert.equal(accountDeletePreflight.status, 204);
+  assert.equal(accountDeletePreflight.headers.get("access-control-allow-origin"), "https://bnexora7-eng.github.io");
+  assert.match(accountDeletePreflight.headers.get("access-control-allow-methods") || "", /\\bDELETE\\b/);
+  assert.match(accountDeletePreflight.headers.get("access-control-allow-headers") || "", /authorization/i);
+
   const webDeleteEmail = "nexora-web-delete-" + Date.now() + "@example.invalid";
   const webDeleteRegister = await fetch(`http://127.0.0.1:${port}/v1/auth/register`, {
     method: "POST", headers: { "content-type": "application/json" },
