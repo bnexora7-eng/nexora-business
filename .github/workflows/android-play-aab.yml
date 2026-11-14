@@ -45,10 +45,6 @@ jobs:
         working-directory: mobile
         run: npm install --no-audit --no-fund
 
-      - name: Apply non-breaking dependency security fixes
-        working-directory: mobile
-        run: npm audit fix --no-fund
-
       - name: Preserve generated dependency lock for review
         if: always()
         uses: actions/upload-artifact@v4
@@ -58,9 +54,11 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
-      - name: Audit production dependencies
+      - name: Audit production dependency tree
         working-directory: mobile
-        run: npm audit --omit=dev --audit-level=high
+        run: |
+          npm audit --omit=dev --json > /tmp/nexora-mobile-audit.json || audit_status=$?
+          node ../scripts/check-mobile-audit.mjs /tmp/nexora-mobile-audit.json
 
       - name: TypeScript check
         working-directory: mobile
