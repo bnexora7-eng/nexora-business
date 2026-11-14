@@ -203,3 +203,11 @@ When resuming work, start with this file, then inspect the current main branch a
 - Mollie recurring checkout still needs private test credentials, a deployed test configuration and end-to-end verification of first payment, recurring subscription activation, renewal, duplicate webhooks, failed payment, cancellation and account deletion.
 - Android digital membership billing needs a separate Google Play policy and implementation check; website Mollie checkout must not be assumed to satisfy Play Billing requirements.
 - Visual design remains deliberately deferred until functional, access-control, billing, security and release checks are complete.
+
+## Public demo rate-limit hardening — 14 November 2026
+
+- The public `POST /v1/demo/events` rate limiter now selects the right-most non-empty `X-Forwarded-For` address, matching the authenticated-route limiter, rather than trusting a client-controlled left-most value.
+- Added an integration regression check: 20 requests with different spoofed left-most addresses but the same right-most address are accepted; the 21st is rate-limited with HTTP 429.
+- CI for commit `5970b5882d88df20263fe3ceb3ae6bf71795df19`: API test workflow passed (18 tests, 0 failures); independent verification passed; Render backend smoke test passed; Render deployment is live.
+- The test verifies application behavior with a simulated forwarded header. The exact ordering of forwarded addresses at Render's edge remains an infrastructure assumption and has not been independently confirmed against a live proxy trace.
+- The Node `DEP0169` warning seen in CI occurs during GitHub Actions artifact upload, not in NEXORA application source. A repository code search found no direct `url.parse()` call. No dependency was changed based on that CI-tool warning.
