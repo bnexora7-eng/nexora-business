@@ -4,6 +4,7 @@ import pg from "pg";
 import { readFile } from "node:fs/promises";
 import { screenEvent, verifySignature } from "./screening.js";
 import { createSessionToken, hashPassword, hashSessionToken, verifyPassword } from "./auth.js";
+import { createActionToken, hashActionToken, sendPasswordResetEmail, sendVerificationEmail } from "./email.js";
 const { Pool } = pg;
 const PORT = Number(process.env.PORT || 8080);
 const DATABASE_URL = process.env.DATABASE_URL;
@@ -191,7 +192,8 @@ async function getAuthenticatedUser(req) {
   if (!token) return null;
   const result = await pool.query(
     `SELECT u.id, u.email FROM app_sessions s JOIN app_users u ON u.id=s.user_id
-     WHERE s.token_hash=$1 AND s.revoked_at IS NULL AND s.expires_at > NOW()`,
+     WHERE s.token_hash=$1 AND s.revoked_at IS NULL AND s.expires_at > NOW()
+       AND u.email_verified_at IS NOT NULL`,
     [hashSessionToken(token)]
   );
   return result.rows[0] || null;
@@ -313,47 +315,123 @@ async function handleGetPayment(req, res, orderId) {
   });
 }
 
-async function handleRegister(req, res) {
-  if (!pool) return send(res, 503, { error: "Account service is not configured; database is required" });
-  if (authRateLimited(req)) return send(res, 429, { error: "Too many account attempts; try again in 15 minutes" });
-  const rawBody = await readBody(req);
-  let input;
-  try { input = JSON.parse(rawBody.toString("utf8")); } catch { return send(res, 400, { error: "Invalid JSON" }); }
-  const email = typeof input?.email === "string" ? input.email.trim().toLowerCase() : "";
-  const password = typeof input?.password === "string" ? input.password : "";
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) return send(res, 422, { error: "Enter a valid email address" });
-  if (password.length < 12 || password.length > 128) return send(res, 422, { error: "Password must contain 12 to 128 characters" });
+async function issueEmailActionToken(userId,purpose,lifetime) {
+  const token=createActionToken();
+  await pool.query("UPDATE email_action_tokens SET consumed_at=NOW() WHERE user_id=$1 AND purpose=$2 AND consumed_at IS NULL",[userId,purpose]);
+  await pool.query("INSERT INTO email_action_tokens (user_id,token_hash,purpose,expires_at) VALUES ($1,$2,$3,NOW()+($4 * INTERVAL '1 second'))",[userId,hashActionToken(token),purpose,lifetime]);
+  return token;
+}
+async function consumeEmailActionToken(token,purpose) {
+  if(typeof token!=="string"||token.length<30||token.length>200) return null;
+  const result=await pool.query("UPDATE email_action_tokens SET consumed_at=NOW() WHERE token_hash=$1 AND purpose=$2 AND consumed_at IS NULL AND expires_at>NOW() RETURNING user_id",[hashActionToken(token),purpose]);
+  return result.rows[0]?.user_id||null;
+}
+
+async function handleRegister(req,res) {
+  if(!pool) return send(res,503,{error:"Account service is not configured; database is required"});
+  if(authRateLimited(req)) return send(res,429,{error:"Too many account attempts; try again in 15 minutes"});
+  const raw=await readBody(req); let input;
+  try { input=JSON.parse(raw.toString("utf8")); } catch { return send(res,400,{error:"Invalid JSON"}); }
+  const email=typeof input?.email==="string"?input.email.trim().toLowerCase():"";
+  const password=typeof input?.password==="string"?input.password:"";
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)||email.length>254) return send(res,422,{error:"Enter a valid email address"});
+  if(password.length<12||password.length>128) return send(res,422,{error:"Password must contain 12 to 128 characters"});
   try {
-    const passwordHash = await hashPassword(password);
-    const created = await pool.query(
-      "INSERT INTO app_users (email, password_hash) VALUES ($1,$2) RETURNING id, email, created_at",
-      [email, passwordHash]
-    );
-    const user = created.rows[0];
-    const token = await createUserSession(user.id);
-    return send(res, 201, { token, token_type: "Bearer", expires_in: 2592000, user: { id: String(user.id), email: user.email, created_at: user.created_at } });
-  } catch (error) {
-    if (error.code === "23505") return send(res, 409, { error: "An account with this email already exists" });
+    const passwordHash=await hashPassword(password);
+    const created=await pool.query("INSERT INTO app_users (email,password_hash) VALUES ($1,$2) RETURNING id,email,created_at",[email,passwordHash]);
+    const user=created.rows[0];
+    const token=await issueEmailActionToken(user.id,"verify_email",86400);
+    try { await sendVerificationEmail(user.email,token); }
+    catch(error) {
+      console.error("Verification email delivery failed:",error.message);
+      return send(res,503,{error:"Account created but verification email could not be sent. Configure Gmail SMTP, then request a new verification email."});
+    }
+    return send(res,201,{status:"verification_required",message:"Check your inbox and confirm your email address before signing in.",email:user.email});
+  } catch(error) {
+    if(error.code==="23505") return send(res,409,{error:"An account with this email already exists. Try signing in or requesting a verification email."});
     throw error;
   }
 }
-async function handleLogin(req, res) {
-  if (!pool) return send(res, 503, { error: "Account service is not configured; database is required" });
-  if (authRateLimited(req)) return send(res, 429, { error: "Too many account attempts; try again in 15 minutes" });
-  const rawBody = await readBody(req);
-  let input;
-  try { input = JSON.parse(rawBody.toString("utf8")); } catch { return send(res, 400, { error: "Invalid JSON" }); }
-  const email = typeof input?.email === "string" ? input.email.trim().toLowerCase() : "";
-  const password = typeof input?.password === "string" ? input.password : "";
-  if (!email || email.length > 254 || !password || password.length > 128) return send(res, 401, { error: "Email or password is incorrect" });
-  const found = await pool.query("SELECT id, email, password_hash, created_at FROM app_users WHERE email=$1", [email]);
-  if (!found.rowCount || !(await verifyPassword(password, found.rows[0].password_hash))) {
-    return send(res, 401, { error: "Email or password is incorrect" });
-  }
-  const user = found.rows[0];
-  const token = await createUserSession(user.id);
-  return send(res, 200, { token, token_type: "Bearer", expires_in: 2592000, user: { id: String(user.id), email: user.email, created_at: user.created_at } });
+
+async function handleLogin(req,res) {
+  if(!pool) return send(res,503,{error:"Account service is not configured; database is required"});
+  if(authRateLimited(req)) return send(res,429,{error:"Too many account attempts; try again in 15 minutes"});
+  const raw=await readBody(req); let input;
+  try { input=JSON.parse(raw.toString("utf8")); } catch { return send(res,400,{error:"Invalid JSON"}); }
+  const email=typeof input?.email==="string"?input.email.trim().toLowerCase():"";
+  const password=typeof input?.password==="string"?input.password:"";
+  if(!email||email.length>254||!password||password.length>128) return send(res,401,{error:"Email or password is incorrect"});
+  const found=await pool.query("SELECT id,email,password_hash,created_at,email_verified_at FROM app_users WHERE email=$1",[email]);
+  if(!found.rowCount||!(await verifyPassword(password,found.rows[0].password_hash))) return send(res,401,{error:"Email or password is incorrect"});
+  const user=found.rows[0];
+  if(!user.email_verified_at) return send(res,403,{error:"Confirm your email address before signing in. You can request a new verification email.",code:"email_not_verified"});
+  const token=await createUserSession(user.id);
+  return send(res,200,{token,token_type:"Bearer",expires_in:2592000,user:{id:String(user.id),email:user.email,created_at:user.created_at}});
 }
+
+async function handleVerifyEmail(req,res) {
+  if(!pool) return send(res,503,{error:"Account service is not configured"});
+  const raw=await readBody(req); let input;
+  try { input=JSON.parse(raw.toString("utf8")); } catch { return send(res,400,{error:"Invalid JSON"}); }
+  const userId=await consumeEmailActionToken(input?.token,"verify_email");
+  if(!userId) return send(res,400,{error:"This verification link is invalid, expired or already used. Request a new link."});
+  await pool.query("UPDATE app_users SET email_verified_at=COALESCE(email_verified_at,NOW()),updated_at=NOW() WHERE id=$1",[userId]);
+  return send(res,200,{status:"email_verified",message:"Email address confirmed. You can now sign in."});
+}
+
+async function handleResendVerification(req,res) {
+  if(!pool) return send(res,503,{error:"Account service is not configured"});
+  if(authRateLimited(req)) return send(res,429,{error:"Too many account attempts; try again in 15 minutes"});
+  const raw=await readBody(req); let input;
+  try { input=JSON.parse(raw.toString("utf8")); } catch { return send(res,400,{error:"Invalid JSON"}); }
+  const email=typeof input?.email==="string"?input.email.trim().toLowerCase():"";
+  if(email&&email.length<=254) {
+    const found=await pool.query("SELECT id,email,email_verified_at FROM app_users WHERE email=$1",[email]);
+    if(found.rowCount&&!found.rows[0].email_verified_at) {
+      const token=await issueEmailActionToken(found.rows[0].id,"verify_email",86400);
+      await sendVerificationEmail(email,token);
+    }
+  }
+  return send(res,200,{status:"if_pending_sent",message:"If this address has an account awaiting verification, a new link has been sent."});
+}
+
+async function handleRequestPasswordReset(req,res) {
+  if(!pool) return send(res,503,{error:"Account service is not configured"});
+  if(authRateLimited(req)) return send(res,429,{error:"Too many account attempts; try again in 15 minutes"});
+  const raw=await readBody(req); let input;
+  try { input=JSON.parse(raw.toString("utf8")); } catch { return send(res,400,{error:"Invalid JSON"}); }
+  const email=typeof input?.email==="string"?input.email.trim().toLowerCase():"";
+  if(email&&email.length<=254) {
+    const found=await pool.query("SELECT id,email,email_verified_at FROM app_users WHERE email=$1",[email]);
+    if(found.rowCount&&found.rows[0].email_verified_at) {
+      const token=await issueEmailActionToken(found.rows[0].id,"reset_password",3600);
+      await sendPasswordResetEmail(email,token);
+    }
+  }
+  return send(res,200,{status:"if_account_sent",message:"If a verified account exists for this address, password reset instructions have been sent."});
+}
+
+async function handleResetPassword(req,res) {
+  if(!pool) return send(res,503,{error:"Account service is not configured"});
+  const raw=await readBody(req); let input;
+  try { input=JSON.parse(raw.toString("utf8")); } catch { return send(res,400,{error:"Invalid JSON"}); }
+  const password=typeof input?.password==="string"?input.password:"";
+  if(password.length<12||password.length>128) return send(res,422,{error:"Password must contain 12 to 128 characters"});
+  const userId=await consumeEmailActionToken(input?.token,"reset_password");
+  if(!userId) return send(res,400,{error:"This reset link is invalid, expired or already used. Request a new one."});
+  const passwordHash=await hashPassword(password);
+  const client=await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query("UPDATE app_users SET password_hash=$1,updated_at=NOW() WHERE id=$2",[passwordHash,userId]);
+    await client.query("UPDATE app_sessions SET revoked_at=NOW() WHERE user_id=$1 AND revoked_at IS NULL",[userId]);
+    await client.query("UPDATE email_action_tokens SET consumed_at=NOW() WHERE user_id=$1 AND purpose='reset_password' AND consumed_at IS NULL",[userId]);
+    await client.query("COMMIT");
+  } catch(error) { await client.query("ROLLBACK"); throw error; }
+  finally { client.release(); }
+  return send(res,200,{status:"password_reset",message:"Password changed. Sign in using your new password."});
+}
+
 async function handleMe(req, res) {
   if (!pool) return send(res, 503, { error: "Account service is not configured; database is required" });
   const token = bearerToken(req);
@@ -559,6 +637,10 @@ const server = createServer(async (req, res) => {
     }
     if (req.method === "POST" && req.url === "/v1/auth/register") return await handleRegister(req, res);
     if (req.method === "POST" && req.url === "/v1/auth/login") return await handleLogin(req, res);
+    if (req.method === "POST" && req.url === "/v1/auth/verify-email") return await handleVerifyEmail(req,res);
+    if (req.method === "POST" && req.url === "/v1/auth/resend-verification") return await handleResendVerification(req,res);
+    if (req.method === "POST" && req.url === "/v1/auth/request-password-reset") return await handleRequestPasswordReset(req,res);
+    if (req.method === "POST" && req.url === "/v1/auth/reset-password") return await handleResetPassword(req,res);
     if (req.method === "GET" && req.url === "/v1/auth/me") return await handleMe(req, res);
     if (req.method === "POST" && req.url === "/v1/auth/logout") return await handleLogout(req, res);
     if (req.method === "DELETE" && req.url === "/v1/auth/account") return await handleDeleteAccount(req, res);
