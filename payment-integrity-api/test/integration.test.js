@@ -49,7 +49,7 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
     } else if (req.method === "GET" && path === "/v2/payments/tr_nexorarecurring") {
       data = { resource: "payment", id: "tr_nexorarecurring", status: recurringPaymentStatus, subscriptionId: "sub_nexoratest", amount: recurringPaymentAmount, createdAt: recurringPaymentCreatedAt };
     } else if (req.method === "GET" && path === "/v2/customers/cst_nexoratest/subscriptions/sub_nexoratest") {
-      data = { id: "sub_nexoratest", status: mollieSubscriptionStatus, nextPaymentDate: "2099-12-31" };
+      data = { resource: "subscription", id: "sub_nexoratest", customerId: "cst_nexoratest", status: mollieSubscriptionStatus, nextPaymentDate: "2099-12-31" };
     } else if (req.method === "DELETE" && path === "/v2/customers/cst_nexoratest/subscriptions/sub_nexoratest") {
       mollieSubscriptionStatus = "canceled";
       data = { id: "sub_nexoratest", status: "canceled" };
@@ -451,7 +451,7 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   subscriptionState = await fetch(`http://127.0.0.1:${port}/v1/subscriptions/me`, {
     headers: { authorization: "Bearer " + loggedIn.token }
   });
-  assert.equal((await subscriptionState.json()).status, "past_due");
+  assert.equal((await subscriptionState.json()).status, "active", "a failed renewal attempt must not revoke access while Mollie keeps the subscription active");
 
   recurringPaymentStatus = "paid";
   recurringPaymentAmount = { currency: "EUR", value: "0.01" };
@@ -462,7 +462,7 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   subscriptionState = await fetch(`http://127.0.0.1:${port}/v1/subscriptions/me`, {
     headers: { authorization: "Bearer " + loggedIn.token }
   });
-  assert.equal((await subscriptionState.json()).status, "past_due");
+  assert.equal((await subscriptionState.json()).status, "active", "an amount-mismatched webhook must not change the current entitlement");
 
   recurringPaymentAmount = { currency: "EUR", value: "29.99" };
   recurringPaymentCreatedAt = "2026-11-14T11:00:00Z";
