@@ -18,7 +18,7 @@ NEXORA is a proposed digital ecosystem bringing four connected experiences into 
 3. **Marketplace** — service offers and collaboration opportunities.
 4. **Business tools** — guided AI-style planning and a business workspace concept.
 
-The wider ecosystem remains an interactive concept prototype. It does not yet provide production user accounts, shared persistence, live AI connectivity, real-time messaging, or monetary rewards.
+The wider ecosystem remains a pre-production concept with partial account and backend functionality. Community, Marketplace and Business modules are not yet protected by verified All Access entitlements; live AI connectivity, real-time messaging and monetary rewards are not ready for production.
 
 ## Payment Integrity sandbox
 
@@ -57,6 +57,7 @@ The repository also contains a Node.js API backend scaffold with provider HMAC-S
 - Static HTML, CSS and JavaScript front end.
 - GitHub Actions deploys the public site to GitHub Pages.
 - Payment Integrity demo API is hosted separately on Render.
-- The separate backend scaffold and public demo API are not yet one production service.
+- The public browser demo and the account/subscription backend are separate systems; the demo is not a production payment service.
+- NEXORA's intended commercial model is one owner-operated membership: All Access at €29.99/month. Paid access is not enabled until recurring billing and server-side entitlements pass end-to-end tests.
 
 For the current detailed handover, see [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md). For the external-facing overview, see [docs/PROJECT_BRIEF.md](docs/PROJECT_BRIEF.md).
