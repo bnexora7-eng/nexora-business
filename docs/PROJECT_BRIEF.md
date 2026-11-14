@@ -39,7 +39,7 @@ The public demo API and the separate PostgreSQL backend scaffold are not yet con
 
 NEXORA Payment Integrity is not a payment processor, bank integration, production fraud-detection system or certified financial control. It does not connect to real bank or payment-provider accounts and must not receive real payment or personal data. The rules are deterministic, not machine learning. No paying customers, revenue or production usage are claimed.
 
-The wider NEXORA community, marketplace, rewards and AI-assisted business areas remain interactive concept prototypes. They do not yet provide production accounts, shared persistence, live AI connectivity or monetary rewards.
+The wider NEXORA community, marketplace, rewards and AI-assisted business areas remain pre-production modules with partial backend functionality. They do not yet provide a production-grade shared platform, live AI connectivity or monetary rewards. The intended membership model is one All Access subscription at €29.99/month; paid access is not enabled until server-side entitlements and recurring billing are fully tested.
 
 ## Proposed next step
 
