@@ -478,7 +478,7 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   subscriptionState = await fetch(`http://127.0.0.1:${port}/v1/subscriptions/me`, {
     headers: { authorization: "Bearer " + loggedIn.token }
   });
-  assert.equal((await subscriptionState.json()).status, "active", "an amount-mismatched webhook must not change the current entitlement");
+  assert.equal((await subscriptionState.json()).status, "past_due", "an amount-mismatched webhook must not change the current entitlement after Mollie confirmed suspension");
 
   recurringPaymentAmount = { currency: "EUR", value: "29.99" };
   recurringPaymentCreatedAt = "2026-11-14T11:00:00Z";
