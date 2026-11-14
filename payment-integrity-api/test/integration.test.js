@@ -623,12 +623,12 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
 
   const webDeleteEmail = "nexora-web-delete-" + Date.now() + "@example.invalid";
   const webDeleteRegister = await fetch(`http://127.0.0.1:${port}/v1/auth/register`, {
-    method: "POST", headers: { "content-type": "application/json" },
+    method: "POST", headers: { "content-type": "application/json", "cf-connecting-ip": "198.51.100.31" },
     body: JSON.stringify({ email: webDeleteEmail, password: accountPassword })
   });
   assert.equal(webDeleteRegister.status, 201);
   const webDeleteWrongPassword = await fetch(`http://127.0.0.1:${port}/v1/auth/delete-request`, {
-    method: "POST", headers: { "content-type": "application/json", origin: "https://bnexora7-eng.github.io" },
+    method: "POST", headers: { "content-type": "application/json", origin: "https://bnexora7-eng.github.io", "cf-connecting-ip": "198.51.100.31" },
     body: JSON.stringify({ email: webDeleteEmail, password: "wrong-password" })
   });
   assert.equal(webDeleteWrongPassword.status, 401);
@@ -636,7 +636,7 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   assert.equal(webAccountBeforeDelete.rowCount, 1);
 
   const webDelete = await fetch(`http://127.0.0.1:${port}/v1/auth/delete-request`, {
-    method: "POST", headers: { "content-type": "application/json", origin: "https://bnexora7-eng.github.io" },
+    method: "POST", headers: { "content-type": "application/json", origin: "https://bnexora7-eng.github.io", "cf-connecting-ip": "198.51.100.31" },
     body: JSON.stringify({ email: webDeleteEmail, password: accountPassword })
   });
   assert.equal(webDelete.status, 200);
