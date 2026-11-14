@@ -8,7 +8,7 @@
 - The API requires a verified, signed-in account with active NEXORA All Access (or access remaining in an already-paid canceled period).
 - The API sends the request to the OpenAI Chat Completions endpoint. The default model is `gpt-4.1-mini`.
 - The API key is read only from `OPENAI_API_KEY` in the Render service environment. It is never sent to the browser or stored in Git.
-- The endpoint has a 25-second timeout, a PostgreSQL-backed per-account request limit, a global monthly token reservation limit, field-size limits and a hard 256 KiB cap on the provider's JSON response body.
+- The endpoint has a 25-second timeout, PostgreSQL-backed authentication and per-account AI request limits, a global monthly token reservation limit, field-size limits and a hard 256 KiB cap on the provider's JSON response body.
 
 ## Required configuration — when the owner approves API spending
 
@@ -25,7 +25,8 @@
 - Model: `gpt-4.1-mini`
 - Maximum output: 1,400 tokens per request
 - Maximum provider response body: 256 KiB; oversized responses are rejected before full buffering
-- Application limit: 4 requests per account per minute, atomically enforced in PostgreSQL across restarts and instances
+- Authentication limit: 10 requests per client IP per 15 minutes, atomically enforced in PostgreSQL across restarts and instances; only a SHA-256 IP hash is stored
+- AI application limit: 4 requests per account per minute, atomically enforced in PostgreSQL across restarts and instances
 - Global monthly token budget: `AI_MONTHLY_TOKEN_LIMIT` (reservation before provider calls uses UTF-8 input-byte bounds plus the maximum output allowance; `0` disables generation)
 - Provider-reported `usage.total_tokens` reduces reservations after successful responses; missing usage or provider errors retain the full reservation
 - Provider timeout: 25 seconds
