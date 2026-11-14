@@ -424,7 +424,22 @@ async function handleMollieWebhook(req, res) {
           [subscription.id,mollieStatus,member.id]
         );
       } else {
-        await pool.query("UPDATE app_users SET subscription_status='active',subscription_updated_at=NOW() WHERE id=$1",[member.id]);
+        // Mollie may retry the first-payment webhook. Never treat a duplicate
+        // first-payment notification as proof that the recurring subscription
+        // itself is active: read its current provider-side status first.
+        const subscription = await mollieRequest(
+          "/customers/" + encodeURIComponent(member.mollie_customer_id) +
+          "/subscriptions/" + encodeURIComponent(member.mollie_subscription_id)
+        );
+        const confirmedStatus = subscription.status === "active"
+          ? "active"
+          : subscription.status === "canceled"
+            ? "canceled"
+            : "activation_pending";
+        await pool.query(
+          "UPDATE app_users SET subscription_status=$1,subscription_started_at=CASE WHEN $1='active' THEN COALESCE(subscription_started_at,NOW()) ELSE subscription_started_at END,subscription_updated_at=NOW() WHERE id=$2",
+          [confirmedStatus,member.id]
+        );
       }
     }
     return send(res,200,{received:true});
