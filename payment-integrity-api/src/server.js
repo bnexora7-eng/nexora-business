@@ -198,8 +198,13 @@ async function handleDemoEvent(req, res) {
 }
 
 async function authRateLimited(req) {
-  const forwarded = String(req.headers["x-forwarded-for"] || req.socket.remoteAddress || "unknown");
-  const ip = forwarded.split(",")[0].trim().slice(0, 128) || "unknown";
+  // Render's trusted edge proxy appends the connecting client address to
+  // X-Forwarded-For. Use the right-most entry, not the left-most value:
+  // the left-most entry can be supplied by an untrusted client and rotated
+  // to evade the persistent authentication rate limit.
+  const forwarded = String(req.headers["x-forwarded-for"] || "");
+  const forwardedParts = forwarded.split(",").map(value => value.trim()).filter(Boolean);
+  const ip = (forwardedParts.at(-1) || req.socket.remoteAddress || "unknown").slice(0, 128);
   const ipHash = crypto.createHash("sha256").update(ip).digest("hex");
   const result = await pool.query(
     `INSERT INTO auth_rate_limits (ip_hash, window_started_at, attempt_count)
