@@ -85,6 +85,7 @@ export default function App() {
       setPendingVerificationEmail("");
       setAuthMessage("Zalogowano pomyślnie.");
     } catch (error) {
+      if (error instanceof Error && /verification email could not be sent/i.test(error.message)) setPendingVerificationEmail(email.trim());
       setAuthMessage(error instanceof Error ? error.message : "Błąd połączenia.");
     } finally {
       setAuthBusy(false);
