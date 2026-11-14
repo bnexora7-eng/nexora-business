@@ -13,7 +13,8 @@ function getTransport() {
   const host = process.env.SMTP_HOST || "smtp.gmail.com";
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_APP_PASSWORD;
-  if (!user || !pass) throw Object.assign(new Error("Account email is not configured. Add SMTP_USER and SMTP_APP_PASSWORD to the server environment."), { statusCode: 503 });
+  if (!user) throw Object.assign(new Error("Missing required server variable: SMTP_USER."), { statusCode: 503 });
+  if (!pass) throw Object.assign(new Error("Missing required server variable: SMTP_APP_PASSWORD."), { statusCode: 503 });
   return nodemailer.createTransport({
     host, port: Number(process.env.SMTP_PORT || 465),
     secure: (process.env.SMTP_SECURE || "true") === "true",
