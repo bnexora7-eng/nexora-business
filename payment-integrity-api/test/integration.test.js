@@ -138,10 +138,25 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   assert.equal(unverifiedLogin.status, 403);
   assert.equal((await unverifiedLogin.json()).code, "email_not_verified");
 
-  // Verify the account in the database so the rest of this integration test
-  // can exercise authenticated endpoints without depending on an inbox.
+  // Exercise the real one-use verification endpoint without depending on an inbox.
+  const verificationToken = createActionToken();
+  await pool.query(
+    "INSERT INTO email_action_tokens (user_id,token_hash,purpose,expires_at) SELECT id,$1,'verify_email',NOW()+INTERVAL '24 hours' FROM app_users WHERE email=$2",
+    [hashActionToken(verificationToken),accountEmail]
+  );
+  const verifyEmail = await fetch(`http://127.0.0.1:${port}/v1/auth/verify-email`, {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ token: verificationToken })
+  });
+  assert.equal(verifyEmail.status, 200);
+  assert.equal((await verifyEmail.json()).status, "email_verified");
+  const reusedVerification = await fetch(`http://127.0.0.1:${port}/v1/auth/verify-email`, {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ token: verificationToken })
+  });
+  assert.equal(reusedVerification.status, 400, "verification links must be single-use");
   const verifiedAccount = await pool.query(
-    "UPDATE app_users SET email_verified_at=NOW() WHERE email=$1 RETURNING id,email",
+    "SELECT id,email FROM app_users WHERE email=$1 AND email_verified_at IS NOT NULL",
     [accountEmail]
   );
   assert.equal(verifiedAccount.rowCount, 1);
