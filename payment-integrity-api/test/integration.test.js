@@ -131,6 +131,15 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   assert.equal(profile.status, 200);
   assert.equal((await profile.json()).user.email, accountEmail);
 
+  // The profile endpoint must enforce the same verified-email guard as all
+  // other authenticated endpoints, including for sessions issued earlier.
+  await pool.query("UPDATE app_users SET email_verified_at=NULL WHERE id=$1", [accountId]);
+  const unverifiedProfile = await fetch(`http://127.0.0.1:${port}/v1/auth/me`, {
+    headers: { authorization: "Bearer " + loggedIn.token }
+  });
+  assert.equal(unverifiedProfile.status, 401);
+  await pool.query("UPDATE app_users SET email_verified_at=NOW() WHERE id=$1", [accountId]);
+
   const duplicateAccount = await fetch(`http://127.0.0.1:${port}/v1/auth/register`, {
     method: "POST",
     headers: { "content-type": "application/json" },
