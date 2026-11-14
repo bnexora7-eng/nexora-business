@@ -159,6 +159,7 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   });
   assert.equal(newLogin.status, 200);
   const newSessionToken = (await newLogin.json()).token;
+  loggedIn.token = newSessionToken;
 
   // The profile endpoint must enforce the same verified-email guard as all
   // other authenticated endpoints, including for sessions issued earlier.
