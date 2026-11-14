@@ -5,6 +5,7 @@ import { createServer } from "node:http";
 import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { signPayload } from "../src/screening.js";
+import { createActionToken, hashActionToken } from "../src/email.js";
 
 const enabled = process.env.RUN_INTEGRATION === "1";
 test("HTTP API persists minimized event data and rejects duplicates", { skip: !enabled, timeout: 30000 }, async (t) => {
@@ -130,6 +131,34 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   });
   assert.equal(profile.status, 200);
   assert.equal((await profile.json()).user.email, accountEmail);
+
+  // Password-reset tokens are single-use, expire, and revoke existing sessions.
+  const resetToken = createActionToken();
+  await pool.query(
+    "INSERT INTO email_action_tokens (user_id,token_hash,purpose,expires_at) VALUES ($1,$2,'reset_password',NOW()+INTERVAL '1 hour')",
+    [accountId, hashActionToken(resetToken)]
+  );
+  const resetResponse = await fetch(`http://127.0.0.1:${port}/v1/auth/reset-password`, {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ token: resetToken, password: "NEXORA-new-password-2026!" })
+  });
+  assert.equal(resetResponse.status, 200);
+  assert.equal((await resetResponse.json()).status, "password_reset");
+  const reusedResetToken = await fetch(`http://127.0.0.1:${port}/v1/auth/reset-password`, {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ token: resetToken, password: "NEXORA-another-password-2026!" })
+  });
+  assert.equal(reusedResetToken.status, 400);
+  const revokedProfile = await fetch(`http://127.0.0.1:${port}/v1/auth/me`, {
+    headers: { authorization: "Bearer " + loggedIn.token }
+  });
+  assert.equal(revokedProfile.status, 401);
+  const newLogin = await fetch(`http://127.0.0.1:${port}/v1/auth/login`, {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ email: accountEmail, password: "NEXORA-new-password-2026!" })
+  });
+  assert.equal(newLogin.status, 200);
+  const newSessionToken = (await newLogin.json()).token;
 
   // The profile endpoint must enforce the same verified-email guard as all
   // other authenticated endpoints, including for sessions issued earlier.
