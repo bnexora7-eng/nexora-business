@@ -2,7 +2,7 @@ services:
   - type: cron
     name: nexora-postgres-backup
     runtime: docker
-    autoDeploy: false
+    autoDeployTrigger: off
     branch: main
     plan: 0.5c-512mb
     region: frankfurt
