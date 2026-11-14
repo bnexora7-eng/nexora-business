@@ -1,0 +1,54 @@
+name: NEXORA scheduled production smoke monitor
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 6 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nexora-production-smoke-monitor
+  cancel-in-progress: true
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Verify Render API and PostgreSQL readiness
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="https://nexora-payment-integrity-api.onrender.com/ready"
+          status="$(curl --silent --show-error --output /tmp/ready.json --write-out '%{http_code}' --max-time 25 "$URL")"
+          test "$status" = "200"
+          node -e 'const x=require("/tmp/ready.json"); if(x.status!=="ready"||x.database!=="connected") process.exit(1); console.log("PASS: API and PostgreSQL are ready.")'
+
+      - name: Verify public account and legal pages
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="https://bnexora7-eng.github.io/nexora-business"
+          for path in "/" "/account/" "/account/verify.html" "/account/forgot-password.html" "/account/reset-password.html" "/account-deletion/" "/privacy/"; do
+            status="$(curl --silent --show-error --output /tmp/page.html --write-out '%{http_code}' --max-time 20 "$BASE$path")"
+            if [ "$status" != "200" ]; then
+              echo "FAIL: $path returned HTTP $status"
+              exit 1
+            fi
+            test -s /tmp/page.html
+            echo "PASS: $path"
+          done
+
+      - name: Check current privacy disclosure and deletion route
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="https://bnexora7-eng.github.io/nexora-business"
+          curl --fail --silent --show-error "$BASE/privacy/" -o /tmp/privacy.html
+          ! grep -qi "FormSubmit" /tmp/privacy.html
+          grep -qi "Brevo" /tmp/privacy.html
+          curl --fail --silent --show-error "$BASE/account-deletion/" -o /tmp/delete.html
+          grep -q "/v1/auth/delete-request" /tmp/delete.html
+          echo "PASS: privacy disclosure and account deletion route are present."
