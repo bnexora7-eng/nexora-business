@@ -27,7 +27,9 @@ const DEMO_ORIGIN = process.env.DEMO_ORIGIN || "https://bnexora7-eng.github.io";
 const demoRequests = new Map();
 const demoEvents = new Map();
 const authAttempts = new Map();
-const MOLLIE_API_BASE = "https://api.mollie.com/v2";
+const MOLLIE_API_BASE = process.env.NODE_ENV === "test" && process.env.MOLLIE_API_BASE
+  ? process.env.MOLLIE_API_BASE.replace(/\/$/, "")
+  : "https://api.mollie.com/v2";
 const PUBLIC_API_URL = (process.env.PUBLIC_API_URL || "https://nexora-payment-integrity-api.onrender.com").replace(/\/$/, "");
 const PAYMENT_RETURN_URL = process.env.NEXORA_PAYMENT_RETURN_URL || "https://bnexora7-eng.github.io/nexora-business/account/";
 const AI_API_KEY = process.env.OPENAI_API_KEY || "";
