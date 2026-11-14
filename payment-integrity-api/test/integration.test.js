@@ -454,6 +454,21 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   });
   assert.equal((await subscriptionState.json()).status, "active", "a failed renewal attempt must not revoke access while Mollie keeps the subscription active");
 
+  // A terminal provider state, unlike one failed attempt, must move the local
+  // entitlement to past_due after the failed payment is verified.
+  mollieSubscriptionStatus = "suspended";
+  recurringPaymentCreatedAt = "2026-11-14T10:30:00Z";
+  const terminalFailedRenewal = await fetch(`http://127.0.0.1:${port}/v1/payments/mollie-webhook`, {
+    method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: "id=tr_nexorarecurring"
+  });
+  assert.equal(terminalFailedRenewal.status, 200);
+  subscriptionState = await fetch(`http://127.0.0.1:${port}/v1/subscriptions/me`, {
+    headers: { authorization: "Bearer " + loggedIn.token }
+  });
+  assert.equal((await subscriptionState.json()).status, "past_due",
+    "a Mollie-confirmed suspended subscription must move to past_due");
+
+  mollieSubscriptionStatus = "active";
   recurringPaymentStatus = "paid";
   recurringPaymentAmount = { currency: "EUR", value: "0.01" };
   const mismatchedRenewal = await fetch(`http://127.0.0.1:${port}/v1/payments/mollie-webhook`, {
@@ -537,6 +552,13 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   });
   assert.equal((await subscriptionState.json()).status, "canceled",
     "a paid webhook must not reactivate a canceled subscription");
+
+  const duplicateCancel = await fetch(`http://127.0.0.1:${port}/v1/subscriptions/cancel`, {
+    method: "POST", headers: { authorization: "Bearer " + loggedIn.token }
+  });
+  assert.equal(duplicateCancel.status, 200);
+  assert.equal((await duplicateCancel.json()).status, "canceled",
+    "repeating cancellation must be safe and must not reactivate the subscription");
 
   // Create user-owned content, then verify account deletion removes it.
   const createPost = await fetch(`http://127.0.0.1:${port}/v1/community/posts`, {
