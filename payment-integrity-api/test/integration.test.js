@@ -16,6 +16,7 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   let recurringPaymentAmount = { currency: "EUR", value: "29.99" };
   let recurringPaymentCreatedAt = "2026-11-14T10:00:00Z";
   let mollieSubscriptionStatus = "active";
+  let mollieSubscriptionIdentityMismatch = false;
   let mollieSubscriptionCreateCount = 0;
   const mollieMock = createServer(async (req, res) => {
     const chunks = [];
@@ -49,7 +50,7 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
     } else if (req.method === "GET" && path === "/v2/payments/tr_nexorarecurring") {
       data = { resource: "payment", id: "tr_nexorarecurring", status: recurringPaymentStatus, subscriptionId: "sub_nexoratest", amount: recurringPaymentAmount, createdAt: recurringPaymentCreatedAt };
     } else if (req.method === "GET" && path === "/v2/customers/cst_nexoratest/subscriptions/sub_nexoratest") {
-      data = { resource: "subscription", id: "sub_nexoratest", customerId: "cst_nexoratest", status: mollieSubscriptionStatus, nextPaymentDate: "2099-12-31" };
+      data = { resource: "subscription", id: mollieSubscriptionIdentityMismatch ? "sub_unexpected" : "sub_nexoratest", customerId: "cst_nexoratest", status: mollieSubscriptionStatus, nextPaymentDate: "2099-12-31" };
     } else if (req.method === "DELETE" && path === "/v2/customers/cst_nexoratest/subscriptions/sub_nexoratest") {
       mollieSubscriptionStatus = "canceled";
       data = { resource: "subscription", id: "sub_nexoratest", customerId: "cst_nexoratest", status: "canceled" };
@@ -559,6 +560,18 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
     "UPDATE app_users SET subscription_status='active',subscription_access_until=NULL WHERE id=$1",
     [accountId]
   );
+  // A mismatched provider subscription must stop deletion without deleting
+  // the account or issuing a DELETE against an unverified subscription.
+  mollieSubscriptionIdentityMismatch = true;
+  const unsafeDelete = await fetch(`http://127.0.0.1:${port}/v1/auth/account`, {
+    method: "DELETE", headers: { authorization: "Bearer " + loggedIn.token }
+  });
+  assert.equal(unsafeDelete.status, 409);
+  assert.equal(mollieSubscriptionStatus, "active");
+  const accountAfterUnsafeDelete = await pool.query("SELECT id FROM app_users WHERE id=$1", [accountId]);
+  assert.equal(accountAfterUnsafeDelete.rowCount, 1);
+  mollieSubscriptionIdentityMismatch = false;
+
   const deleteResponse = await fetch(`http://127.0.0.1:${port}/v1/auth/account`, {
     method: "DELETE", headers: { authorization: "Bearer " + loggedIn.token }
   });
@@ -600,6 +613,14 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
     body: JSON.stringify({ email: webDeleteEmail, password: accountPassword })
   });
   assert.equal(webDeleteRegister.status, 201);
+  const webDeleteWrongPassword = await fetch(`http://127.0.0.1:${port}/v1/auth/delete-request`, {
+    method: "POST", headers: { "content-type": "application/json", origin: "https://bnexora7-eng.github.io" },
+    body: JSON.stringify({ email: webDeleteEmail, password: "wrong-password" })
+  });
+  assert.equal(webDeleteWrongPassword.status, 401);
+  const webAccountBeforeDelete = await pool.query("SELECT id FROM app_users WHERE email=$1", [webDeleteEmail]);
+  assert.equal(webAccountBeforeDelete.rowCount, 1);
+
   const webDelete = await fetch(`http://127.0.0.1:${port}/v1/auth/delete-request`, {
     method: "POST", headers: { "content-type": "application/json", origin: "https://bnexora7-eng.github.io" },
     body: JSON.stringify({ email: webDeleteEmail, password: accountPassword })
