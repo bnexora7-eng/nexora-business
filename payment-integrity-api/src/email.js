@@ -5,6 +5,9 @@ const WEB_BASE = (process.env.NEXORA_ACCOUNT_URL || "https://bnexora7-eng.github
 const FROM = process.env.SMTP_FROM || process.env.SMTP_USER || "bnexora7@gmail.com";
 
 function getTransport() {
+  if (process.env.NODE_ENV === "test" && process.env.SMTP_TEST_MODE === "true") {
+    return nodemailer.createTransport({ streamTransport: true, buffer: true, newline: "unix" });
+  }
   const host = process.env.SMTP_HOST || "smtp.gmail.com";
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_APP_PASSWORD;
