@@ -17,7 +17,7 @@ Configure these only after the code has been reviewed and intentionally deployed
 
 | Variable | Value |
 | --- | --- |
-| `BACKUP_TRIGGER_TOKEN` | A random secret with at least 32 characters. |
+| `BACKUP_TRIGGER_TOKEN` | A random secret with at least 40 URL-safe characters (for example, a 32-byte random value encoded as base64url). |
 | `GITHUB_TOKEN` | Fine-grained GitHub token restricted to `bnexora7-eng/nexora-private-backups`, Contents read/write. |
 | `BACKUP_REPOSITORY` | `bnexora7-eng/nexora-private-backups` |
 | `BACKUP_ENCRYPTION_KEY` | A separate random secret/passphrase with at least 24 characters. Preserve it offline; without it, backups cannot be decrypted. |
