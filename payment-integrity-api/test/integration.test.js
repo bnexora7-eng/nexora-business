@@ -54,18 +54,33 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
     res.end(JSON.stringify(data));
   });
   let mockFirstPaymentMetadata = {};
+  let aiRequestObserved = null;
+  const aiMock = createServer(async (req, res) => {
+    const chunks = [];
+    for await (const chunk of req) chunks.push(chunk);
+    aiRequestObserved = {
+      authorization: req.headers.authorization,
+      body: JSON.parse(Buffer.concat(chunks).toString("utf8"))
+    };
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(JSON.stringify({
+      choices: [{ message: { role: "assistant", content: "NEXORA AI TEST PLAN: validate the offer with five target customers." } }]
+    }));
+  });
   await new Promise(resolve => mollieMock.listen(8082, "127.0.0.1", resolve));
+  await new Promise(resolve => aiMock.listen(8083, "127.0.0.1", resolve));
   const port = 8081;
   const secret = "integration-test-secret-please-change";
   const providerId = "integration-provider";
   const child = spawn(process.execPath, ["src/server.js"], {
     cwd: process.cwd(),
-    env: { ...process.env, NODE_ENV: "test", SMTP_TEST_MODE: "true", MOLLIE_API_KEY: "test_nexora_integration_key", MOLLIE_API_BASE: "http://127.0.0.1:8082/v2", PORT: String(port), PROVIDER_SECRETS: JSON.stringify({ [providerId]: secret }), ENABLE_PUBLIC_DEMO: "true", DEMO_ORIGIN: "https://bnexora7-eng.github.io" },
+    env: { ...process.env, NODE_ENV: "test", SMTP_TEST_MODE: "true", MOLLIE_API_KEY: "test_nexora_integration_key", MOLLIE_API_BASE: "http://127.0.0.1:8082/v2", OPENAI_API_KEY: "test_nexora_ai_key", OPENAI_MODEL: "gpt-4.1-mini", OPENAI_API_URL: "http://127.0.0.1:8083/v1/chat/completions", PORT: String(port), PROVIDER_SECRETS: JSON.stringify({ [providerId]: secret }), ENABLE_PUBLIC_DEMO: "true", DEMO_ORIGIN: "https://bnexora7-eng.github.io" },
     stdio: "ignore"
   });
   t.after(async () => {
     child.kill("SIGTERM");
     await new Promise(resolve => mollieMock.close(resolve));
+    await new Promise(resolve => aiMock.close(resolve));
     await pool.end();
   });
 
@@ -221,6 +236,20 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
 
   // Grant the test account All Access before exercising paid member endpoints.
   await pool.query("UPDATE app_users SET subscription_status='active',subscription_access_until=NULL WHERE id=$1",[accountId]);
+
+  // Verify the paid Business Studio AI route calls only the configured server-side provider.
+  const aiPlanResponse = await fetch("http://127.0.0.1:" + port + "/v1/business/ai-plan", {
+    method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + loggedIn.token },
+    body: JSON.stringify({ business_name: "NEXORA Test", industry: "software", problem: "Small firms need simple automation", offer: "AI business planning", budget: "100 EUR", duration_days: "30" })
+  });
+  assert.equal(aiPlanResponse.status, 200);
+  const aiPlanBody = await aiPlanResponse.json();
+  assert.match(aiPlanBody.plan, /NEXORA AI TEST PLAN/);
+  assert.equal(aiPlanBody.model, "gpt-4.1-mini");
+  assert.equal(aiRequestObserved.authorization, "Bearer test_nexora_ai_key");
+  assert.equal(aiRequestObserved.body.model, "gpt-4.1-mini");
+  assert.equal(aiRequestObserved.body.max_tokens, 1400);
+  assert.match(aiRequestObserved.body.messages[1].content, /Small firms need simple automation/);
 
   // Exercise the member workspace, community and marketplace API used by the published UI.
   const workspaceSave = await fetch("http://127.0.0.1:" + port + "/v1/business/workspace", {
