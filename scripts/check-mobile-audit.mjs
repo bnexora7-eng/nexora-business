@@ -16,9 +16,11 @@ const warnings = [];
 
 for (const [name, item] of vulnerabilities) {
   const advisories = (item.via || []).filter(value => value && typeof value === "object");
-  const ids = advisories.map(value => String(value.source || value.url || ""));
+  const ids = advisories.flatMap(value => [value.source, value.url]).filter(Boolean).map(String);
+  const nodes = (item.nodes || []).map(String);
   if (name === "image-size" && item.severity === "high" &&
-      ids.length > 0 && ids.every(id => [...allowedBuildOnly.get(name)].some(allowed => id.includes(allowed)))) {
+      nodes.length > 0 && nodes.every(node => node === "node_modules/image-size") &&
+      ids.length > 0 && [...allowedBuildOnly.get(name)].every(allowed => ids.some(id => id.includes(allowed)))) {
     accepted.push({ name, severity: item.severity, advisories: ids });
     continue;
   }
