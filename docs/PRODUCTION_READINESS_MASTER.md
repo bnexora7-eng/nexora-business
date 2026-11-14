@@ -198,3 +198,9 @@ Backup-runner CI run 43617810597 passed on commit 19aebc536b: Docker image build
 ## Current backend revision — 14 November 2026
 
 The latest backend source hardening is commit `b77be14`; Render smoke test 43618169671 passed after its deployment. Commit `614b2ab` adds the integration test for paid-first-payment deletion conflicts. API test run 43618169661 and independent verification 43618170090 passed on that test commit. Subsequent commits in the documentation-only sequence do not change backend source.
+
+
+## Final pending-payment deletion safeguard — 14 November 2026
+
+- Commit 1c50b6f broadens account deletion protection to **all** pending provider payments on an account, not only the All Access first payment. It verifies provider status and cancels cancelable payments before deletion; uncertain or non-cancelable payments block deletion.
+- API CI run 43618353896 passed; Render readiness smoke test 43618353871 and independent verification 43618353937 passed on commit 1c50b6f.
