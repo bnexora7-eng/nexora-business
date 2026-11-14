@@ -456,6 +456,7 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   // subscription before removing the account and its customer reference.
   mollieSubscriptionStatus = "active";
   firstPaymentStatus = "open";
+  await pool.query("UPDATE own_payments SET status='open' WHERE order_id=$1", [checkoutBody.order_id]);
   await pool.query(
     "UPDATE app_users SET subscription_status='active',subscription_access_until=NULL WHERE id=$1",
     [accountId]
