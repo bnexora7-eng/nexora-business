@@ -643,7 +643,8 @@ async function handleMe(req, res) {
   const result = await pool.query(
     `SELECT u.id, u.email, u.created_at, u.subscription_status
      FROM app_sessions s JOIN app_users u ON u.id=s.user_id
-     WHERE s.token_hash=$1 AND s.revoked_at IS NULL AND s.expires_at > NOW()`,
+     WHERE s.token_hash=$1 AND s.revoked_at IS NULL AND s.expires_at > NOW()
+       AND u.email_verified_at IS NOT NULL`,
     [hashSessionToken(token)]
   );
   if (!result.rowCount) return send(res, 401, { error: "Session is invalid or expired" });
