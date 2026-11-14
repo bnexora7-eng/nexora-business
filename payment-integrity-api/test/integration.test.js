@@ -107,8 +107,29 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   assert.equal(lockedFeature.status, 402);
   assert.equal((await lockedFeature.json()).code, "subscription_required");
 
+  // Verify canceled subscriptions retain access only through the already-paid period.
+  await pool.query(
+    "UPDATE app_users SET subscription_status='canceled',subscription_access_until=NOW() + INTERVAL '1 day' WHERE id=$1",
+    [accountId]
+  );
+  const retainedAccess = await fetch(`http://127.0.0.1:${port}/v1/community/posts`, {
+    method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + loggedIn.token },
+    body: JSON.stringify({ body: "paid period access remains after cancellation" })
+  });
+  assert.equal(retainedAccess.status, 201);
+  await pool.query(
+    "UPDATE app_users SET subscription_access_until=NOW() - INTERVAL '1 second' WHERE id=$1",
+    [accountId]
+  );
+  const expiredAccess = await fetch(`http://127.0.0.1:${port}/v1/community/posts`, {
+    method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + loggedIn.token },
+    body: JSON.stringify({ body: "expired paid period must not retain access" })
+  });
+  assert.equal(expiredAccess.status, 402);
+  assert.equal((await expiredAccess.json()).code, "subscription_required");
+
   // Grant the test account All Access before exercising paid member endpoints.
-  await pool.query("UPDATE app_users SET subscription_status='active' WHERE id=$1",[accountId]);
+  await pool.query("UPDATE app_users SET subscription_status='active',subscription_access_until=NULL WHERE id=$1",[accountId]);
 
   // Create user-owned content, then verify account deletion removes it.
   const createPost = await fetch(`http://127.0.0.1:${port}/v1/community/posts`, {
