@@ -29,7 +29,7 @@ const DEMO_EVENT_TTL_MS = 60 * 60 * 1000;
 const DEMO_ORIGIN = process.env.DEMO_ORIGIN || "https://bnexora7-eng.github.io";
 const demoRequests = new Map();
 const demoEvents = new Map();
-const authAttempts = new Map();
+let authRateLimitCleanupCounter = 0;
 const MOLLIE_API_BASE = process.env.NODE_ENV === "test" && process.env.MOLLIE_API_BASE
   ? process.env.MOLLIE_API_BASE.replace(/\/$/, "")
   : "https://api.mollie.com/v2";
@@ -197,21 +197,30 @@ async function handleDemoEvent(req, res) {
     reference: { provider_id: event.provider_id, event_id: event.event_id }, storage: "temporary-demo-memory" });
 }
 
-function authRateLimited(req) {
-  const ip = String(req.headers["x-forwarded-for"] || req.socket.remoteAddress || "unknown").split(",")[0].trim();
-  const now = Date.now();
-  const bucket = authAttempts.get(ip);
-  if (!bucket && authAttempts.size >= MAX_TRACKED_CLIENTS) {
-    pruneExpiredEntries(authAttempts, now, 15 * 60 * 1000, entry => entry.startedAt);
-    if (authAttempts.size >= MAX_TRACKED_CLIENTS) return true;
+async function authRateLimited(req) {
+  const forwarded = String(req.headers["x-forwarded-for"] || req.socket.remoteAddress || "unknown");
+  const ip = forwarded.split(",")[0].trim().slice(0, 128) || "unknown";
+  const ipHash = crypto.createHash("sha256").update(ip).digest("hex");
+  const result = await pool.query(
+    `INSERT INTO auth_rate_limits (ip_hash, window_started_at, attempt_count)
+     VALUES ($1, NOW(), 1)
+     ON CONFLICT (ip_hash) DO UPDATE SET
+       window_started_at = CASE
+         WHEN auth_rate_limits.window_started_at <= NOW() - INTERVAL '15 minutes' THEN NOW()
+         ELSE auth_rate_limits.window_started_at
+       END,
+       attempt_count = CASE
+         WHEN auth_rate_limits.window_started_at <= NOW() - INTERVAL '15 minutes' THEN 1
+         ELSE auth_rate_limits.attempt_count + 1
+       END
+     RETURNING attempt_count`,
+    [ipHash]
+  );
+  authRateLimitCleanupCounter++;
+  if (authRateLimitCleanupCounter % 256 === 0) {
+    await pool.query("DELETE FROM auth_rate_limits WHERE window_started_at < NOW() - INTERVAL '1 day'");
   }
-  if (!bucket || now - bucket.startedAt >= 15 * 60 * 1000) {
-    authAttempts.set(ip, { startedAt: now, count: 1 });
-    return false;
-  }
-  if (bucket.count >= 10) return true;
-  bucket.count++;
-  return false;
+  return Number(result.rows[0]?.attempt_count || 0) > 10;
 }
 function bearerToken(req) {
   const header = String(req.headers.authorization || "");
@@ -567,7 +576,7 @@ async function consumeEmailActionToken(token,purpose) {
 
 async function handleRegister(req,res) {
   if(!pool) return send(res,503,{error:"Account service is not configured; database is required"});
-  if(authRateLimited(req)) return send(res,429,{error:"Too many account attempts; try again in 15 minutes"});
+  if(await authRateLimited(req)) return send(res,429,{error:"Too many account attempts; try again in 15 minutes"});
   const raw=await readBody(req); let input;
   try { input=JSON.parse(raw.toString("utf8")); } catch { return send(res,400,{error:"Invalid JSON"}); }
   const email=typeof input?.email==="string"?input.email.trim().toLowerCase():"";
@@ -593,7 +602,7 @@ async function handleRegister(req,res) {
 
 async function handleLogin(req,res) {
   if(!pool) return send(res,503,{error:"Account service is not configured; database is required"});
-  if(authRateLimited(req)) return send(res,429,{error:"Too many account attempts; try again in 15 minutes"});
+  if(await authRateLimited(req)) return send(res,429,{error:"Too many account attempts; try again in 15 minutes"});
   const raw=await readBody(req); let input;
   try { input=JSON.parse(raw.toString("utf8")); } catch { return send(res,400,{error:"Invalid JSON"}); }
   const email=typeof input?.email==="string"?input.email.trim().toLowerCase():"";
@@ -626,7 +635,7 @@ async function handleVerifyEmail(req,res) {
 }
 async function handleResendVerification(req,res) {
   if(!pool) return send(res,503,{error:"Account service is not configured"});
-  if(authRateLimited(req)) return send(res,429,{error:"Too many account attempts; try again in 15 minutes"});
+  if(await authRateLimited(req)) return send(res,429,{error:"Too many account attempts; try again in 15 minutes"});
   const raw=await readBody(req); let input;
   try { input=JSON.parse(raw.toString("utf8")); } catch { return send(res,400,{error:"Invalid JSON"}); }
   const email=typeof input?.email==="string"?input.email.trim().toLowerCase():"";
@@ -647,7 +656,7 @@ async function handleResendVerification(req,res) {
 
 async function handleRequestPasswordReset(req,res) {
   if(!pool) return send(res,503,{error:"Account service is not configured"});
-  if(authRateLimited(req)) return send(res,429,{error:"Too many account attempts; try again in 15 minutes"});
+  if(await authRateLimited(req)) return send(res,429,{error:"Too many account attempts; try again in 15 minutes"});
   const raw=await readBody(req); let input;
   try { input=JSON.parse(raw.toString("utf8")); } catch { return send(res,400,{error:"Invalid JSON"}); }
   const email=typeof input?.email==="string"?input.email.trim().toLowerCase():"";
@@ -668,7 +677,7 @@ async function handleRequestPasswordReset(req,res) {
 
 async function handleResetPassword(req,res) {
   if(!pool) return send(res,503,{error:"Account service is not configured"});
-  if(authRateLimited(req)) return send(res,429,{error:"Too many account attempts; try again in 15 minutes"});
+  if(await authRateLimited(req)) return send(res,429,{error:"Too many account attempts; try again in 15 minutes"});
   const raw=await readBody(req); let input;
   try { input=JSON.parse(raw.toString("utf8")); } catch { return send(res,400,{error:"Invalid JSON"}); }
   const password=typeof input?.password==="string"?input.password:"";
@@ -749,7 +758,7 @@ async function handleDeleteAccount(req, res) {
 
 async function handleWebAccountDeletion(req, res) {
   if (!pool) return send(res, 503, { error: "Account service is not configured; database is required" });
-  if (authRateLimited(req)) return send(res, 429, { error: "Too many account attempts; try again in 15 minutes" });
+  if (await authRateLimited(req)) return send(res, 429, { error: "Too many account attempts; try again in 15 minutes" });
   const rawBody = await readBody(req);
   let input;
   try { input = JSON.parse(rawBody.toString("utf8")); } catch { return send(res, 400, { error: "Invalid JSON" }); }
