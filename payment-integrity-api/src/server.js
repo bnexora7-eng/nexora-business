@@ -483,6 +483,12 @@ async function handleMollieWebhook(req, res) {
   if (typeof subscriptionId === "string") {
     const member=await pool.query("SELECT id,subscription_status FROM app_users WHERE mollie_subscription_id=$1",[subscriptionId]);
     if (!member.rowCount) return send(res,404,{error:"Recurring subscription not found"});
+    // A paid renewal only grants membership when Mollie confirms the exact
+    // NEXORA All Access amount and currency configured for this product.
+    if (payment.amount?.currency !== "EUR" || payment.amount?.value !== "29.99") {
+      console.error("Mollie recurring payment amount mismatch",molliePaymentId);
+      return send(res,409,{error:"Recurring payment amount mismatch"});
+    }
     const nextStatus=payment.status==="paid"?"active":(["failed","canceled","expired"].includes(payment.status)?"past_due":null);
     if(nextStatus && member.rows[0].subscription_status!=="canceled") {
       await pool.query("UPDATE app_users SET subscription_status=$1,subscription_updated_at=NOW() WHERE id=$2",[nextStatus,member.rows[0].id]);
