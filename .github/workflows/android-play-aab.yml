@@ -57,6 +57,24 @@ jobs:
         working-directory: mobile
         run: npx expo prebuild --platform android --non-interactive
 
+      - name: Verify Android target SDK requirement
+        working-directory: mobile
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const gradle = fs.readFileSync('android/build.gradle', 'utf8');
+          const properties = fs.existsSync('android/gradle.properties')
+            ? fs.readFileSync('android/gradle.properties', 'utf8')
+            : '';
+          const override = properties.match(/^android\\.targetSdkVersion\\s*=\\s*(\\d+)\\s*$/m);
+          const fallback = gradle.match(/targetSdkVersion\\s*=\\s*Integer\\.parseInt\\(findProperty\\('android\\.targetSdkVersion'\\)\\s*\\?:\\s*'?(\\d+)'?\\)/);
+          const literal = gradle.match(/targetSdkVersion\\s*=\\s*(\\d+)\\b/);
+          const target = Number(override?.[1] || fallback?.[1] || literal?.[1] || 0);
+          console.log('Resolved Android target SDK:', target || 'not detected');
+          if (!target) throw new Error('Could not determine the generated Android target SDK; do not submit this build.');
+          if (target < 36) throw new Error('Google Play submission requires target SDK 36 or higher; generated target is ' + target + '.');
+          NODE
+
       - name: Decode and verify Play upload keystore
         if: env.HAS_PLAY_SIGNING == 'true'
         env:
