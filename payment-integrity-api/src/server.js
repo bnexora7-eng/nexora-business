@@ -23,6 +23,9 @@ const databaseSsl = PGSSL === "true" ? {} : PGSSL === "false" ? false : undefine
 const ENABLE_PUBLIC_DEMO = process.env.ENABLE_PUBLIC_DEMO === "true";
 const REVIEW_THRESHOLD = Number(process.env.REVIEW_THRESHOLD || 10000);
 const MAX_BODY_BYTES = 65536;
+const MAX_TRACKED_CLIENTS = 10000;
+const MAX_DEMO_EVENTS = 5000;
+const DEMO_EVENT_TTL_MS = 60 * 60 * 1000;
 const DEMO_ORIGIN = process.env.DEMO_ORIGIN || "https://bnexora7-eng.github.io";
 const demoRequests = new Map();
 const demoEvents = new Map();
@@ -54,6 +57,11 @@ if (!Object.keys(PROVIDER_SECRETS).length && !ENABLE_PUBLIC_DEMO) {
   throw new Error("Set PROVIDER_SECRETS or enable the public demo");
 }
 
+function pruneExpiredEntries(map, now, ttl, timestampOf) {
+  for (const [key, value] of map) {
+    if (now - timestampOf(value) >= ttl) map.delete(key);
+  }
+}
 function send(res, status, body) {
   res.writeHead(status, {
     "content-type": "application/json; charset=utf-8",
@@ -143,6 +151,10 @@ async function handleDemoEvent(req, res) {
   const ip = String(req.headers["x-forwarded-for"] || req.socket.remoteAddress || "unknown").split(",")[0].trim();
   const now = Date.now();
   const bucket = demoRequests.get(ip);
+  if (!bucket && demoRequests.size >= MAX_TRACKED_CLIENTS) {
+    pruneExpiredEntries(demoRequests, now, 60000, entry => entry.startedAt);
+    if (demoRequests.size >= MAX_TRACKED_CLIENTS) return send(res, 429, { error: "Demo is temporarily rate-limited; try again shortly" });
+  }
   if (bucket && now - bucket.startedAt < 60000 && bucket.count >= 20) return send(res, 429, { error: "Demo rate limit exceeded; try again in one minute" });
   if (!bucket || now - bucket.startedAt >= 60000) demoRequests.set(ip, { startedAt: now, count: 1 });
   else bucket.count++;
@@ -162,12 +174,18 @@ async function handleDemoEvent(req, res) {
   }
   const event = { provider_id: "demo-provider", event_id: eventId, amount, currency, status };
   const key = JSON.stringify([event.provider_id, event.event_id]);
-  if (demoEvents.has(key)) {
+  const previous = demoEvents.get(key);
+  if (previous && now - previous.createdAt < DEMO_EVENT_TTL_MS) {
     return send(res, 200, { decision: "REJECT", reason: "Duplicate provider + event identifier", duplicate: true,
       reference: { provider_id: event.provider_id, event_id: event.event_id }, storage: "temporary-demo-memory" });
   }
+  if (previous) demoEvents.delete(key);
+  if (demoEvents.size >= MAX_DEMO_EVENTS) {
+    pruneExpiredEntries(demoEvents, now, DEMO_EVENT_TTL_MS, entry => entry.createdAt);
+    if (demoEvents.size >= MAX_DEMO_EVENTS) return send(res, 503, { error: "Public demo capacity is temporarily full; try again later" });
+  }
   const result = screenEvent(event, { reviewThreshold: REVIEW_THRESHOLD });
-  demoEvents.set(key, result);
+  demoEvents.set(key, { result, createdAt: now });
   return send(res, 200, { ...result, duplicate: false,
     reference: { provider_id: event.provider_id, event_id: event.event_id }, storage: "temporary-demo-memory" });
 }
@@ -176,6 +194,10 @@ function authRateLimited(req) {
   const ip = String(req.headers["x-forwarded-for"] || req.socket.remoteAddress || "unknown").split(",")[0].trim();
   const now = Date.now();
   const bucket = authAttempts.get(ip);
+  if (!bucket && authAttempts.size >= MAX_TRACKED_CLIENTS) {
+    pruneExpiredEntries(authAttempts, now, 15 * 60 * 1000, entry => entry.startedAt);
+    if (authAttempts.size >= MAX_TRACKED_CLIENTS) return true;
+  }
   if (!bucket || now - bucket.startedAt >= 15 * 60 * 1000) {
     authAttempts.set(ip, { startedAt: now, count: 1 });
     return false;
@@ -835,6 +857,14 @@ async function handleBusinessAIPlan(req,res) {
   if(req.method!=="POST") return send(res,405,{error:"Method not allowed"});
   if(!AI_API_KEY) return send(res,503,{error:"AI planning is not configured yet. The secure model key must be added to the server environment."});
   const now=Date.now();
+  if (!aiRequests.has(user.id) && aiRequests.size >= MAX_TRACKED_CLIENTS) {
+    for (const [accountId, timestamps] of aiRequests) {
+      const active = timestamps.filter(t => now - t < 60000);
+      if (active.length) aiRequests.set(accountId, active);
+      else aiRequests.delete(accountId);
+    }
+    if (aiRequests.size >= MAX_TRACKED_CLIENTS) return send(res,429,{error:"AI service is temporarily rate-limited. Please try again shortly."});
+  }
   const recent=(aiRequests.get(user.id)||[]).filter(t=>now-t<60000);
   if(recent.length>=4) return send(res,429,{error:"AI usage limit reached. Please wait a minute and try again."});
   recent.push(now); aiRequests.set(user.id,recent);
