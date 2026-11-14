@@ -449,9 +449,18 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   assert.equal(createWorkspace.status, 200);
   const paymentOrderId = randomUUID();
   await pool.query("INSERT INTO own_payments (order_id,user_id,amount,description,status) VALUES ($1,$2,25.00,$3,$4)", [paymentOrderId, accountId, "Integration test payment", "paid"]);
+  // Account deletion must verify and cancel an active provider-side
+  // subscription before removing the account and its customer reference.
+  mollieSubscriptionStatus = "active";
+  await pool.query(
+    "UPDATE app_users SET subscription_status='active',subscription_access_until=NULL WHERE id=$1",
+    [accountId]
+  );
   const deleteResponse = await fetch(`http://127.0.0.1:${port}/v1/auth/account`, {
     method: "DELETE", headers: { authorization: "Bearer " + loggedIn.token }
   });
+  assert.equal(mollieSubscriptionStatus, "canceled",
+    "account deletion must cancel the active Mollie subscription first");
   assert.equal(deleteResponse.status, 200);
   assert.equal((await deleteResponse.json()).status, "account_deleted");
   const deletedProfile = await fetch(`http://127.0.0.1:${port}/v1/auth/me`, {
