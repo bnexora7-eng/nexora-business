@@ -45,9 +45,11 @@ jobs:
         working-directory: mobile
         run: npm install --no-audit --no-fund
 
-      - name: Apply non-breaking dependency security fixes
+      - name: Audit production dependency tree
         working-directory: mobile
-        run: npm audit fix --no-fund
+        run: |
+          npm audit --omit=dev --json > /tmp/nexora-mobile-audit.json || audit_status=$?
+          node ../scripts/check-mobile-audit.mjs /tmp/nexora-mobile-audit.json
 
       - name: TypeScript validation
         working-directory: mobile
