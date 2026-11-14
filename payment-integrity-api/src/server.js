@@ -511,7 +511,7 @@ async function handleCancelSubscription(req,res) {
   if(current.status!=="active" && current.status!=="pending") {
     return send(res,409,{error:"Mollie reports a subscription state that cannot be canceled safely through this request"});
   }
-  if(typeof current.nextPaymentDate!=="string" || !/^\\d{4}-\\d{2}-\\d{2}$/.test(current.nextPaymentDate)) {
+  if(typeof current.nextPaymentDate!=="string" || !/^\d{4}-\d{2}-\d{2}$/.test(current.nextPaymentDate)) {
     return send(res,409,{error:"Mollie did not provide the next payment date. The subscription was not canceled so paid access is not lost."});
   }
   const accessUntil=new Date(current.nextPaymentDate+"T00:00:00.000Z");
