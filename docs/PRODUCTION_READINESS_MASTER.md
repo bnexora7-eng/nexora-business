@@ -159,3 +159,12 @@ An encrypted PostgreSQL 18 backup runner and restore helper have been committed 
 ## Android release pipeline hardening — 14 November 2026
 
 The Play AAB workflow now performs a generated-Gradle target SDK check before signing/building. The first implementation failed to resolve the Expo-generated target SDK; the check has been replaced with a Gradle runtime inspection. Latest workflow run 43617263749 is in progress. GitHub Actions reports the Play signing secrets are present (`HAS_PLAY_SIGNING=true`), but the keystore alias/password and signed AAB are not yet verified. Do not mark Android release-ready until the workflow confirms the alias, builds the AAB, and verifies its signature.
+
+
+## Billing/deletion race hardening — 14 November 2026
+
+- Commit 247830d adds cancellation and provider verification for pending Mollie first payments before account deletion. If a payment is still being created, its provider result is uncertain, or Mollie cannot confirm cancellation, deletion fails closed.
+- Commit b91f657 blocks account deletion when a first payment is already paid but recurring subscription activation has not been reconciled.
+- Commit 67688fa serializes first-payment webhook activation with account deletion by locking the account row while the recurring subscription is created/verified. This prevents a delayed webhook from creating a recurring subscription after the account has been deleted.
+- Commit b10245d adds integration coverage for cancellation of the pending first payment and the recurring subscription before account deletion.
+- API CI run 43617761235, independent verification 43617761267, and Render PostgreSQL readiness smoke test 43617761238 all passed on commit b10245d.
