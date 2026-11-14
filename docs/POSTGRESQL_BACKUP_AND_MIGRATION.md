@@ -76,7 +76,7 @@ No database contents have been exported or independently verified yet. Do not cl
 A backup runner has been added to the public application repository under `backup/`:
 - Uses PostgreSQL 18 `pg_dump` in custom format and validates the archive with `pg_restore --list` before upload.
 - Encrypts the dump with AES-256-GCM; the key is derived using PBKDF2-HMAC-SHA256 (600,000 iterations). Authentication is provided by GCM.
-- Uploads only ciphertext to a separate **private** GitHub repository using the GitHub Contents API. It verifies the uploaded Git blob hashes before marking the run successful.
+- Uploads only ciphertext as assets attached to releases in a separate **private** GitHub repository. It downloads each uploaded asset again and verifies its SHA-256 before marking the run successful. Expired backup releases and their tags are removed after a new backup is verified; backup files are not committed to Git history.
 - Retains the latest 30 days of encrypted daily backups and refuses encrypted files larger than 45 MiB.
 - Scheduled blueprint: `render-backup.yaml`, daily at 03:30 UTC in Frankfurt, smallest cron compute plan.
 - Restore helper: `backup/restore.sh`. Restore must target a separate PostgreSQL 18 recovery database, never the live database.
