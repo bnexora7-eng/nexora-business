@@ -592,6 +592,15 @@ async function handleLogout(req, res) {
 }
 
 async function deleteUserAccount(userId) {
+  const billing = await pool.query(
+    "SELECT mollie_customer_id,mollie_subscription_id,subscription_status FROM app_users WHERE id=$1",
+    [userId]
+  );
+  const account = billing.rows[0];
+  if (account?.mollie_subscription_id && account?.mollie_customer_id && account.subscription_status !== "canceled" && account.subscription_status !== "inactive") {
+    if (!process.env.MOLLIE_API_KEY) throw new Error("Cancel the recurring Mollie subscription before deleting this account.");
+    await mollieRequest("/customers/"+encodeURIComponent(account.mollie_customer_id)+"/subscriptions/"+encodeURIComponent(account.mollie_subscription_id),{method:"DELETE"});
+  }
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
