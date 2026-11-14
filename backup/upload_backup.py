@@ -38,7 +38,8 @@ headers = {
 }
 
 def request(method, path, payload=None):
-    url = "https://api.github.com/repos/" + repo + "/" + path.lstrip("/")
+    suffix = ("/" + path.lstrip("/")) if path else ""
+    url = "https://api.github.com/repos/" + repo + suffix
     data = None if payload is None else json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(url, data=data, headers=headers, method=method)
     try:
