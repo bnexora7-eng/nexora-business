@@ -624,6 +624,7 @@ async function handleRequestPasswordReset(req,res) {
 
 async function handleResetPassword(req,res) {
   if(!pool) return send(res,503,{error:"Account service is not configured"});
+  if(authRateLimited(req)) return send(res,429,{error:"Too many account attempts; try again in 15 minutes"});
   const raw=await readBody(req); let input;
   try { input=JSON.parse(raw.toString("utf8")); } catch { return send(res,400,{error:"Invalid JSON"}); }
   const password=typeof input?.password==="string"?input.password:"";
