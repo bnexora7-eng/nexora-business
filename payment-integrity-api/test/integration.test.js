@@ -15,6 +15,7 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   let recurringPaymentStatus = "failed";
   let recurringPaymentAmount = { currency: "EUR", value: "29.99" };
   let mollieSubscriptionStatus = "active";
+  let mollieSubscriptionCreateCount = 0;
   const mollieMock = createServer(async (req, res) => {
     const chunks = [];
     for await (const chunk of req) chunks.push(chunk);
@@ -37,6 +38,7 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
       firstPaymentStatus = "canceled";
       data = { resource: "payment", id: "tr_nexorafirst", status: "canceled", amount: { currency: "EUR", value: "29.99" } };
     } else if (req.method === "POST" && path === "/v2/customers/cst_nexoratest/subscriptions") {
+      mollieSubscriptionCreateCount += 1;
       const input = JSON.parse(body || "{}");
       if (input.amount?.value !== "29.99" || input.interval !== "1 month") {
         status = 422; data = { title: "Unexpected recurring subscription request" };
@@ -417,6 +419,12 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
     method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: "id=tr_nexorafirst"
   });
   assert.equal(firstWebhook.status, 200);
+  assert.equal(mollieSubscriptionCreateCount, 1, "first paid webhook should create exactly one recurring subscription");
+  const duplicateFirstWebhook = await fetch(`http://127.0.0.1:${port}/v1/payments/mollie-webhook`, {
+    method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: "id=tr_nexorafirst"
+  });
+  assert.equal(duplicateFirstWebhook.status, 200);
+  assert.equal(mollieSubscriptionCreateCount, 1, "duplicate first-payment webhook must not create a second recurring subscription");
   let subscriptionState = await fetch(`http://127.0.0.1:${port}/v1/subscriptions/me`, {
     headers: { authorization: "Bearer " + loggedIn.token }
   });
