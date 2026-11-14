@@ -283,10 +283,11 @@ async function handleCreateSubscriptionCheckout(req, res) {
     [user.id]
   );
   const current = account.rows[0];
-  if (current.subscription_status === "canceled" && current.subscription_access_until &&
-      new Date(current.subscription_access_until).getTime() <= Date.now()) {
-    await pool.query("UPDATE app_users SET subscription_status='inactive',subscription_access_until=NULL WHERE id=$1",[user.id]);
+  if (current.subscription_status === "canceled" &&
+      (!current.subscription_access_until || new Date(current.subscription_access_until).getTime() <= Date.now())) {
+    await pool.query("UPDATE app_users SET subscription_status='inactive',mollie_subscription_id=NULL,subscription_access_until=NULL WHERE id=$1",[user.id]);
     current.subscription_status = "inactive";
+    current.mollie_subscription_id = null;
     current.subscription_access_until = null;
   }
   if (current.subscription_status === "active" || current.subscription_status === "activation_pending" ||
