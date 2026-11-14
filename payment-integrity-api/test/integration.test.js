@@ -237,14 +237,14 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   for (let attempt = 0; attempt < 10; attempt++) {
     const response = await fetch(`http://127.0.0.1:${port}/v1/auth/login`, {
       method: "POST",
-      headers: { "content-type": "application/json", "x-forwarded-for": "198.51.100.10, " + throttledIP },
+      headers: { "content-type": "application/json", "cf-connecting-ip": throttledIP, "x-forwarded-for": "198.51.100.10" },
       body: JSON.stringify({ email: "rate-limit@example.invalid", password: "incorrect-password" })
     });
     assert.equal(response.status, 401, `auth attempt ${attempt + 1} should be allowed`);
   }
   const blockedAttempt = await fetch(`http://127.0.0.1:${port}/v1/auth/login`, {
     method: "POST",
-    headers: { "content-type": "application/json", "x-forwarded-for": "198.51.100.11, " + throttledIP },
+    headers: { "content-type": "application/json", "cf-connecting-ip": throttledIP, "x-forwarded-for": "198.51.100.11" },
     body: JSON.stringify({ email: "rate-limit@example.invalid", password: "incorrect-password" })
   });
   assert.equal(blockedAttempt.status, 429, "the 11th auth attempt in 15 minutes must be blocked");
@@ -667,8 +667,8 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   });
   assert.equal(blockedOrigin.status, 403);
 
-  // Changing a client-controlled left-most X-Forwarded-For value must not
-  // bypass the demo rate limit when Render appends the same client IP at right.
+  // Changing caller-controlled X-Forwarded-For must not bypass the demo rate limit
+  // when Cloudflare supplies the same trusted CF-Connecting-IP value.
   const demoRateLimitIP = "198.51.100.88";
   for (let attempt = 0; attempt < 20; attempt++) {
     const response = await fetch(`http://127.0.0.1:${port}/v1/demo/events`, {
@@ -676,7 +676,8 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
       headers: {
         "content-type": "application/json",
         origin: "https://bnexora7-eng.github.io",
-        "x-forwarded-for": "203.0.113." + (attempt + 1) + ", " + demoRateLimitIP
+        "cf-connecting-ip": demoRateLimitIP,
+        "x-forwarded-for": "203.0.113." + (attempt + 1)
       },
       body: JSON.stringify({ ...demoEvent, event_id: "evt-demo-limit-" + attempt })
     });
@@ -687,11 +688,12 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
     headers: {
       "content-type": "application/json",
       origin: "https://bnexora7-eng.github.io",
-      "x-forwarded-for": "203.0.113.250, " + demoRateLimitIP
+      "cf-connecting-ip": demoRateLimitIP,
+      "x-forwarded-for": "203.0.113.250"
     },
     body: JSON.stringify({ ...demoEvent, event_id: "evt-demo-limit-blocked" })
   });
-  assert.equal(blockedDemoAttempt.status, 429, "changing the spoofed left-most IP must not bypass the demo rate limit");
+  assert.equal(blockedDemoAttempt.status, 429, "changing the spoofed X-Forwarded-For must not bypass the demo rate limit");
 
   const counts = await pool.query(
     "SELECT COUNT(*)::int AS events FROM screened_events WHERE provider_id=$1 AND event_id IN ($2,$3)",
