@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { createServer } from "node:http";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { signPayload } from "../src/screening.js";
 import { createActionToken, hashActionToken } from "../src/email.js";
@@ -227,7 +227,7 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
     body: JSON.stringify({ email: "rate-limit@example.invalid", password: "incorrect-password" })
   });
   assert.equal(blockedAttempt.status, 429, "the 11th auth attempt in 15 minutes must be blocked");
-  const ipHash = crypto.createHash("sha256").update(throttledIP).digest("hex");
+  const ipHash = createHash("sha256").update(throttledIP).digest("hex");
   const durableLimit = await pool.query("SELECT attempt_count FROM auth_rate_limits WHERE ip_hash=$1", [ipHash]);
   assert.equal(Number(durableLimit.rows[0].attempt_count), 11, "auth attempt count must persist in PostgreSQL");
 
