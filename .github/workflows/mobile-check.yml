@@ -29,9 +29,9 @@ jobs:
           cache-dependency-path: mobile/package.json
       - name: Install dependencies
         run: npm install --no-audit --no-fund
-      - name: Apply non-breaking dependency security fixes
-        run: npm audit fix --no-fund
-      - name: Audit production dependencies
-        run: npm audit --omit=dev --audit-level=high
+      - name: Audit production dependency tree
+        run: |
+          npm audit --omit=dev --json > /tmp/nexora-mobile-audit.json || audit_status=$?
+          node ../scripts/check-mobile-audit.mjs /tmp/nexora-mobile-audit.json
       - name: TypeScript check
         run: npx tsc --noEmit
