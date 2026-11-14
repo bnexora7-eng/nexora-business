@@ -124,7 +124,7 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   assert.equal(deletedProfile.status, 401);
   const deletedRows = await pool.query(
     "SELECT (SELECT COUNT(*) FROM app_users WHERE email=$1)::int AS users, (SELECT COUNT(*) FROM community_posts WHERE user_id=$2)::int AS posts, (SELECT COUNT(*) FROM business_workspaces WHERE user_id=$2)::int AS workspaces",
-    [accountEmail, registered.user.id]
+    [accountEmail, accountId]
   );
   assert.deepEqual(deletedRows.rows[0], { users: 0, posts: 0, workspaces: 0 });
   const retainedPayment = await pool.query("SELECT user_id FROM own_payments WHERE order_id=$1", [paymentOrderId]);
