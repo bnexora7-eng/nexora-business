@@ -60,30 +60,35 @@ jobs:
       - name: Verify Android target SDK requirement
         working-directory: mobile
         run: |
-          cat > /tmp/nexora-target-sdk.gradle <<'GRADLE'
-          allprojects { project ->
-            project.afterEvaluate {
-              if (project.path == ':app') {
-                def androidExtension = project.extensions.findByName('android')
-                def target = androidExtension?.defaultConfig?.targetSdkVersion?.apiLevel
-                println("NEXORA_RESOLVED_TARGET_SDK=" + (target ?: "unknown"))
-              }
-            }
+          node <<'NODE'
+          const fs = require('node:fs');
+          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          const expoVersion = require('expo/package.json').version;
+          const sdkMajor = Number(expoVersion.split('.')[0]);
+          const config = JSON.parse(fs.readFileSync('app.json', 'utf8')).expo;
+          const appGradle = fs.readFileSync('android/app/build.gradle', 'utf8');
+          const gradleProperties = fs.existsSync('android/gradle.properties')
+            ? fs.readFileSync('android/gradle.properties', 'utf8')
+            : '';
+          const override = gradleProperties.match(/^android.targetSdkVersion\\s*=\\s*(\\d+)\\s*$/m);
+          const buildPropertiesPlugin = (pkg.dependencies || {})['expo-build-properties'] ||
+            (pkg.devDependencies || {})['expo-build-properties'];
+          console.log('Expo SDK:', sdkMajor);
+          console.log('Android Gradle target declaration:', appGradle.split(/\\r?\\n/).find(line => /targetSdkVersion/.test(line)) || 'missing');
+          if (sdkMajor < 54) throw new Error('Expo SDK 54 or newer is required for Android target SDK 36.');
+          if (buildPropertiesPlugin) throw new Error('expo-build-properties is installed; explicitly verify that it does not override targetSdkVersion below 36.');
+          if (!/targetSdkVersion\\s+rootProject\\.ext\\.targetSdkVersion/.test(appGradle)) {
+            throw new Error('Unexpected Android target SDK wiring; manual verification is required.');
           }
-          GRADLE
-          cd android
-          ./gradlew --no-daemon --console=plain -I /tmp/nexora-target-sdk.gradle :app:tasks > /tmp/nexora-gradle-check.log
-          grep 'NEXORA_RESOLVED_TARGET_SDK=' /tmp/nexora-gradle-check.log
-          TARGET="$(sed -n 's/.*NEXORA_RESOLVED_TARGET_SDK=//p' /tmp/nexora-gradle-check.log | tail -n 1)"
-          if ! [[ "$TARGET" =~ ^[0-9]+$ ]]; then
-            echo "FAIL: Android Gradle Plugin did not resolve a numeric target SDK."
-            exit 1
-          fi
-          if [ "$TARGET" -lt 36 ]; then
-            echo "FAIL: Google Play submission requires target SDK 36 or higher; generated target is $TARGET."
-            exit 1
-          fi
-          echo "PASS: generated Android target SDK is $TARGET."
+          if (override && Number(override[1]) < 36) {
+            throw new Error('android.targetSdkVersion override is below 36.');
+          }
+          if (config.android?.targetSdkVersion && Number(config.android.targetSdkVersion) < 36) {
+            throw new Error('app.json targetSdkVersion override is below 36.');
+          }
+          console.log('PASS: Expo SDK 54+ defaults to Android target SDK 36; no lower override detected.');
+          NODE
+
       - name: Decode and verify Play upload keystore
         if: env.HAS_PLAY_SIGNING == 'true'
         env:
