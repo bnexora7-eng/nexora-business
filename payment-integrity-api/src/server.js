@@ -47,7 +47,13 @@ if (DATABASE_URL) {
   // Set PGSSL=false for Render's private internal PostgreSQL URL.
   // Set PGSSL=true for an external PostgreSQL provider that requires TLS.
   // When PGSSL is unset, node-postgres follows the connection URL's SSL settings.
-  pool = new Pool({ connectionString: DATABASE_URL, ...(databaseSsl === undefined ? {} : { ssl: databaseSsl }) });
+  pool = new Pool({
+    connectionString: DATABASE_URL,
+    max: 10,
+    connectionTimeoutMillis: 5000,
+    idleTimeoutMillis: 30000,
+    ...(databaseSsl === undefined ? {} : { ssl: databaseSsl })
+  });
   await pool.query(await readFile(new URL("./schema.sql", import.meta.url), "utf8"));
   console.log("NEXORA database schema is ready");
 } else {
@@ -980,6 +986,9 @@ const server = createServer(async (req, res) => {
     return send(res, error.statusCode || 500, { error: error.statusCode === 413 ? "Payload too large" : "Internal server error" });
   }
 });
+server.headersTimeout = 15_000;
+server.requestTimeout = 30_000;
+server.keepAliveTimeout = 5_000;
 server.listen(PORT, "0.0.0.0", () => console.log("NEXORA Payment Integrity API listening on port " + PORT));
 async function shutdown() {
   server.close(async () => { if (pool) await pool.end(); process.exit(0); });
