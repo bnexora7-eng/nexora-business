@@ -130,3 +130,42 @@ jobs:
           if (checks.some(([, passed]) => !passed)) throw new Error("One or more live Render API checks failed");
           console.log("PASS: live Render API demo checks.");
           NODE
+
+      - name: Verify browser decisions on public demo
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --no-save --no-audit --no-fund playwright
+          npx playwright install --with-deps chromium
+          node --input-type=module <<'NODE'
+          import { chromium } from "playwright";
+          const browser = await chromium.launch({ headless: true });
+          const page = await browser.newPage();
+          const url = "https://bnexora7-eng.github.io/nexora-business/payment-integrity-demo/demo.html?browser-check=" + Date.now();
+          try {
+            await page.goto(url, { waitUntil: "networkidle", timeout: 60000 });
+            const status = page.locator("#appStatus");
+            await status.waitFor({ state: "visible" });
+            const cases = [
+              { name: "ACCEPT", value: "succeeded", expected: "ACCEPT" },
+              { name: "REVIEW", value: "pending", expected: "REVIEW" },
+              { name: "REJECT", value: "failed", expected: "REJECT" }
+            ];
+            for (const item of cases) {
+              const eventId = "browser-ci-" + Date.now() + "-" + item.name.toLowerCase();
+              await page.locator("#provider").fill("nexora-browser-ci");
+              await page.locator("#event").fill(eventId);
+              await page.locator("#amount").fill("25");
+              await page.locator("#currency").selectOption("EUR");
+              await page.locator("#status").selectOption(item.value);
+              await page.locator('#eventForm button[type="submit"]').click();
+              await page.locator("#result .decision").waitFor({ state: "visible", timeout: 30000 });
+              const actual = (await page.locator("#result .decision").innerText()).trim();
+              if (actual !== item.expected) throw new Error(item.name + " UI expected " + item.expected + " but got " + actual);
+              console.log("PASS browser UI " + item.name);
+            }
+            console.log("PASS: ACCEPT, REVIEW and REJECT render correctly in the public browser demo.");
+          } finally {
+            await browser.close();
+          }
+          NODE
