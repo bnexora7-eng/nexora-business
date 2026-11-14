@@ -612,56 +612,65 @@ async function handleMollieWebhook(req, res) {
       console.error("Mollie recurring payment amount mismatch",molliePaymentId);
       return send(res,409,{error:"Recurring payment amount mismatch"});
     }
-    let nextStatus = payment.status === "paid" ? "active" : null;
-    if (["failed", "canceled", "expired"].includes(payment.status)) {
-      // Mollie retries failed subscription payments (up to five attempts in
-      // eligible cases). A failed payment attempt alone does not mean that the
-      // recurring subscription has ended. Confirm the provider-side status
-      // before revoking All Access.
-      const providerSubscription = await mollieRequest(
-        "/customers/" + encodeURIComponent(
-          (await pool.query("SELECT mollie_customer_id FROM app_users WHERE mollie_subscription_id=$1", [subscriptionId])).rows[0]?.mollie_customer_id || ""
-        ) + "/subscriptions/" + encodeURIComponent(subscriptionId)
+    const client=await pool.connect();
+    try {
+      await client.query("BEGIN");
+      const member=await client.query(
+        "SELECT id,mollie_customer_id,subscription_status,subscription_last_payment_created_at FROM app_users WHERE mollie_subscription_id=$1 FOR UPDATE",
+        [subscriptionId]
       );
-      if (providerSubscription?.resource !== "subscription" || providerSubscription.id !== subscriptionId ||
-          !["pending", "active", "canceled", "suspended", "completed"].includes(providerSubscription.status)) {
-        return send(res, 502, { error: "Mollie subscription status could not be verified" });
+      if(!member.rowCount) {
+        await client.query("ROLLBACK");
+        return send(res,404,{error:"Recurring subscription not found"});
       }
-      if (["canceled", "suspended", "completed"].includes(providerSubscription.status)) {
-        nextStatus = "past_due";
-      }
-    }
-    if(nextStatus) {
-      const client=await pool.connect();
-      try {
-        await client.query("BEGIN");
-        const member=await client.query(
-          "SELECT id,subscription_status,subscription_last_payment_created_at FROM app_users WHERE mollie_subscription_id=$1 FOR UPDATE",
-          [subscriptionId]
-        );
-        if(!member.rowCount) {
-          await client.query("ROLLBACK");
-          return send(res,404,{error:"Recurring subscription not found"});
-        }
-        const current=member.rows[0];
-        const lastApplied=current.subscription_last_payment_created_at
-          ? new Date(current.subscription_last_payment_created_at).getTime()
-          : 0;
-        if(current.subscription_status!=="canceled" && paymentCreatedAt.getTime()>lastApplied) {
-          await client.query(
-            `UPDATE app_users
-             SET subscription_status=$1,subscription_last_payment_created_at=$2,subscription_updated_at=NOW()
-             WHERE id=$3 AND subscription_status <> 'canceled'`,
-            [nextStatus,paymentCreatedAt.toISOString(),current.id]
-          );
-        }
+      const current=member.rows[0];
+      let nextStatus = payment.status === "paid" ? "active" : null;
+
+      if (current.subscription_status === "canceled") {
         await client.query("COMMIT");
-      } catch(error) {
-        await client.query("ROLLBACK").catch(()=>{});
-        throw error;
-      } finally {
-        client.release();
+        return send(res,200,{received:true,subscription:true});
       }
+
+      if (["failed", "canceled", "expired"].includes(payment.status)) {
+        // Mollie may retry failed subscription payments. A failed payment
+        // attempt alone does not end the recurring subscription or its access.
+        // Revoke access only after Mollie confirms a terminal subscription state.
+        if (!current.mollie_customer_id) {
+          await client.query("ROLLBACK");
+          return send(res,502,{error:"Mollie customer reference is missing"});
+        }
+        const providerSubscription = await mollieRequest(
+          "/customers/" + encodeURIComponent(current.mollie_customer_id) +
+          "/subscriptions/" + encodeURIComponent(subscriptionId)
+        );
+        if (providerSubscription?.resource !== "subscription" ||
+            providerSubscription.id !== subscriptionId ||
+            !["pending","active","canceled","suspended","completed"].includes(providerSubscription.status)) {
+          await client.query("ROLLBACK");
+          return send(res,502,{error:"Mollie subscription status could not be verified"});
+        }
+        if (["canceled","suspended","completed"].includes(providerSubscription.status)) {
+          nextStatus = "past_due";
+        }
+      }
+
+      const lastApplied=current.subscription_last_payment_created_at
+        ? new Date(current.subscription_last_payment_created_at).getTime()
+        : 0;
+      if(nextStatus && paymentCreatedAt.getTime()>lastApplied) {
+        await client.query(
+          `UPDATE app_users
+           SET subscription_status=$1,subscription_last_payment_created_at=$2,subscription_updated_at=NOW()
+           WHERE id=$3 AND subscription_status <> 'canceled'`,
+          [nextStatus,paymentCreatedAt.toISOString(),current.id]
+        );
+      }
+      await client.query("COMMIT");
+    } catch(error) {
+      await client.query("ROLLBACK").catch(()=>{});
+      throw error;
+    } finally {
+      client.release();
     }
     return send(res,200,{received:true,subscription:true});
   }
