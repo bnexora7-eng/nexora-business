@@ -1,7 +1,9 @@
 import nodemailer from "nodemailer";
 import crypto from "node:crypto";
 
-const WEB_BASE = (process.env.NEXORA_ACCOUNT_URL || "https://bnexora7-eng.github.io/nexora-business/account/").replace(/\/$/, "");
+function getWebBase() {
+  return (process.env.NEXORA_ACCOUNT_URL || "https://bnexora7-eng.github.io/nexora-business/account/").replace(/\/$/, "");
+}
 const FROM = process.env.SMTP_FROM || process.env.SMTP_USER || "bnexora7@gmail.com";
 
 function getTransport() {
@@ -27,7 +29,7 @@ export function hashActionToken(token) {
 }
 
 export async function sendVerificationEmail(email, token) {
-  const url = WEB_BASE + "/verify.html?token=" + encodeURIComponent(token);
+  const url = getWebBase() + "/verify.html?token=" + encodeURIComponent(token);
   return await getTransport().sendMail({
     from: FROM, to: email, subject: "Confirm your NEXORA email address",
     text: "Welcome to NEXORA. Confirm your email address using this link (valid for 24 hours): " + url + "\n\nIf you did not create this account, you can ignore this message.",
@@ -36,7 +38,7 @@ export async function sendVerificationEmail(email, token) {
 }
 
 export async function sendPasswordResetEmail(email, token) {
-  const url = WEB_BASE + "/reset-password.html?token=" + encodeURIComponent(token);
+  const url = getWebBase() + "/reset-password.html?token=" + encodeURIComponent(token);
   return await getTransport().sendMail({
     from: FROM, to: email, subject: "Reset your NEXORA password",
     text: "Use this link to choose a new NEXORA password (valid for 1 hour): " + url + "\n\nIf you did not request this, ignore this message.",
