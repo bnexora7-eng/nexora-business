@@ -3,7 +3,7 @@
 **Status:** Internal preparation draft — not submitted  
 **Updated:** 11 November 2026  
 **Project repository:** https://github.com/bnexora7-eng/nexora-business  
-**Public technical demo:** https://splendid-lokum-02523e.netlify.app/
+**Public technical demo:** https://bnexora7-eng.github.io/nexora-business/payment-integrity-demo/demo.html
 
 ## Project summary
 
@@ -19,14 +19,14 @@ This is a problem hypothesis, not yet a validated market finding. NEXORA has not
 
 ## What has been built and tested
 
-- Public interactive browser demo and public Netlify demo API.
+- Public interactive browser demo and public demo API.
 - Health endpoint verified on the public API.
 - Synthetic ACCEPT scenario successfully tested.
 - Automated public API regression checks passed for REVIEW (pending event), REJECT (failed event) and DUPLICATE (same provider/event identifier submitted twice).
 - Separate Node.js API backend scaffold includes HMAC-SHA256 request authentication, timestamp-window checks, PostgreSQL schema, database uniqueness for idempotency and an audit table.
 - Automated unit and PostgreSQL-backed integration workflow is documented in the repository.
 
-The public Netlify demo and the separate PostgreSQL backend scaffold are not yet connected. The public demo uses temporary function memory and synthetic data. The separate backend scaffold is not publicly deployed.
+The public GitHub Pages demo and the separate PostgreSQL backend scaffold are not yet connected. The public demo uses temporary function memory and synthetic data. The separate backend scaffold is not publicly deployed.
 
 ## What makes the prototype useful to evaluate
 
