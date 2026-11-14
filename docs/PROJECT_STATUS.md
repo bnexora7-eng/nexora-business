@@ -1,12 +1,13 @@
 # NEXORA BUSINESS — Master Project Status
 
-**Last updated:** 13 November 2026  
+**Last updated:** 14 November 2026  
 **Project owner:** NEXORA BUSINESS  
 **Repository:** https://github.com/bnexora7-eng/nexora-business
 
 ## Canonical project links
 
-- Interactive Payment Integrity demo: https://splendid-lokum-02523e.netlify.app/
+- Interactive Payment Integrity demo: https://bnexora7-eng.github.io/nexora-business/payment-integrity-demo/demo.html
+- Sandbox API health: https://nexora-payment-integrity-api.onrender.com/health
 - Project/company information: https://bnexora7-eng.github.io/nexora-business/company/
 - Source code: https://github.com/bnexora7-eng/nexora-business
 - Consolidated external-facing brief: https://github.com/bnexora7-eng/nexora-business/blob/main/docs/PROJECT_BRIEF.md
@@ -17,7 +18,7 @@ NEXORA remains a **pre-production prototype**. On 12 November 2026, an own-servi
 
 ### Verified in the project work on 12 November 2026
 
-- The public Netlify demo endpoint was exercised by automated checks for ACCEPT, REVIEW, REJECT and DUPLICATE.
+- The public Render demo API was exercised by automated checks for ACCEPT, REVIEW, REJECT and DUPLICATE. A real-browser Playwright check on 14 November 2026 also verified that ACCEPT, REVIEW and REJECT render correctly on the public GitHub Pages demo.
 - The GitHub Pages deployment workflow passed.
 - PostgreSQL-backed integration tests passed in GitHub Actions.
 - The browser demo is publicly accessible at the canonical demo link above.
@@ -27,7 +28,7 @@ https://github.com/bnexora7-eng/nexora-business/actions/runs/43143271001
 
 ## Product scope
 
-The first workstream screens synthetic payment-event notifications and returns deterministic ACCEPT, REVIEW or REJECT decisions, including duplicate-event detection.
+The first workstream screens synthetic payment-event notifications through a Render-hosted sandbox API and returns deterministic ACCEPT, REVIEW or REJECT decisions, including duplicate-event detection.
 
 The repository also contains a separate backend scaffold with webhook signature verification, timestamp-window checks, PostgreSQL schema/idempotency and audit-related code.
 
@@ -36,7 +37,7 @@ The repository also contains a separate backend scaffold with webhook signature 
 - No live bank or payment-provider connections. Mollie checkout code exists but is not yet configured or verified.
 - No real payment processing or payouts.
 - No production fraud-detection service; current decisions are deterministic rules, not a validated machine-learning model.
-- The public demo endpoint and the separate PostgreSQL backend scaffold are not yet connected as one production service.
+- The public demo API and the separate PostgreSQL backend scaffold are not yet connected as one production service. The public demo uses temporary demo storage.
 - Do not submit real personal, banking or payment data to the demo.
 - No production security/compliance certification, paying customers, revenue or commercial traction is claimed.
 - Wider NEXORA marketplace/community/AI concepts remain concept prototypes unless separately implemented and verified.
@@ -156,3 +157,15 @@ When resuming work, start with this file, then inspect the current main branch a
 - **Verification gate:** wait for the latest GitHub Pages workflow to pass, then test registration and sign-in from a separate physical device/browser. The API's existing automated registration/login tests are not a substitute for that device test.
 - Email verification and password reset are not yet implemented in the browser account flow. Do not treat it as a finished public SaaS identity system.
 - Paid subscriptions are not enabled. No private ABN AMRO account details are published; bank-transfer collection and manual order activation still need a secure, tested order workflow.
+
+
+## Public demo verification — 14 November 2026
+
+- GitHub Actions run: https://github.com/bnexora7-eng/nexora-business/actions/runs/43595761873
+- Workflow conclusion: **success**.
+- Public GitHub Pages deployment and API health/decision checks passed.
+- Playwright browser verification passed for visible ACCEPT, REVIEW and REJECT decisions.
+- Backend duplicate-event verification passed in the live server test suite.
+- This confirms the demonstration workflow only. It does not establish production readiness, live payment processing, bank connectivity, or independent security certification.
+- README.md and PROJECT_BRIEF.md were refreshed to use the current public demo and API endpoints.
+
