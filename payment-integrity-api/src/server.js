@@ -403,9 +403,10 @@ async function handleMollieWebhook(req, res) {
           })
         });
         if(!subscription?.id) throw new Error("Mollie did not confirm the recurring subscription");
+        const mollieStatus = subscription.status === "active" ? "active" : "activation_pending";
         await pool.query(
-          "UPDATE app_users SET mollie_subscription_id=$1,subscription_status='active',subscription_started_at=COALESCE(subscription_started_at,NOW()),subscription_updated_at=NOW() WHERE id=$2",
-          [subscription.id,member.id]
+          "UPDATE app_users SET mollie_subscription_id=$1,subscription_status=$2,subscription_started_at=CASE WHEN $2='active' THEN COALESCE(subscription_started_at,NOW()) ELSE subscription_started_at END,subscription_updated_at=NOW() WHERE id=$3",
+          [subscription.id,mollieStatus,member.id]
         );
       } else {
         await pool.query("UPDATE app_users SET subscription_status='active',subscription_updated_at=NOW() WHERE id=$1",[member.id]);
