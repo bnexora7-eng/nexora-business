@@ -44,3 +44,73 @@ test("verification and password-reset emails render correct account links in tes
     if (previous.accountUrl === undefined) delete process.env.NEXORA_ACCOUNT_URL; else process.env.NEXORA_ACCOUNT_URL = previous.accountUrl;
   }
 });
+
+
+test("Brevo HTTPS delivery uses the verified sender and never exposes its API key", async () => {
+  const previous = {
+    nodeEnv: process.env.NODE_ENV,
+    brevoKey: process.env.BREVO_API_KEY,
+    brevoFrom: process.env.BREVO_FROM,
+    smtpUser: process.env.SMTP_USER,
+    smtpPassword: process.env.SMTP_APP_PASSWORD,
+    fetch: globalThis.fetch
+  };
+  const calls = [];
+  process.env.NODE_ENV = "production";
+  process.env.BREVO_API_KEY = "unit-test-brevo-key";
+  process.env.BREVO_FROM = "verified@nexora.example";
+  delete process.env.SMTP_USER;
+  delete process.env.SMTP_APP_PASSWORD;
+  globalThis.fetch = async (url, options) => {
+    calls.push({ url, options, body: JSON.parse(options.body) });
+    return new Response(JSON.stringify({ messageId: "brevo-test-message-id" }), {
+      status: 201, headers: { "content-type": "application/json" }
+    });
+  };
+  try {
+    const { sendVerificationEmail } = await import("../src/email.js");
+    const result = await sendVerificationEmail("member@example.test", "brevo-verification-token-12345678901234567890");
+    assert.equal(result.messageId, "brevo-test-message-id");
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].url, "https://api.brevo.com/v3/smtp/email");
+    assert.equal(calls[0].options.method, "POST");
+    assert.equal(calls[0].options.headers["api-key"], "unit-test-brevo-key");
+    assert.equal(calls[0].body.sender.email, "verified@nexora.example");
+    assert.equal(calls[0].body.to[0].email, "member@example.test");
+    assert.match(calls[0].body.htmlContent, /verify\.html\?token=/);
+  } finally {
+    if (previous.nodeEnv === undefined) delete process.env.NODE_ENV; else process.env.NODE_ENV = previous.nodeEnv;
+    if (previous.brevoKey === undefined) delete process.env.BREVO_API_KEY; else process.env.BREVO_API_KEY = previous.brevoKey;
+    if (previous.brevoFrom === undefined) delete process.env.BREVO_FROM; else process.env.BREVO_FROM = previous.brevoFrom;
+    if (previous.smtpUser === undefined) delete process.env.SMTP_USER; else process.env.SMTP_USER = previous.smtpUser;
+    if (previous.smtpPassword === undefined) delete process.env.SMTP_APP_PASSWORD; else process.env.SMTP_APP_PASSWORD = previous.smtpPassword;
+    globalThis.fetch = previous.fetch;
+  }
+});
+
+test("Brevo delivery failures are surfaced without leaking provider response details", async () => {
+  const previous = {
+    nodeEnv: process.env.NODE_ENV,
+    brevoKey: process.env.BREVO_API_KEY,
+    brevoFrom: process.env.BREVO_FROM,
+    fetch: globalThis.fetch
+  };
+  process.env.NODE_ENV = "production";
+  process.env.BREVO_API_KEY = "unit-test-brevo-key";
+  process.env.BREVO_FROM = "verified@nexora.example";
+  globalThis.fetch = async () => new Response(JSON.stringify({
+    code: "sender_not_allowed", message: "Private provider detail"
+  }), { status: 400, headers: { "content-type": "application/json" } });
+  try {
+    const { sendPasswordResetEmail } = await import("../src/email.js");
+    await assert.rejects(
+      () => sendPasswordResetEmail("member@example.test", "brevo-reset-token-12345678901234567890"),
+      error => error.statusCode === 502 && /HTTP 400/.test(error.message) && !/Private provider detail/.test(error.message)
+    );
+  } finally {
+    if (previous.nodeEnv === undefined) delete process.env.NODE_ENV; else process.env.NODE_ENV = previous.nodeEnv;
+    if (previous.brevoKey === undefined) delete process.env.BREVO_API_KEY; else process.env.BREVO_API_KEY = previous.brevoKey;
+    if (previous.brevoFrom === undefined) delete process.env.BREVO_FROM; else process.env.BREVO_FROM = previous.brevoFrom;
+    globalThis.fetch = previous.fetch;
+  }
+});
