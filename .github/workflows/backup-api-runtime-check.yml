@@ -1,0 +1,46 @@
+name: NEXORA API backup runtime checks
+
+on:
+  push:
+    paths:
+      - "payment-integrity-api/Dockerfile"
+      - "payment-integrity-api/src/server.js"
+      - "payment-integrity-api/package*.json"
+      - "backup/**"
+      - ".github/workflows/backup-api-runtime-check.yml"
+  pull_request:
+    paths:
+      - "payment-integrity-api/Dockerfile"
+      - "payment-integrity-api/src/server.js"
+      - "payment-integrity-api/package*.json"
+      - "backup/**"
+      - ".github/workflows/backup-api-runtime-check.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  api-backup-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build production API image with backup runtime
+        run: docker build --pull -t nexora-api-backup-check ./payment-integrity-api
+
+      - name: Verify Node, PostgreSQL 18, crypto runtime and server syntax
+        run: |
+          docker run --rm --entrypoint sh nexora-api-backup-check -c '
+            set -eu
+            node --version
+            node --check /app/src/server.js
+            pg_dump --version | grep -E "18\\."
+            pg_restore --version | grep -E "18\\."
+            python3 -c "from cryptography.hazmat.primitives.ciphers.aead import AESGCM; print(\"cryptography runtime OK\")"
+            test -x /backup/run.sh
+            test -s /backup/crypto.py
+            test -s /backup/upload_backup.py
+            sh -n /backup/run.sh
+            echo "PASS: API image contains compatible PostgreSQL 18 backup tools and authenticated encryption."
+          '
