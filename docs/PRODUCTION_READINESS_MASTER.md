@@ -193,3 +193,8 @@ Backup-runner CI run 43617810597 passed on commit 19aebc536b: Docker image build
 - Commit b77be14 returns a clear HTTP 409 conflict when account deletion is unsafe because a Mollie payment/subscription is pending or cannot be confirmed canceled; generic provider failures still return a generic server error.
 - Commit 614b2ab adds an integration test proving a paid first payment with no reconciled recurring subscription blocks account deletion with HTTP 409, leaves the account intact, and allows the subsequent webhook to finish activation.
 - API CI run 43618169661 passed; Render PostgreSQL readiness smoke test 43618169671 and independent verification 43618170090 passed on commit 614b2ab.
+
+
+## Current backend revision — 14 November 2026
+
+The latest backend source hardening is commit `b77be14`; Render smoke test 43618169671 passed after its deployment. Commit `614b2ab` adds the integration test for paid-first-payment deletion conflicts. API test run 43618169661 and independent verification 43618170090 passed on that test commit. Subsequent commits in the documentation-only sequence do not change backend source.
