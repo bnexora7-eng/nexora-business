@@ -87,6 +87,12 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   assert.equal(readiness.status, 200, "readiness must confirm PostgreSQL connectivity");
   assert.deepEqual(await readiness.json(), { status: "ready", database: "connected" });
 
+  assert.equal(readiness.headers.get("x-content-type-options"), "nosniff");
+  assert.equal(readiness.headers.get("x-frame-options"), "DENY");
+  assert.equal(readiness.headers.get("referrer-policy"), "no-referrer");
+  assert.match(readiness.headers.get("content-security-policy") || "", /default-src 'none'/);
+  assert.match(readiness.headers.get("strict-transport-security") || "", /max-age=31536000/);
+
   const accountEmail = "nexora-auth-" + Date.now() + "@example.invalid";
   const accountPassword = "NEXORA-test-password-2026!";
   const register = await fetch(`http://127.0.0.1:${port}/v1/auth/register`, {
