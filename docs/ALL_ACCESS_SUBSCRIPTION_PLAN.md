@@ -25,7 +25,7 @@ The membership is intended to become the single access pass for the NEXORA ecosy
 
 The account dashboard must show the member's actual entitlement state, not merely a successful sign-in.
 
-**Code audit finding (14 November 2026):** the current API module handlers primarily require a signed-in account; Community publishing, Marketplace publishing and Business workspace access do not yet enforce an active All Access subscription. Public Community / Marketplace reads are also currently available without a membership check. This is not yet a paid-access enforcement system. Before launch, define which public previews remain free and enforce the paid entitlement on every protected API route, not only by hiding buttons in the app.
+**Code audit correction (14 November 2026):** the API already has a shared `requireUser` guard that requires an authenticated account with an active All Access subscription (or a canceled subscription still within its paid-through date). Community publishing, Marketplace publishing, Business workspace operations and AI planning use this guard. Public Community / Marketplace reads remain available as previews. The PostgreSQL integration test verifies that an unpaid account is blocked from posting, that access remains during a paid-through cancellation period, and that access is denied after that period expires. Before launch, expand tests to cover every paid route, especially Marketplace and AI planning, and verify the client UI communicates locked features clearly.
 
 ## 3. Subscription and billing architecture
 
