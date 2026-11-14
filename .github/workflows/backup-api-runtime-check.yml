@@ -44,6 +44,7 @@ jobs:
             node --check /app/src/server.js
             pg_dump --version | grep -E "18\\."
             pg_restore --version | grep -E "18\\."
+            timeout --version | head -n 1
             python3 -c "from cryptography.hazmat.primitives.ciphers.aead import AESGCM; print(\"cryptography runtime OK\")"
             test -x /backup/run.sh
             test -s /backup/crypto.py
