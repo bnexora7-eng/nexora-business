@@ -184,7 +184,7 @@ Backup-runner CI run 43617810597 passed on commit 19aebc536b: Docker image build
 ## Signed Android bundle completed — 14 November 2026
 
 - Android Play build workflow 43617415554 completed successfully on commit ce75a5efaa. TypeScript, Expo config, Android target SDK 36 baseline, upload-keystore decode/alias verification, release signing, AAB build and signature verification all passed. The temporary decoded keystore was removed from the runner.
-- Artifact `nexora-google-play-aab`: 38,760,620 bytes; SHA-256 `da165e09283b53e37ecb6c36d50c845157c31121f538d2fc69f47c957da02187`. It was downloaded and verified separately. The artifact's GitHub Actions retention expires 28 November 2026; the owner has a preserved AAB file.
+- Artifact `nexora-google-play-aab`: 39,110,665 bytes; GitHub artifact ZIP 39,110,665 bytes; GitHub artifact ZIP 38,760,620 bytes; SHA-256 `da165e09283b53e37ecb6c36d50c845157c31121f538d2fc69f47c957da02187`. It was downloaded and verified separately. The artifact's GitHub Actions retention expires 28 November 2026; the owner has a preserved AAB file.
 - Android build gate is green. This does not mean the app is published or Play Console approved. Developer registration payment, Play Console upload/App Signing confirmation, listing assets and declarations, Play Billing compliance, device testing and legal/privacy review remain open.
 
 
