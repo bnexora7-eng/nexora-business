@@ -992,7 +992,7 @@ async function deleteUserAccount(userId) {
           !["pending", "active", "canceled", "suspended", "completed"].includes(current.status)) {
         throw accountDeletionConflict("Mollie subscription identity or state could not be verified. Account deletion is paused for reconciliation.");
       }
-      if (current.status !== "canceled") {
+      if (["active", "pending"].includes(current.status)) {
         const canceled = await mollieRequest(subscriptionPath, { method: "DELETE" });
         if (canceled?.resource !== "subscription" || canceled.id !== account.mollie_subscription_id ||
             canceled.customerId !== account.mollie_customer_id || canceled.status !== "canceled") {
