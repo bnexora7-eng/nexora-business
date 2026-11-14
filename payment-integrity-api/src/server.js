@@ -327,63 +327,93 @@ async function handleCreateSubscriptionCheckout(req, res) {
   if (!process.env.MOLLIE_API_KEY.startsWith("test_") && !(process.env.MOLLIE_API_KEY.startsWith("live_") && process.env.ENABLE_LIVE_PAYMENTS === "true")) {
     return send(res, 503, { error: "Live payments are disabled; configure a Mollie test key first" });
   }
-  const account = await pool.query(
-    "SELECT id,email,mollie_customer_id,subscription_status,subscription_access_until FROM app_users WHERE id=$1",
-    [user.id]
-  );
-  const current = account.rows[0];
-  if (current.subscription_status === "canceled" &&
-      (!current.subscription_access_until || new Date(current.subscription_access_until).getTime() <= Date.now())) {
-    await pool.query("UPDATE app_users SET subscription_status='inactive',mollie_subscription_id=NULL,subscription_access_until=NULL WHERE id=$1",[user.id]);
-    current.subscription_status = "inactive";
-    current.mollie_subscription_id = null;
-    current.subscription_access_until = null;
-  }
-  if (current.subscription_status === "active" || current.subscription_status === "activation_pending" ||
-      (current.subscription_status === "canceled" && current.subscription_access_until &&
-       new Date(current.subscription_access_until).getTime() > Date.now())) {
-    return send(res, 409, { error: "A NEXORA subscription is already active or being activated" });
-  }
-  const pendingPayment = await pool.query(
-    `SELECT order_id,status,checkout_url FROM own_payments
-     WHERE user_id=$1 AND description='NEXORA All Access monthly subscription'
-       AND status IN ('creating','open','pending','authorized')
-     ORDER BY created_at DESC LIMIT 1`,
-    [user.id]
-  );
-  if (pendingPayment.rowCount) {
-    const pending = pendingPayment.rows[0];
-    if (pending.checkout_url) return send(res,200,{
-      order_id:pending.order_id,status:pending.status,checkout_url:pending.checkout_url,
-      amount:{currency:"EUR",value:"29.99"},plan:"NEXORA All Access",interval:"1 month"
-    });
-    return send(res,409,{error:"Your subscription checkout is already being prepared. Please try again shortly."});
-  }
-  let customerId = current.mollie_customer_id;
-  if (!customerId) {
-    const customer = await mollieRequest("/customers", {
-      method: "POST",
-      body: JSON.stringify({ name: current.email, email: current.email })
-    });
-    if (!customer?.id || !/^cst_[A-Za-z0-9]+$/.test(customer.id)) {
-      throw new Error("Mollie did not return a valid customer identifier");
+
+  // Serialize checkout creation per account. The row lock prevents parallel
+  // requests from creating multiple first payments or Mollie customers.
+  const client = await pool.connect();
+  let orderId;
+  let customerId;
+  let earlyResponse = null;
+  try {
+    await client.query("BEGIN");
+    const account = await client.query(
+      "SELECT id,email,mollie_customer_id,subscription_status,subscription_access_until FROM app_users WHERE id=$1 FOR UPDATE",
+      [user.id]
+    );
+    if (!account.rowCount) {
+      await client.query("ROLLBACK");
+      return send(res, 401, { error: "Account no longer exists" });
     }
-    customerId = customer.id;
-    await pool.query("UPDATE app_users SET mollie_customer_id=$1,subscription_status='inactive',subscription_updated_at=NOW() WHERE id=$2", [customerId,user.id]);
+    const current = account.rows[0];
+    if (current.subscription_status === "canceled" &&
+        (!current.subscription_access_until || new Date(current.subscription_access_until).getTime() <= Date.now())) {
+      await client.query(
+        "UPDATE app_users SET subscription_status='inactive',mollie_subscription_id=NULL,subscription_access_until=NULL WHERE id=$1",
+        [user.id]
+      );
+      current.subscription_status = "inactive";
+      current.mollie_subscription_id = null;
+      current.subscription_access_until = null;
+    }
+    if (current.subscription_status === "active" || current.subscription_status === "activation_pending" ||
+        (current.subscription_status === "canceled" && current.subscription_access_until &&
+         new Date(current.subscription_access_until).getTime() > Date.now())) {
+      earlyResponse = { status: 409, body: { error: "A NEXORA subscription is already active or being activated" } };
+    } else {
+      const pendingPayment = await client.query(
+        `SELECT order_id,status,checkout_url FROM own_payments
+         WHERE user_id=$1 AND description='NEXORA All Access monthly subscription'
+           AND status IN ('creating','open','pending','authorized')
+         ORDER BY created_at DESC LIMIT 1`,
+        [user.id]
+      );
+      if (pendingPayment.rowCount) {
+        const pending = pendingPayment.rows[0];
+        earlyResponse = pending.checkout_url
+          ? { status: 200, body: {
+              order_id: pending.order_id, status: pending.status, checkout_url: pending.checkout_url,
+              amount: { currency: "EUR", value: "29.99" }, plan: "NEXORA All Access", interval: "1 month"
+            } }
+          : { status: 409, body: { error: "Your subscription checkout is already being prepared. Please try again shortly." } };
+      } else {
+        customerId = current.mollie_customer_id;
+        if (!customerId) {
+          const customer = await mollieRequest("/customers", {
+            method: "POST",
+            body: JSON.stringify({ name: current.email, email: current.email })
+          });
+          if (!customer?.id || !/^cst_[A-Za-z0-9]+$/.test(customer.id)) {
+            throw new Error("Mollie did not return a valid customer identifier");
+          }
+          customerId = customer.id;
+          await client.query(
+            "UPDATE app_users SET mollie_customer_id=$1,subscription_status='inactive',subscription_updated_at=NOW() WHERE id=$2",
+            [customerId, user.id]
+          );
+        }
+        orderId = crypto.randomUUID();
+        await client.query(
+          `INSERT INTO own_payments (order_id,user_id,amount,currency,description,status)
+           VALUES ($1,$2,29.99,'EUR','NEXORA All Access monthly subscription','creating')`,
+          [orderId, user.id]
+        );
+      }
+    }
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => {});
+    throw error;
+  } finally {
+    client.release();
   }
-  const orderId = crypto.randomUUID();
-  const amount = "29.99";
-  await pool.query(
-    `INSERT INTO own_payments (order_id,user_id,amount,currency,description,status)
-     VALUES ($1,$2,$3,'EUR','NEXORA All Access monthly subscription','creating')`,
-    [orderId,user.id,amount]
-  );
+  if (earlyResponse) return send(res, earlyResponse.status, earlyResponse.body);
+
   try {
     const payment = await mollieRequest("/payments", {
       method: "POST",
       headers: { "Idempotency-Key": "nexora-first-" + orderId },
       body: JSON.stringify({
-        amount: { currency: "EUR", value: amount },
+        amount: { currency: "EUR", value: "29.99" },
         description: "NEXORA All Access - first monthly payment",
         redirectUrl: PAYMENT_RETURN_URL + "?subscription_payment=" + encodeURIComponent(orderId),
         webhookUrl: PUBLIC_API_URL + "/v1/payments/mollie-webhook",
@@ -396,15 +426,18 @@ async function handleCreateSubscriptionCheckout(req, res) {
     if (!payment?.id || !checkoutUrl) throw new Error("Mollie returned an incomplete subscription checkout");
     await pool.query(
       "UPDATE own_payments SET mollie_payment_id=$1,status=$2,checkout_url=$3,updated_at=NOW() WHERE order_id=$4",
-      [payment.id,payment.status || "open",checkoutUrl,orderId]
+      [payment.id, payment.status || "open", checkoutUrl, orderId]
     );
-    return send(res,201,{
-      order_id:orderId,payment_id:payment.id,status:payment.status || "open",
-      amount:{currency:"EUR",value:amount},checkout_url:checkoutUrl,
-      plan:"NEXORA All Access",interval:"1 month",mode:payment.mode || "unknown"
+    return send(res, 201, {
+      order_id: orderId, payment_id: payment.id, status: payment.status || "open",
+      amount: { currency: "EUR", value: "29.99" }, checkout_url: checkoutUrl,
+      plan: "NEXORA All Access", interval: "1 month", mode: payment.mode || "unknown"
     });
-  } catch(error) {
-    await pool.query("UPDATE own_payments SET status='creation_failed',updated_at=NOW() WHERE order_id=$1",[orderId]);
+  } catch (error) {
+    await pool.query(
+      "UPDATE own_payments SET status='creation_failed',updated_at=NOW() WHERE order_id=$1 AND status='creating'",
+      [orderId]
+    );
     throw error;
   }
 }
