@@ -55,9 +55,11 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   });
   let mockFirstPaymentMetadata = {};
   let aiRequestObserved = null;
+  let aiRequestCount = 0;
   const aiMock = createServer(async (req, res) => {
     const chunks = [];
     for await (const chunk of req) chunks.push(chunk);
+    aiRequestCount++;
     aiRequestObserved = {
       authorization: req.headers.authorization,
       body: JSON.parse(Buffer.concat(chunks).toString("utf8"))
@@ -258,6 +260,22 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   assert.equal(aiRequestObserved.body.model, "gpt-4.1-mini");
   assert.equal(aiRequestObserved.body.max_tokens, 1400);
   assert.match(aiRequestObserved.body.messages[1].content, /Small firms need simple automation/);
+
+  // Four valid AI requests per account per minute are allowed; the fifth is rejected before provider usage.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const response = await fetch("http://127.0.0.1:" + port + "/v1/business/ai-plan", {
+      method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + loggedIn.token },
+      body: JSON.stringify({ industry: "software", problem: "rate limit test" })
+    });
+    assert.equal(response.status, 200);
+  }
+  const providerCallsAtLimit = aiRequestCount;
+  const rateLimitedAI = await fetch("http://127.0.0.1:" + port + "/v1/business/ai-plan", {
+    method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + loggedIn.token },
+    body: JSON.stringify({ industry: "software", problem: "fifth request" })
+  });
+  assert.equal(rateLimitedAI.status, 429);
+  assert.equal(aiRequestCount, providerCallsAtLimit, "rate-limited requests must not reach the AI provider");
 
   // Exercise the member workspace, community and marketplace API used by the published UI.
   const workspaceSave = await fetch("http://127.0.0.1:" + port + "/v1/business/workspace", {
