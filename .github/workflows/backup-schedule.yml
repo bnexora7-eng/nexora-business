@@ -1,0 +1,101 @@
+name: NEXORA scheduled encrypted database backup
+
+on:
+  schedule:
+    - cron: "30 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nexora-database-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 70
+    steps:
+      - name: Validate required secrets
+        env:
+          BACKUP_TOKEN: ${{ secrets.NEXORA_BACKUP_TRIGGER_TOKEN }}
+        run: |
+          if [ -z "$BACKUP_TOKEN" ]; then
+            echo "Missing GitHub Actions secret NEXORA_BACKUP_TRIGGER_TOKEN."
+            exit 1
+          fi
+
+      - name: Trigger backup inside Render
+        id: trigger
+        shell: bash
+        env:
+          BACKUP_TOKEN: ${{ secrets.NEXORA_BACKUP_TRIGGER_TOKEN }}
+          API_URL: https://nexora-payment-integrity-api.onrender.com
+        run: |
+          set -euo pipefail
+          response="$(mktemp)"
+          trap 'rm -f "$response"' EXIT
+          status=""
+          for attempt in $(seq 1 18); do
+            status="$(curl --silent --show-error --output "$response" --write-out '%{http_code}' \
+              --connect-timeout 10 --max-time 35 \
+              -H "Authorization: Bearer $BACKUP_TOKEN" \
+              -X POST "$API_URL/internal/backup" || true)"
+            if [ "$status" = "202" ]; then break; fi
+            if [ "$status" = "409" ]; then
+              echo "A backup job is already running; refusing to start a second one."
+              cat "$response"
+              exit 1
+            fi
+            if [ "$status" = "401" ] || [ "$status" = "503" ]; then
+              echo "Render rejected the backup request (HTTP $status). Check server-side backup configuration."
+              cat "$response"
+              exit 1
+            fi
+            sleep 20
+          done
+          if [ "$status" != "202" ]; then
+            echo "Render did not accept the backup request after retries (last HTTP status: ${status:-none})."
+            cat "$response" 2>/dev/null || true
+            exit 1
+          fi
+          job_id="$(jq -er '.id' "$response")"
+          echo "job_id=$job_id" >> "$GITHUB_OUTPUT"
+          echo "Backup job accepted by Render."
+
+      - name: Wait for verified backup upload
+        shell: bash
+        env:
+          BACKUP_TOKEN: ${{ secrets.NEXORA_BACKUP_TRIGGER_TOKEN }}
+          API_URL: https://nexora-payment-integrity-api.onrender.com
+          JOB_ID: ${{ steps.trigger.outputs.job_id }}
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 330); do
+            response="$(mktemp)"
+            status="$(curl --silent --show-error --output "$response" --write-out '%{http_code}' \
+              --connect-timeout 10 --max-time 25 \
+              -H "Authorization: Bearer $BACKUP_TOKEN" \
+              "$API_URL/internal/backup/$JOB_ID" || true)"
+            if [ "$status" = "200" ]; then
+              state="$(jq -er '.status' "$response")"
+              rm -f "$response"
+              if [ "$state" = "succeeded" ]; then
+                echo "PASS: Render reports backup upload and GitHub asset read-back verification succeeded."
+                exit 0
+              fi
+              if [ "$state" = "failed" ]; then
+                echo "FAIL: Render backup process failed."
+                exit 1
+              fi
+            else
+              cat "$response" 2>/dev/null || true
+              rm -f "$response"
+              echo "Could not retrieve backup job status (HTTP ${status:-none}); failing closed."
+              exit 1
+            fi
+            sleep 10
+          done
+          echo "FAIL: Backup did not finish within 55 minutes."
+          exit 1
