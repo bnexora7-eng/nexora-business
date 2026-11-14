@@ -357,12 +357,26 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   await pool.query("UPDATE app_users SET subscription_status='inactive',mollie_customer_id=NULL,mollie_subscription_id=NULL,subscription_access_until=NULL WHERE id=$1",[accountId]);
 
   // Exercise the complete subscription lifecycle against an isolated Mollie-compatible test server.
-  const checkout = await fetch(`http://127.0.0.1:${port}/v1/subscriptions/checkout`, {
-    method: "POST", headers: { authorization: "Bearer " + loggedIn.token, "content-type": "application/json" },
-    body: JSON.stringify({})
-  });
-  assert.equal(checkout.status, 201);
-  const checkoutBody = await checkout.json();
+  // Two simultaneous checkout requests for one account must not create
+  // duplicate Mollie first payments or duplicate local subscription orders.
+  const checkoutResponses = await Promise.all([1, 2].map(() =>
+    fetch(`http://127.0.0.1:${port}/v1/subscriptions/checkout`, {
+      method: "POST", headers: { authorization: "Bearer " + loggedIn.token, "content-type": "application/json" },
+      body: JSON.stringify({})
+    })
+  ));
+  const checkoutBodies = await Promise.all(checkoutResponses.map(response => response.json()));
+  assert.equal(checkoutResponses.filter(response => response.status === 201).length, 1,
+    "only one concurrent request may create a new checkout");
+  assert.ok(checkoutResponses.every(response => [200, 201, 409].includes(response.status)),
+    "concurrent checkout requests must resolve predictably");
+  const checkout = checkoutResponses.find(response => response.status === 201);
+  const checkoutBody = checkoutBodies[checkoutResponses.indexOf(checkout)];
+  const checkoutOrders = await pool.query(
+    "SELECT COUNT(*)::int AS count FROM own_payments WHERE user_id=$1 AND description='NEXORA All Access monthly subscription' AND status IN ('creating','open','pending','authorized')",
+    [accountId]
+  );
+  assert.equal(checkoutOrders.rows[0].count, 1, "only one pending All Access order may exist per account");
   assert.equal(checkoutBody.amount.value, "29.99");
   assert.equal(checkoutBody.mode, "test");
   mockFirstPaymentMetadata = { order_id: checkoutBody.order_id, user_id: String(accountId), product: "nexora_all_access" };
