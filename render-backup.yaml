@@ -6,7 +6,7 @@ services:
     region: frankfurt
     schedule: "30 3 * * *"
     dockerfilePath: ./backup/Dockerfile
-    dockerContext: .
+    dockerContext: ./backup
     envVars:
       - key: DATABASE_URL
         fromDatabase:
