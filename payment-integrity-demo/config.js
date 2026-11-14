@@ -1,3 +1,3 @@
-// Call the Netlify function directly to bypass the /v1 rewrite layer.
+// Render-hosted NEXORA API. Demo requests use /v1/demo/events; health checks use /health.
 // This sandbox does not connect to live banks or move money.
-window.NEXORA_API_BASE_URL = "https://splendid-lokum-02523e.netlify.app/.netlify/functions/demo-events";
+window.NEXORA_API_BASE_URL = "https://nexora-payment-integrity-api.onrender.com";
