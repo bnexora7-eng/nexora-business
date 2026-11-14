@@ -93,7 +93,7 @@ export default function App() {
     }
   };
 
-  const refreshSubscription = async () => {
+  async function refreshSubscription() {
     if (!API_BASE) return;
     try {
       const token = await SecureStore.getItemAsync("nexora_session");
@@ -105,7 +105,7 @@ export default function App() {
     } catch (error) {
       setSubscriptionMessage(error instanceof Error ? error.message : "Nie można sprawdzić abonamentu.");
     }
-  };
+  }
 
   const startSubscription = async () => {
     setSubscriptionMessage("");
@@ -169,7 +169,7 @@ export default function App() {
   const deleteAccount = () => {
     Alert.alert(
       "Delete NEXORA account?",
-      "This permanently deletes your account, posts, marketplace listings and business workspace. Payment records may be retained without your account link where legally required.",
+      "This permanently deletes your account, posts, marketplace listings and business workspace. Any active NEXORA recurring subscription is canceled first. Payment records may be retained without your account link where legally required.",
       [
         { text: "Cancel", style: "cancel" },
         { text: "Delete account", style: "destructive", onPress: async () => {
