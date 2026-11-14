@@ -590,7 +590,12 @@ async function handleResendVerification(req,res) {
     const found=await pool.query("SELECT id,email,email_verified_at FROM app_users WHERE email=$1",[email]);
     if(found.rowCount&&!found.rows[0].email_verified_at) {
       const token=await issueEmailActionToken(found.rows[0].id,"verify_email",86400);
-      await sendVerificationEmail(email,token);
+      try {
+        await sendVerificationEmail(email,token);
+      } catch(error) {
+        // Keep the response identical for known and unknown addresses.
+        console.error("Verification email resend failed:",error.message);
+      }
     }
   }
   return send(res,200,{status:"if_pending_sent",message:"If this address has an account awaiting verification, a new link has been sent."});
@@ -606,7 +611,12 @@ async function handleRequestPasswordReset(req,res) {
     const found=await pool.query("SELECT id,email,email_verified_at FROM app_users WHERE email=$1",[email]);
     if(found.rowCount&&found.rows[0].email_verified_at) {
       const token=await issueEmailActionToken(found.rows[0].id,"reset_password",3600);
-      await sendPasswordResetEmail(email,token);
+      try {
+        await sendPasswordResetEmail(email,token);
+      } catch(error) {
+        // Do not reveal whether an account exists when SMTP delivery fails.
+        console.error("Password reset email delivery failed:",error.message);
+      }
     }
   }
   return send(res,200,{status:"if_account_sent",message:"If a verified account exists for this address, password reset instructions have been sent."});
