@@ -100,6 +100,9 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   });
   assert.equal(badLogin.status, 401);
 
+  // Grant the test account All Access before exercising paid member endpoints.
+  await pool.query("UPDATE app_users SET subscription_status='active' WHERE id=$1",[accountId]);
+
   // Create user-owned content, then verify account deletion removes it.
   const createPost = await fetch(`http://127.0.0.1:${port}/v1/community/posts`, {
     method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + loggedIn.token },
