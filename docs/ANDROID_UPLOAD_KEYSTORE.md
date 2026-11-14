@@ -9,7 +9,7 @@ The replacement upload keystore was generated and verified by the repository own
 - Format: JKS
 - SHA-256 certificate fingerprint: `73:5A:57:35:B3:FB:48:E6:71:B4:B4:62:18:36:1A:75:57:E7:11:D1:81:5A:72:E0:F3:50:3E:5F:EC:82:60:FE`
 
-The previous keystore's Base64 content was exposed in a chat and must be treated as compromised. Do not use the previous keystore for any release. The replacement key is now configured in GitHub Actions. Workflow run 43617415554 successfully decoded the keystore and verified alias `nexora-upload-2026` and the signing passwords. The signed AAB build is still running; do not treat the key verification alone as a completed release bundle.
+The previous keystore's Base64 content was exposed in a chat and must be treated as compromised. Do not use the previous keystore for any release. The replacement key is configured in GitHub Actions. Workflow run 43617415554 decoded the keystore, verified alias `nexora-upload-2026`, built the signed AAB, verified its signature and uploaded the artifact successfully. The temporary decoded keystore was deleted from the runner. The local owner copy and its passwords must still be retained securely.
 
 ## 1. Protect the replacement keystore
 
