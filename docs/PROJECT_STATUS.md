@@ -6,6 +6,7 @@
 
 ## Canonical project links
 
+- Member workspace (Business Studio, Community, Marketplace): https://bnexora7-eng.github.io/nexora-business/app/
 - Interactive Payment Integrity demo: https://bnexora7-eng.github.io/nexora-business/payment-integrity-demo/demo.html
 - Sandbox API health: https://nexora-payment-integrity-api.onrender.com/health
 - Project/company information: https://bnexora7-eng.github.io/nexora-business/company/
@@ -40,7 +41,16 @@ The repository also contains a separate backend scaffold with webhook signature 
 - The public demo API and the separate PostgreSQL backend scaffold are not yet connected as one production service. The public demo uses temporary demo storage.
 - Do not submit real personal, banking or payment data to the demo.
 - No production security/compliance certification, paying customers, revenue or commercial traction is claimed.
-- Wider NEXORA marketplace/community/AI concepts remain concept prototypes unless separately implemented and verified.
+- Member-facing web workspace now exists for Business Studio, Community and Marketplace. The workspace is connected to the existing authenticated API routes; automated UI-source checks and backend CI pass. AI generation still requires a secure server-side provider key and has not been live-tested. Marketplace listings are not a checkout or escrow system.
+
+## Member workspace — 14 November 2026
+
+- Added `/app/` as the signed-in web workspace with Business Studio save/load, AI plan generation, Community post/read and Marketplace listing/read/publish screens.
+- Added a dashboard link from the account page to the workspace.
+- The workspace checks the authenticated session and server-confirmed All Access entitlement before opening its features. The backend remains authoritative for protected writes.
+- Added automated checks for page JavaScript syntax, required sections/API routes, bearer-token integration, safe text rendering (no `innerHTML`) and the account-to-workspace link.
+- GitHub Actions run for commit `8c84e0600275122300e78ab2188fd862983e4ed1`: API test workflow passed (15 tests, 0 failures); independent verification passed; Render readiness smoke test passed. GitHub Pages deployment was still running at the time of this status update.
+- Render backend auto-deploy was updating to the latest commit. Confirm the final deployment and Pages URL before treating this interface as publicly verified.
 
 ## External outreach
 
