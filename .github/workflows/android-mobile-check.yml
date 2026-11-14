@@ -43,7 +43,7 @@ jobs:
 
       - name: Install mobile dependencies
         working-directory: mobile
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
 
       - name: Audit production dependency tree
         working-directory: mobile
