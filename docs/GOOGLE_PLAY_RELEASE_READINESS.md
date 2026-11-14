@@ -21,7 +21,7 @@ This checklist distinguishes work completed in the repository from actions that 
 ## Mandatory technical release gates
 
 - [ ] Build a **signed Android App Bundle (.aab)** for Play Console. A manual workflow is prepared at `.github/workflows/android-play-aab.yml`; the current CI artifact is an installable APK, not the Play upload bundle.
-- [x] Generate and securely retain the Android upload keystore (owner verified on 13 November 2026). [ ] Add the four GitHub repository Actions secrets: `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` and `ANDROID_KEY_PASSWORD`. The signed-AAB workflow uses these secrets and deletes its temporary keystore after the build. Never commit the keystore or passwords to Git. Follow [ANDROID_UPLOAD_KEYSTORE.md](ANDROID_UPLOAD_KEYSTORE.md) for the owner-only setup steps.
+- [ ] Generate and securely retain the Android upload keystore, then verify its alias and passwords. The current signed-AAB workflow expects these GitHub Actions secrets: `ANDROID_KEYSTORE_BASE64`, `NEXORA_UPLOAD_STORE_PASSWORD` and (optionally) `NEXORA_UPLOAD_KEY_PASSWORD`; it uses the fixed alias `nexora-upload-2026`. If the key password secret is omitted, the workflow falls back to the store password. The temporary decoded keystore is deleted after the build. Never commit the keystore or passwords to Git. Follow [ANDROID_UPLOAD_KEYSTORE.md](ANDROID_UPLOAD_KEYSTORE.md) and verify that its instructions match these exact workflow names before configuring secrets.
 - [ ] Verify the final generated manifest targets **Android 16 / API level 36 or higher**, required for new app submissions from 31 August 2026.
 - [ ] Verify the production API and PostgreSQL readiness, HTTPS, CORS, database backups, monitoring and recovery.
 - [ ] Complete live device tests for registration, login, session restoration, logout, account deletion, Community publish/read, Marketplace publish/read and Business workspace save/load.
@@ -39,12 +39,13 @@ Store listing copy is drafted in [GOOGLE_PLAY_STORE_LISTING_DRAFT.md](GOOGLE_PLA
 - [ ] Before public release, replace the privacy-policy project-operator notice with the responsible legal person's/entity's full legal name and postal address; confirm processor agreements and any international-transfer safeguards for Render, Mollie and the AI provider.
 - [ ] Complete the Data safety form based on the actual production SDKs, server configuration and data flows; do not copy a generic declaration.
 - [ ] Complete content rating, target audience, ads declaration, app access instructions and any financial-features declarations accurately.
+- [ ] Implement and verify the correct Play Billing route for the €29.99 digital subscription. Do not assume the existing Mollie checkout alone is compliant for an app distributed through Google Play. Google Play's EEA alternative-billing programs require business registration, program enrollment, the applicable alternative-billing APIs and transaction reporting; otherwise use the applicable Google Play Billing flow. Recheck current country-specific rules before release. See the official [EEA alternative billing requirements](https://support.google.com/googleplay/android-developer/answer/12348241?hl=en). 
 - [ ] Review all Google Play Developer Program policies, including User Data, account deletion, payments, impersonation and financial-services requirements where applicable.
 - [ ] If the Play Console account is a personal account created after 13 November 2023, complete the required closed test with at least 12 opted-in testers continuously for 14 days before applying for production access.
 
 ## Verified deployment status — 13 November 2026
 
-- Render `/ready` returned `status=ready` and `database=connected` after merge.
+- Render `/ready` returned `status=ready` and `database=connected` after merge. The currently attached PostgreSQL instance is on the temporary Free plan and is scheduled to expire on 12 December 2026; secure a durable database and backup/recovery path before that date.
 - GitHub Pages deployment succeeded; the workflow verified the privacy policy and account-deletion pages are publicly served.
 - PostgreSQL-backed API tests and mobile TypeScript checks passed on the merged release-preparation commit.
 - Installable test APK 0.4.0 was built successfully; physical-device account registration, login and deletion still need a final test.
