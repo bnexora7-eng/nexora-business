@@ -49,13 +49,22 @@ def request(method, path, payload=None):
         detail = exc.read(2048).decode("utf-8", "replace")
         raise RuntimeError(f"GitHub API {method} failed ({exc.code}): {detail}") from exc
 
+def git_blob_sha(content_bytes):
+    header = f"blob {len(content_bytes)}\\0".encode("ascii")
+    return hashlib.sha1(header + content_bytes).hexdigest()
+
 def put_file(path, content_bytes, message):
     payload = {
         "message": message,
         "content": base64.b64encode(content_bytes).decode("ascii"),
         "branch": branch,
     }
-    return request("PUT", "contents/" + urllib.parse.quote(path, safe="/"), payload)
+    result = request("PUT", "contents/" + urllib.parse.quote(path, safe="/"), payload)
+    expected = git_blob_sha(content_bytes)
+    actual = result.get("content", {}).get("sha")
+    if actual != expected:
+        raise SystemExit("GitHub returned an unexpected content hash for " + path)
+    return result
 
 base = f"backups/nexora-{stamp}"
 encrypted_path = base + ".dump.enc"
@@ -74,10 +83,10 @@ put_file(encrypted_path, raw, f"backup: encrypted PostgreSQL dump {stamp}")
 put_file(manifest_path, json.dumps(manifest, indent=2).encode("utf-8"), f"backup: manifest {stamp}")
 
 # Read back both objects before pruning old copies.
-for path in (encrypted_path, manifest_path):
+for path, expected_bytes in ((encrypted_path, raw), (manifest_path, json.dumps(manifest, indent=2).encode("utf-8"))):
     result = request("GET", "contents/" + urllib.parse.quote(path, safe="/") + "?ref=" + urllib.parse.quote(branch, safe=""))
-    if not result.get("sha"):
-        raise SystemExit("Uploaded backup could not be read back: " + path)
+    if result.get("sha") != git_blob_sha(expected_bytes):
+        raise SystemExit("Uploaded backup read-back hash mismatch: " + path)
 
 # Keep 30 days of daily encrypted backups. Prune only after a new copy was uploaded and read back.
 cutoff = datetime.now(timezone.utc) - timedelta(days=30)
