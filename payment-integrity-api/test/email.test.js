@@ -114,3 +114,40 @@ test("Brevo delivery failures are surfaced without leaking provider response det
     globalThis.fetch = previous.fetch;
   }
 });
+
+
+test("production email fails closed when Brevo credentials or verified sender are missing", async () => {
+  const previous = {
+    nodeEnv: process.env.NODE_ENV,
+    smtpTestMode: process.env.SMTP_TEST_MODE,
+    brevoKey: process.env.BREVO_API_KEY,
+    brevoFrom: process.env.BREVO_FROM,
+    smtpUser: process.env.SMTP_USER,
+    smtpPassword: process.env.SMTP_APP_PASSWORD
+  };
+  process.env.NODE_ENV = "production";
+  delete process.env.SMTP_TEST_MODE;
+  delete process.env.BREVO_API_KEY;
+  delete process.env.BREVO_FROM;
+  delete process.env.SMTP_USER;
+  delete process.env.SMTP_APP_PASSWORD;
+  try {
+    const { sendVerificationEmail } = await import("../src/email.js");
+    await assert.rejects(
+      () => sendVerificationEmail("member@example.test", "missing-config-token"),
+      error => error.statusCode === 503 && /BREVO_API_KEY/.test(error.message)
+    );
+    process.env.BREVO_API_KEY = "unit-test-brevo-key";
+    await assert.rejects(
+      () => sendVerificationEmail("member@example.test", "missing-sender-token"),
+      error => error.statusCode === 503 && /BREVO_FROM/.test(error.message)
+    );
+  } finally {
+    if (previous.nodeEnv === undefined) delete process.env.NODE_ENV; else process.env.NODE_ENV = previous.nodeEnv;
+    if (previous.smtpTestMode === undefined) delete process.env.SMTP_TEST_MODE; else process.env.SMTP_TEST_MODE = previous.smtpTestMode;
+    if (previous.brevoKey === undefined) delete process.env.BREVO_API_KEY; else process.env.BREVO_API_KEY = previous.brevoKey;
+    if (previous.brevoFrom === undefined) delete process.env.BREVO_FROM; else process.env.BREVO_FROM = previous.brevoFrom;
+    if (previous.smtpUser === undefined) delete process.env.SMTP_USER; else process.env.SMTP_USER = previous.smtpUser;
+    if (previous.smtpPassword === undefined) delete process.env.SMTP_APP_PASSWORD; else process.env.SMTP_APP_PASSWORD = previous.smtpPassword;
+  }
+});
