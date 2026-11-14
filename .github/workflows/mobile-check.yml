@@ -6,6 +6,7 @@ on:
     paths:
       - "mobile/**"
       - ".github/workflows/mobile-check.yml"
+      - "scripts/**"
   pull_request:
     branches: [main]
     paths:
