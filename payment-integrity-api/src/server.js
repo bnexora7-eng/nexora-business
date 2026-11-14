@@ -856,6 +856,18 @@ async function handleBusinessAIPlan(req,res) {
   const user=await requireUser(req,res); if(!user) return;
   if(req.method!=="POST") return send(res,405,{error:"Method not allowed"});
   if(!AI_API_KEY) return send(res,503,{error:"AI planning is not configured yet. The secure model key must be added to the server environment."});
+  const raw=await readBody(req); let input;
+  try { input=JSON.parse(raw.toString("utf8")); } catch { return send(res,400,{error:"Invalid JSON"}); }
+  const fields=["business_name","industry","customer","problem","offer","budget","duration_days"];
+  const values={};
+  for(const key of fields) {
+    const value=input?.[key];
+    if(value!==undefined && typeof value!=="string" && typeof value!=="number") return send(res,422,{error:"Business plan fields must be text or numbers"});
+    values[key]=String(value??"").trim();
+    if(values[key].length>1200) return send(res,422,{error:"One of the business plan fields is too long"});
+  }
+  if(!values.problem && !values.offer && !values.industry) return send(res,422,{error:"Add at least an industry, customer problem or offer before generating a plan"});
+  // Count only valid generation attempts so malformed forms do not consume a member's quota.
   const now=Date.now();
   if (!aiRequests.has(user.id) && aiRequests.size >= MAX_TRACKED_CLIENTS) {
     for (const [accountId, timestamps] of aiRequests) {
@@ -868,17 +880,6 @@ async function handleBusinessAIPlan(req,res) {
   const recent=(aiRequests.get(user.id)||[]).filter(t=>now-t<60000);
   if(recent.length>=4) return send(res,429,{error:"AI usage limit reached. Please wait a minute and try again."});
   recent.push(now); aiRequests.set(user.id,recent);
-  const raw=await readBody(req); let input;
-  try { input=JSON.parse(raw.toString("utf8")); } catch { return send(res,400,{error:"Invalid JSON"}); }
-  const fields=["business_name","industry","customer","problem","offer","budget","duration_days"];
-  const values={};
-  for(const key of fields) {
-    const value=input?.[key];
-    if(value!==undefined && typeof value!=="string" && typeof value!=="number") return send(res,422,{error:"Business plan fields must be text or numbers"});
-    values[key]=String(value??"").trim();
-    if(values[key].length>1200) return send(res,422,{error:"One of the business plan fields is too long"});
-  }
-  if(!values.problem && !values.offer && !values.industry) return send(res,422,{error:"Add at least an industry, customer problem or offer before generating a plan"});
   const prompt=fields.map(k=>k+": "+(values[k]||"Not provided")).join("\n");
   const controller=new AbortController();
   const timeout=setTimeout(()=>controller.abort(),25000);
