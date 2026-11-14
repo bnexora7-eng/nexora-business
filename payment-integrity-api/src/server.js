@@ -809,6 +809,16 @@ async function deleteUserAccount(userId) {
       );
     }
 
+    const paidFirstPayment = await client.query(
+      `SELECT order_id FROM own_payments
+       WHERE user_id=$1 AND description='NEXORA All Access monthly subscription' AND status='paid'
+       ORDER BY created_at DESC LIMIT 1`,
+      [userId]
+    );
+    if (paidFirstPayment.rowCount && !account.mollie_subscription_id) {
+      throw new Error("A first subscription payment has been received but recurring subscription activation is not yet reconciled. Account deletion is paused.");
+    }
+
     const subscriptionMayBeActive = ["active", "activation_pending", "past_due"].includes(account.subscription_status);
     if (subscriptionMayBeActive && !account.mollie_subscription_id) {
       throw new Error("The recurring subscription status cannot be safely verified yet. Retry account deletion after subscription reconciliation.");
