@@ -6,9 +6,10 @@ umask 077
 : "${BACKUP_ENCRYPTION_KEY:?Set BACKUP_ENCRYPTION_KEY privately}"
 : "${RESTORE_DATABASE_URL:?Set RESTORE_DATABASE_URL to a separate recovery database}"
 : "${1:?Usage: BACKUP_ENCRYPTION_KEY=... RESTORE_DATABASE_URL=... ./restore.sh backup.dump.enc}"
+SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT HUP INT TERM
-python3 /backup/crypto.py decrypt "$1" "$WORK/restore.dump"
+python3 "$SCRIPT_DIR/crypto.py" decrypt "$1" "$WORK/restore.dump"
 pg_restore --list "$WORK/restore.dump" > "$WORK/archive-list.txt"
 pg_restore --no-password --dbname="$RESTORE_DATABASE_URL" \
   --no-owner --no-acl --exit-on-error "$WORK/restore.dump"
