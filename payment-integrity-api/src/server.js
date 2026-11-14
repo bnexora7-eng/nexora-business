@@ -193,6 +193,7 @@ async function getAuthenticatedUser(req) {
   const result = await pool.query(
     `SELECT u.id, u.email FROM app_sessions s JOIN app_users u ON u.id=s.user_id
      WHERE s.token_hash=$1 AND s.revoked_at IS NULL AND s.expires_at > NOW()
+       AND u.email_verified_at IS NOT NULL
        AND u.email_verified_at IS NOT NULL`,
     [hashSessionToken(token)]
   );
