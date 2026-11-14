@@ -286,6 +286,21 @@ async function handleCreateSubscriptionCheckout(req, res) {
   if (current.subscription_status === "active" || current.subscription_status === "activation_pending") {
     return send(res, 409, { error: "A NEXORA subscription is already active or being activated" });
   }
+  const pendingPayment = await pool.query(
+    `SELECT order_id,status,checkout_url FROM own_payments
+     WHERE user_id=$1 AND description='NEXORA All Access monthly subscription'
+       AND status IN ('creating','open','pending','authorized')
+     ORDER BY created_at DESC LIMIT 1`,
+    [user.id]
+  );
+  if (pendingPayment.rowCount) {
+    const pending = pendingPayment.rows[0];
+    if (pending.checkout_url) return send(res,200,{
+      order_id:pending.order_id,status:pending.status,checkout_url:pending.checkout_url,
+      amount:{currency:"EUR",value:"29.99"},plan:"NEXORA All Access",interval:"1 month"
+    });
+    return send(res,409,{error:"Your subscription checkout is already being prepared. Please try again shortly."});
+  }
   let customerId = current.mollie_customer_id;
   if (!customerId) {
     const customer = await mollieRequest("/customers", {
