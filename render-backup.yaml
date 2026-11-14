@@ -1,0 +1,22 @@
+services:
+  - type: cron
+    name: nexora-postgres-backup
+    runtime: docker
+    plan: 0.5c-512mb
+    region: frankfurt
+    schedule: "30 3 * * *"
+    dockerfilePath: ./backup/Dockerfile
+    dockerContext: .
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: nexora-business-db
+          property: connectionString
+      - key: BACKUP_REPOSITORY
+        value: bnexora7-eng/nexora-private-backups
+      - key: BACKUP_BRANCH
+        value: main
+      - key: GITHUB_TOKEN
+        sync: false
+      - key: BACKUP_ENCRYPTION_KEY
+        generateValue: true
