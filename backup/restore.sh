@@ -8,8 +8,7 @@ umask 077
 : "${1:?Usage: BACKUP_ENCRYPTION_KEY=... RESTORE_DATABASE_URL=... ./restore.sh backup.dump.enc}"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT HUP INT TERM
-openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 \
-  -pass env:BACKUP_ENCRYPTION_KEY -in "$1" -out "$WORK/restore.dump"
+python3 /backup/crypto.py decrypt "$1" "$WORK/restore.dump"
 pg_restore --list "$WORK/restore.dump" > "$WORK/archive-list.txt"
 pg_restore --no-password --dbname="$RESTORE_DATABASE_URL" \
   --no-owner --no-acl --exit-on-error "$WORK/restore.dump"
