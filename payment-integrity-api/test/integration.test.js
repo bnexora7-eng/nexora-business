@@ -100,6 +100,13 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   });
   assert.equal(badLogin.status, 401);
 
+  const lockedFeature = await fetch(`http://127.0.0.1:${port}/v1/community/posts`, {
+    method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + loggedIn.token },
+    body: JSON.stringify({ body: "must require a paid subscription" })
+  });
+  assert.equal(lockedFeature.status, 402);
+  assert.equal((await lockedFeature.json()).code, "subscription_required");
+
   // Grant the test account All Access before exercising paid member endpoints.
   await pool.query("UPDATE app_users SET subscription_status='active' WHERE id=$1",[accountId]);
 
