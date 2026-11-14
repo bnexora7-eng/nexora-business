@@ -28,7 +28,10 @@ async function sendEmail(message) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 15000);
     try {
-      const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+      const brevoUrl = process.env.NODE_ENV === "test" && process.env.BREVO_API_URL
+        ? process.env.BREVO_API_URL
+        : "https://api.brevo.com/v3/smtp/email";
+      const response = await fetch(brevoUrl, {
         method: "POST",
         signal: controller.signal,
         headers: { "api-key": apiKey, "accept": "application/json", "content-type": "application/json" },
