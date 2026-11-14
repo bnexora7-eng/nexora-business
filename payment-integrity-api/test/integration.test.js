@@ -237,14 +237,14 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   for (let attempt = 0; attempt < 10; attempt++) {
     const response = await fetch(`http://127.0.0.1:${port}/v1/auth/login`, {
       method: "POST",
-      headers: { "content-type": "application/json", "x-forwarded-for": throttledIP },
+      headers: { "content-type": "application/json", "x-forwarded-for": "198.51.100.10, " + throttledIP },
       body: JSON.stringify({ email: "rate-limit@example.invalid", password: "incorrect-password" })
     });
     assert.equal(response.status, 401, `auth attempt ${attempt + 1} should be allowed`);
   }
   const blockedAttempt = await fetch(`http://127.0.0.1:${port}/v1/auth/login`, {
     method: "POST",
-    headers: { "content-type": "application/json", "x-forwarded-for": throttledIP },
+    headers: { "content-type": "application/json", "x-forwarded-for": "198.51.100.11, " + throttledIP },
     body: JSON.stringify({ email: "rate-limit@example.invalid", password: "incorrect-password" })
   });
   assert.equal(blockedAttempt.status, 429, "the 11th auth attempt in 15 minutes must be blocked");
@@ -491,6 +491,19 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   const canceledState = await subscriptionState.json();
   assert.equal(canceledState.status, "canceled");
   assert.equal(canceledState.access, true);
+
+  // A later-arriving paid notification must never resurrect a canceled plan.
+  recurringPaymentStatus = "paid";
+  recurringPaymentCreatedAt = "2026-11-14T12:00:00Z";
+  const paidAfterCancellation = await fetch(`http://127.0.0.1:${port}/v1/payments/mollie-webhook`, {
+    method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: "id=tr_nexorarecurring"
+  });
+  assert.equal(paidAfterCancellation.status, 200);
+  subscriptionState = await fetch(`http://127.0.0.1:${port}/v1/subscriptions/me`, {
+    headers: { authorization: "Bearer " + loggedIn.token }
+  });
+  assert.equal((await subscriptionState.json()).status, "canceled",
+    "a paid webhook must not reactivate a canceled subscription");
 
   // Create user-owned content, then verify account deletion removes it.
   const createPost = await fetch(`http://127.0.0.1:${port}/v1/community/posts`, {
