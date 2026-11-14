@@ -18,7 +18,7 @@ This file is the current release-gate summary. A green CI check validates only t
 | Mollie lifecycle logic | Concurrent checkout, first-payment webhook, recurring renewals, amount mismatch, cancellation and deletion safeguards covered by mocked-provider integration tests | **PASS in mocked tests only** |
 | Backup runner image and cryptography | Backup runner CI 43618325150: Docker build, PostgreSQL 18.7 tools, AES-256-GCM round-trip and tamper rejection | **PASS in CI only** |
 | Public Pages smoke check | Run 43620113826 checked homepage, account, verification, recovery, deletion and privacy pages plus API readiness | **PASS** |
-| Android target SDK and signing setup | Run 43619553655: Expo config, TypeScript, SDK 36 baseline and upload-key alias validation | **PASS; signed AAB build still in progress at last check** |
+| Android target SDK and signing setup | Run 43619553655: Expo config, TypeScript, SDK 36 baseline and upload-key alias validation | **PASS; current signed AAB build 43619876826 completed successfully and artifact verification passed** |
 | Android billing safety | External Mollie checkout button disabled in the Android client until compliant Play billing is implemented | **PASS as a safety block** |
 
 ## 2. Open production gates
@@ -29,7 +29,7 @@ This file is the current release-gate summary. A green CI check validates only t
 - Current expiry: **12 December 2026**. Free plan has no automated backups or point-in-time recovery.
 - No actual database export or restore test has been completed.
 - Encrypted backup Cron Blueprint and runner code are prepared. Container and encryption checks passed, but Render has not created the Cron service.
-- The Cron requires a private GitHub repository `bnexora-private-backups`, a fine-grained token scoped only to that repository, and a Render payment method. The user authorized a maximum of approximately **$1/month** for this backup service only.
+- The private GitHub repository `bnexora7-eng/nexora-private-backups` and a fine-grained token scoped only to that repository have been created. The token is valid for 90 days. The Cron still requires Render to accept a payment method before the service can be planned and created. The user authorized a maximum of approximately **$1/month** for this backup service only.
 - After setup: plan and review the single Cron resource, deploy it, create the first encrypted backup, verify the private release assets and hashes, then restore into a separate PostgreSQL 18 recovery database. Do not overwrite production. Any additional paid recovery resource requires separate approval.
 
 ### B. Transactional email
@@ -49,7 +49,7 @@ This file is the current release-gate summary. A green CI check validates only t
 
 ### D. Android / Google Play
 
-- A signed AAB was previously built and signature-verified (workflow 43617415554, commit ce75a5efaa), but that artifact predates the Android Mollie-checkout safety block and is **obsolete — do not upload it**. Current signed AAB rebuild 43619876826 has passed dependency audit, TypeScript, Expo config, target SDK 36 and keystore verification; `bundleRelease` is still running. A new debug validation APK completed successfully in run 43619889691 (SHA-256 `a3af0ae5cb902d03cd6e97eb1c4429469c695025a3fbeb06bd9c3c83c538a315`); release APK signature/package verification completed in 43619871789. Signed test artifact `app-release.apk` is 56,741,823 bytes (SHA-256 `22fa7e79e3f09e6c4447548c52d26d61a6cfaafbafed621d0b633fb4ce2236fd`); it is for physical-device testing, not Play upload.
+- A signed AAB rebuild completed successfully in workflow 43619876826 on 14 November 2026. Dependency audit, TypeScript, Expo config, target SDK 36, upload-keystore verification, `bundleRelease`, and signed-AAB verification all passed. The workflow uploaded the signed AAB as a GitHub Actions artifact. It has **not** been submitted to Play Console. Any older AAB predating the Android Mollie-checkout safety block is obsolete — do not upload it. A new debug validation APK completed successfully in run 43619889691 (SHA-256 `a3af0ae5cb902d03cd6e97eb1c4429469c695025a3fbeb06bd9c3c83c538a315`); release APK signature/package verification completed in 43619871789. Signed test artifact `app-release.apk` is 56,741,823 bytes (SHA-256 `22fa7e79e3f09e6c4447548c52d26d61a6cfaafbafed621d0b633fb4ce2236fd`); it is for physical-device testing, not Play upload.
 - A fresh Android validation APK build was running in workflow 43619553600; another installable APK build was triggered after the latest workflow corrections.
 - Expo SDK 54+ and target SDK 36 baseline passed CI. Upload keystore alias `nexora-upload-2026` and signing configuration passed validation. The temporary decoded key is deleted by the workflow.
 - Android external Mollie checkout is intentionally disabled. Before enabling digital subscriptions, either implement Google Play Billing with server-side purchase verification or complete Google's EEA alternative-billing enrollment and all applicable APIs, reporting, user disclosure, customer-support and dispute requirements. EEA alternative billing requires a registered business.
@@ -85,7 +85,7 @@ PostCSS is pinned to 8.5.33 to address the current PostCSS advisories. Full rati
 
 ## 4. Owner actions still required
 
-1. Create the private `bnexora-private-backups` repository and its narrowly scoped GitHub token; add a payment method in Render for the approved backup Cron only.
+1. Add a payment method in Render for the approved backup Cron only. The private backup repository and narrowly scoped GitHub token already exist; after the Render service is created, add the token directly to its environment and verify the first backup.
 2. Create the Brevo API key and verify the sender/domain; enter secrets directly in Render.
 3. Complete the required Dutch business registration and legal identity/VAT details before merchant onboarding and publication.
 4. Complete Mollie test-mode and merchant verification, then select the Android billing route.
