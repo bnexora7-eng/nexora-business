@@ -520,7 +520,14 @@ async function handleMollieWebhook(req, res) {
       console.error("Mollie payment amount mismatch",molliePaymentId);
       return send(res,409,{error:"Payment amount mismatch"});
     }
-    await pool.query("UPDATE own_payments SET status=$1,updated_at=NOW() WHERE order_id=$2",[payment.status,orderId]);
+    // Mollie notifications can be delayed or delivered out of order. Once a
+    // payment is paid, never let a later retry/old notification downgrade it.
+    await pool.query(
+      `UPDATE own_payments SET status=$1,updated_at=NOW()
+       WHERE order_id=$2 AND status <> 'paid'
+         AND (status NOT IN ('canceled','expired','failed') OR $1='paid')`,
+      [payment.status,orderId]
+    );
     if (order.description === "NEXORA All Access monthly subscription" && payment.status === "paid") {
       // Serialize first-payment activation with account deletion and checkout.
       // If deletion owns the row lock first, this sees no account after it commits
@@ -594,8 +601,12 @@ async function handleMollieWebhook(req, res) {
   }
   const subscriptionId=payment.subscriptionId || payment.subscription_id;
   if (typeof subscriptionId === "string") {
-    const member=await pool.query("SELECT id,subscription_status FROM app_users WHERE mollie_subscription_id=$1",[subscriptionId]);
-    if (!member.rowCount) return send(res,404,{error:"Recurring subscription not found"});
+    // Mollie Payment resources include createdAt. Reject an incomplete event
+    // rather than applying an ordering decision based on webhook arrival time.
+    const paymentCreatedAt = typeof payment.createdAt === "string" ? new Date(payment.createdAt) : null;
+    if (!paymentCreatedAt || Number.isNaN(paymentCreatedAt.getTime())) {
+      return send(res,422,{error:"Recurring payment is missing a valid creation timestamp"});
+    }
     // A paid renewal only grants membership when Mollie confirms the exact
     // NEXORA All Access amount and currency configured for this product.
     if (payment.amount?.currency !== "EUR" || payment.amount?.value !== "29.99") {
@@ -603,8 +614,37 @@ async function handleMollieWebhook(req, res) {
       return send(res,409,{error:"Recurring payment amount mismatch"});
     }
     const nextStatus=payment.status==="paid"?"active":(["failed","canceled","expired"].includes(payment.status)?"past_due":null);
-    if(nextStatus && member.rows[0].subscription_status!=="canceled") {
-      await pool.query("UPDATE app_users SET subscription_status=$1,subscription_updated_at=NOW() WHERE id=$2",[nextStatus,member.rows[0].id]);
+    if(nextStatus) {
+      const client=await pool.connect();
+      try {
+        await client.query("BEGIN");
+        const member=await client.query(
+          "SELECT id,subscription_status,subscription_last_payment_created_at FROM app_users WHERE mollie_subscription_id=$1 FOR UPDATE",
+          [subscriptionId]
+        );
+        if(!member.rowCount) {
+          await client.query("ROLLBACK");
+          return send(res,404,{error:"Recurring subscription not found"});
+        }
+        const current=member.rows[0];
+        const lastApplied=current.subscription_last_payment_created_at
+          ? new Date(current.subscription_last_payment_created_at).getTime()
+          : 0;
+        if(current.subscription_status!=="canceled" && paymentCreatedAt.getTime()>lastApplied) {
+          await client.query(
+            `UPDATE app_users
+             SET subscription_status=$1,subscription_last_payment_created_at=$2,subscription_updated_at=NOW()
+             WHERE id=$3 AND subscription_status <> 'canceled'`,
+            [nextStatus,paymentCreatedAt.toISOString(),current.id]
+          );
+        }
+        await client.query("COMMIT");
+      } catch(error) {
+        await client.query("ROLLBACK").catch(()=>{});
+        throw error;
+      } finally {
+        client.release();
+      }
     }
     return send(res,200,{received:true,subscription:true});
   }
