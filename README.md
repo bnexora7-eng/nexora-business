@@ -2,6 +2,8 @@
 
 **Current status:** Pre-production prototype. The Payment Integrity sandbox is publicly demonstrable, but it is not a production payment or fraud-detection service.
 
+**Engineering continuity and release gates:** [Production Readiness Master Record](docs/PRODUCTION_READINESS_MASTER.md).
+
 ## Live links
 
 - **Payment Integrity demo:** https://bnexora7-eng.github.io/nexora-business/payment-integrity-demo/demo.html
