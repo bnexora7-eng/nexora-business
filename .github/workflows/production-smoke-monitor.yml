@@ -57,7 +57,7 @@ jobs:
               ready="true"
               break
             fi
-            echo "Waiting for the latest Pages deployment (\${attempt}/12)..."
+            echo "Waiting for the latest Pages deployment (${attempt}/12)..."
             sleep 10
           done
           test "$ready" = "true"
