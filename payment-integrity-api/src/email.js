@@ -4,57 +4,57 @@ import crypto from "node:crypto";
 function getWebBase() {
   return (process.env.NEXORA_ACCOUNT_URL || "https://bnexora7-eng.github.io/nexora-business/account/").replace(/\/$/, "");
 }
-const FROM = process.env.SMTP_FROM || process.env.SMTP_USER || "bnexora7@gmail.com";
 
-function getTransport() {
-  if (process.env.NODE_ENV === "test" && process.env.SMTP_TEST_MODE === "true") {
-    return nodemailer.createTransport({ streamTransport: true, buffer: true, newline: "unix" });
-  }
-  const host = process.env.SMTP_HOST || "smtp.gmail.com";
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_APP_PASSWORD;
-  if (!user) throw Object.assign(new Error("Missing required server variable: SMTP_USER."), { statusCode: 503 });
-  if (!pass) throw Object.assign(new Error("Missing required server variable: SMTP_APP_PASSWORD."), { statusCode: 503 });
-  return nodemailer.createTransport({
-    host, port: Number(process.env.SMTP_PORT || 465),
-    secure: (process.env.SMTP_SECURE || "true") === "true",
-    auth: { user, pass }, connectionTimeout: 10000, greetingTimeout: 10000, socketTimeout: 15000
-  });
+function getTestTransport() {
+  return nodemailer.createTransport({ streamTransport: true, buffer: true, newline: "unix" });
 }
 
 async function sendEmail(message) {
-  const apiKey = process.env.BREVO_API_KEY;
-  if (apiKey) {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000);
-    try {
-      const response = await fetch("https://api.brevo.com/v3/smtp/email", {
-        method: "POST",
-        signal: controller.signal,
-        headers: { "api-key": apiKey, "accept": "application/json", "content-type": "application/json" },
-        body: JSON.stringify({
-          sender: { name: "NEXORA", email: process.env.BREVO_FROM || FROM },
-          to: [{ email: message.to }],
-          subject: message.subject,
-          textContent: message.text,
-          htmlContent: message.html
-        })
-      });
-      const result = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        console.error("Brevo email API rejected message:", response.status, result.message || result.code || "unknown error");
-        throw Object.assign(new Error("Brevo email API rejected the message (HTTP " + response.status + ")."), { statusCode: 502 });
-      }
-      console.log("NEXORA email accepted by Brevo:", result.messageId || "message ID unavailable");
-      return { messageId: result.messageId };
-    } finally {
-      clearTimeout(timeout);
-    }
+  // Local tests may render messages without contacting an external provider.
+  if (process.env.NODE_ENV === "test" && process.env.SMTP_TEST_MODE === "true") {
+    return await getTestTransport().sendMail({
+      from: "NEXORA <test@nexora.invalid>",
+      to: message.to,
+      subject: message.subject,
+      text: message.text,
+      html: message.html
+    });
   }
-  return await getTransport().sendMail({
-    from: FROM, to: message.to, subject: message.subject,
-    text: message.text, html: message.html
-  });
+
+  const apiKey = process.env.BREVO_API_KEY;
+  const sender = process.env.BREVO_FROM;
+  if (!apiKey) {
+    throw Object.assign(new Error("Transactional email is not configured: BREVO_API_KEY is required."), { statusCode: 503 });
+  }
+  if (!sender) {
+    throw Object.assign(new Error("Transactional email is not configured: BREVO_FROM must be a verified sender."), { statusCode: 503 });
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+  try {
+    const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      signal: controller.signal,
+      headers: { "api-key": apiKey, "accept": "application/json", "content-type": "application/json" },
+      body: JSON.stringify({
+        sender: { name: "NEXORA", email: sender },
+        to: [{ email: message.to }],
+        subject: message.subject,
+        textContent: message.text,
+        htmlContent: message.html
+      })
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      console.error("Brevo email API rejected message:", response.status, result.message || result.code || "unknown error");
+      throw Object.assign(new Error("Brevo email API rejected the message (HTTP " + response.status + ")."), { statusCode: 502 });
+    }
+    console.log("NEXORA email accepted by Brevo:", result.messageId || "message ID unavailable");
+    return { messageId: result.messageId };
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 export function createActionToken() {
