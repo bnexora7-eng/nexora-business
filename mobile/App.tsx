@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import * as SecureStore from "expo-secure-store";
 import NexoraModules from "./NexoraModules";
 import { API_BASE } from "./api";
-import { Alert, BackHandler, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Alert, BackHandler, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View, Linking } from "react-native";
 
 type Tab = "Home" | "Community" | "Marketplace" | "Business" | "Integrity" | "Payments" | "Profile";
 type Decision = "ACCEPT" | "REVIEW" | "REJECT";
