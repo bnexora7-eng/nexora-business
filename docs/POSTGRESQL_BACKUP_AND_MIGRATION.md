@@ -93,3 +93,8 @@ Official references:
 - https://render.com/docs/blueprint-spec
 
 Do not write dumps to an ephemeral filesystem and call that a backup. Do not send database credentials, dump contents, or encryption keys to logs, the public application repository, or chat. No verified backup exists until the first scheduled/manual run uploads ciphertext and passes read-back verification, followed by a separate-database restore test.
+
+
+### Container and cryptography CI verification — 14 November 2026
+
+GitHub Actions backup-runner check **43617810597** passed on commit 19aebc536b. It built the Docker image, confirmed PostgreSQL client tools at 18.7, verified GNU timeout and shell/Python syntax, performed an AES-256-GCM encrypt/decrypt round trip, and confirmed that tampered ciphertext is rejected. This validates the runner image and encryption helper only; it does **not** represent a database export or restore test.
