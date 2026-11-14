@@ -49,7 +49,7 @@ This file is the current release-gate summary. A green CI check validates only t
 
 ### D. Android / Google Play
 
-- A signed AAB was previously built and signature-verified (workflow 43617415554, commit ce75a5efaa). A newer signed AAB rebuild with the Android Mollie-checkout block and current dependency audit was running in workflow 43619553655 at last review.
+- A signed AAB was previously built and signature-verified (workflow 43617415554, commit ce75a5efaa), but that artifact predates the Android Mollie-checkout safety block and is **obsolete — do not upload it**. Current signed AAB rebuild 43619876826 has passed dependency audit, TypeScript, Expo config, target SDK 36 and keystore verification; `bundleRelease` is still running. A new debug validation APK completed successfully in run 43619889691 (SHA-256 `a3af0ae5cb902d03cd6e97eb1c4429469c695025a3fbeb06bd9c3c83c538a315`); release APK signature/package verification is running in 43619871789.
 - A fresh Android validation APK build was running in workflow 43619553600; another installable APK build was triggered after the latest workflow corrections.
 - Expo SDK 54+ and target SDK 36 baseline passed CI. Upload keystore alias `nexora-upload-2026` and signing configuration passed validation. The temporary decoded key is deleted by the workflow.
 - Android external Mollie checkout is intentionally disabled. Before enabling digital subscriptions, either implement Google Play Billing with server-side purchase verification or complete Google's EEA alternative-billing enrollment and all applicable APIs, reporting, user disclosure, customer-support and dispute requirements. EEA alternative billing requires a registered business.
