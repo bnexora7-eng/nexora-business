@@ -14,7 +14,7 @@
 
 ## Current status
 
-NEXORA remains a **pre-production prototype**. On 12 November 2026, an own-service Mollie checkout scaffold was added to the mobile app and backend. It is not yet configured with a Mollie API key, deployed, tested against Mollie, or capable of accepting real payments. It is not a production payment or banking product.
+NEXORA remains a **pre-production prototype**. The strategic model is one NEXORA All Access membership at **€29.99/month**, with NEXORA retaining ownership of the platform. The subscription checkout and recurring-billing code exists in the backend/mobile app, but it has not passed a complete Mollie test-mode lifecycle. Paid membership is not enabled and no subscription revenue is claimed. It is not a production payment or banking product.
 
 ### Verified in the project work on 12 November 2026
 
@@ -170,3 +170,16 @@ When resuming work, start with this file, then inspect the current main branch a
 - This confirms the demonstration workflow only. It does not establish production readiness, live payment processing, bank connectivity, or independent security certification.
 - README.md and PROJECT_BRIEF.md were refreshed to use the current public demo and API endpoints.
 
+
+
+## All Access subscription decision and current audit — 14 November 2026
+
+- Product decision confirmed: retain NEXORA as our own evolving platform; do not sell the whole project for a one-off €950 fee and do not introduce multiple membership tiers at this stage.
+- One intended public membership: **NEXORA All Access — €29.99 per month**. The price is a plan, not a claim that checkout is live.
+- Added [ALL_ACCESS_SUBSCRIPTION_PLAN.md](ALL_ACCESS_SUBSCRIPTION_PLAN.md) as the subscription and release-gates source of truth.
+- Updated README, Project Brief, funding / startup drafts, campaign notes and Payment Integrity demo documentation to use the current canonical GitHub Pages demo URL and more consistent status language.
+- Latest documentation deployment and regression workflow: [run 43596568731](https://github.com/bnexora7-eng/nexora-business/actions/runs/43596568731) — **completed successfully**. It passed PostgreSQL integration tests, GitHub Pages deployment, public privacy/account-deletion checks, Render API health/demo checks and browser-visible ACCEPT / REVIEW / REJECT checks.
+- Code audit found that Community publishing, Marketplace publishing and Business workspace routes do not yet enforce active All Access entitlement. This must be fixed server-side before paid access is launched.
+- Mollie recurring checkout still needs private test credentials, a deployed test configuration and end-to-end verification of first payment, recurring subscription activation, renewal, duplicate webhooks, failed payment, cancellation and account deletion.
+- Android digital membership billing needs a separate Google Play policy and implementation check; website Mollie checkout must not be assumed to satisfy Play Billing requirements.
+- Visual design remains deliberately deferred until functional, access-control, billing, security and release checks are complete.
