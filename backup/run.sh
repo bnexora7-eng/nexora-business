@@ -17,8 +17,7 @@ echo "NEXORA backup started: $STAMP"
 pg_dump --no-password --format=custom --no-owner --no-acl --dbname="$DATABASE_URL" --file="$DUMP"
 pg_restore --list "$DUMP" > "$WORK/archive-list.txt"
 test -s "$DUMP"
-openssl enc -aes-256-cbc -salt -pbkdf2 -iter 600000 \
-  -pass env:BACKUP_ENCRYPTION_KEY -in "$DUMP" -out "$ENCRYPTED"
+python3 /backup/crypto.py encrypt "$DUMP" "$ENCRYPTED"
 test -s "$ENCRYPTED"
 
 export BACKUP_STAMP="$STAMP"
