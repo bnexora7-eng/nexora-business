@@ -186,3 +186,10 @@ Backup-runner CI run 43617810597 passed on commit 19aebc536b: Docker image build
 - Android Play build workflow 43617415554 completed successfully on commit ce75a5efaa. TypeScript, Expo config, Android target SDK 36 baseline, upload-keystore decode/alias verification, release signing, AAB build and signature verification all passed. The temporary decoded keystore was removed from the runner.
 - Artifact `nexora-google-play-aab`: 38,760,620 bytes; SHA-256 `da165e09283b53e37ecb6c36d50c845157c31121f538d2fc69f47c957da02187`. It was downloaded and verified separately. The artifact's GitHub Actions retention expires 28 November 2026; the owner has a preserved AAB file.
 - Android build gate is green. This does not mean the app is published or Play Console approved. Developer registration payment, Play Console upload/App Signing confirmation, listing assets and declarations, Play Billing compliance, device testing and legal/privacy review remain open.
+
+
+## Account deletion conflict handling — 14 November 2026
+
+- Commit b77be14 returns a clear HTTP 409 conflict when account deletion is unsafe because a Mollie payment/subscription is pending or cannot be confirmed canceled; generic provider failures still return a generic server error.
+- Commit 614b2ab adds an integration test proving a paid first payment with no reconciled recurring subscription blocks account deletion with HTTP 409, leaves the account intact, and allows the subsequent webhook to finish activation.
+- API CI run 43618169661 passed; Render PostgreSQL readiness smoke test 43618169671 and independent verification 43618170090 passed on commit 614b2ab.
