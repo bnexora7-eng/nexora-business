@@ -13,6 +13,7 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   const pool = new Pool({ connectionString: process.env.DATABASE_URL });
   let firstPaymentStatus = "open";
   let recurringPaymentStatus = "failed";
+  let recurringPaymentAmount = { currency: "EUR", value: "29.99" };
   let mollieSubscriptionStatus = "active";
   const mollieMock = createServer(async (req, res) => {
     const chunks = [];
@@ -40,7 +41,7 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
         data = { id: "sub_nexoratest", status: mollieSubscriptionStatus };
       }
     } else if (req.method === "GET" && path === "/v2/payments/tr_nexorarecurring") {
-      data = { resource: "payment", id: "tr_nexorarecurring", status: recurringPaymentStatus, subscriptionId: "sub_nexoratest", amount: { currency: "EUR", value: "29.99" } };
+      data = { resource: "payment", id: "tr_nexorarecurring", status: recurringPaymentStatus, subscriptionId: "sub_nexoratest", amount: recurringPaymentAmount };
     } else if (req.method === "GET" && path === "/v2/customers/cst_nexoratest/subscriptions/sub_nexoratest") {
       data = { id: "sub_nexoratest", status: mollieSubscriptionStatus, nextPaymentDate: "2099-12-31" };
     } else if (req.method === "DELETE" && path === "/v2/customers/cst_nexoratest/subscriptions/sub_nexoratest") {
@@ -249,6 +250,17 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   assert.equal((await subscriptionState.json()).status, "past_due");
 
   recurringPaymentStatus = "paid";
+  recurringPaymentAmount = { currency: "EUR", value: "0.01" };
+  const mismatchedRenewal = await fetch(`http://127.0.0.1:${port}/v1/payments/mollie-webhook`, {
+    method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: "id=tr_nexorarecurring"
+  });
+  assert.equal(mismatchedRenewal.status, 409);
+  subscriptionState = await fetch(`http://127.0.0.1:${port}/v1/subscriptions/me`, {
+    headers: { authorization: "Bearer " + loggedIn.token }
+  });
+  assert.equal((await subscriptionState.json()).status, "past_due");
+
+  recurringPaymentAmount = { currency: "EUR", value: "29.99" };
   const successfulRenewal = await fetch(`http://127.0.0.1:${port}/v1/payments/mollie-webhook`, {
     method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: "id=tr_nexorarecurring"
   });
