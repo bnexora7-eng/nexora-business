@@ -2,6 +2,7 @@ import { createServer } from "node:http";
 import crypto from "node:crypto";
 import pg from "pg";
 import { readFile } from "node:fs/promises";
+import { spawn } from "node:child_process";
 import { screenEvent, verifySignature } from "./screening.js";
 import { createSessionToken, hashPassword, hashSessionToken, verifyPassword } from "./auth.js";
 import { createActionToken, hashActionToken, sendPasswordResetEmail, sendVerificationEmail } from "./email.js";
@@ -41,6 +42,71 @@ const AI_API_URL = process.env.OPENAI_API_URL || "https://api.openai.com/v1/chat
 const AI_MONTHLY_TOKEN_LIMIT = Number.parseInt(process.env.AI_MONTHLY_TOKEN_LIMIT || "0", 10);
 if (!Number.isSafeInteger(AI_MONTHLY_TOKEN_LIMIT) || AI_MONTHLY_TOKEN_LIMIT < 0) throw new Error("AI_MONTHLY_TOKEN_LIMIT must be a non-negative integer");
 let pool = null;
+
+// Authenticated, single-flight backup execution. The dump runs inside this
+// Render container and uses its private DATABASE_URL; no database port is exposed.
+const backupJobs = new Map();
+let activeBackupJob = null;
+const BACKUP_SCRIPT = "/backup/run.sh";
+const BACKUP_TOKEN = process.env.BACKUP_TRIGGER_TOKEN || "";
+
+function backupAuthorized(req) {
+  const supplied = bearerToken(req);
+  if (!BACKUP_TOKEN || !supplied) return false;
+  const expected = Buffer.from(BACKUP_TOKEN, "utf8");
+  const actual = Buffer.from(supplied, "utf8");
+  return expected.length === actual.length && crypto.timingSafeEqual(expected, actual);
+}
+function backupJobView(job) {
+  return { id: job.id, status: job.status, started_at: job.startedAt, finished_at: job.finishedAt || null };
+}
+function handleBackupStatus(req, res, id) {
+  if (!backupAuthorized(req)) return send(res, 401, { error: "Authentication required" });
+  const job = backupJobs.get(id);
+  if (!job) return send(res, 404, { error: "Backup job not found" });
+  return send(res, 200, backupJobView(job));
+}
+function startBackup(req, res) {
+  if (!backupAuthorized(req)) return send(res, 401, { error: "Authentication required" });
+  if (!pool || !DATABASE_URL) return send(res, 503, { error: "Database is not configured" });
+  const required = ["GITHUB_TOKEN", "BACKUP_REPOSITORY", "BACKUP_ENCRYPTION_KEY"];
+  if (required.some((key) => !process.env[key])) {
+    return send(res, 503, { error: "Backup destination or encryption is not configured" });
+  }
+  if (activeBackupJob && activeBackupJob.status === "running") {
+    return send(res, 409, { error: "A backup is already running", job: backupJobView(activeBackupJob) });
+  }
+  const job = {
+    id: crypto.randomUUID(),
+    status: "running",
+    startedAt: new Date().toISOString(),
+    finishedAt: null
+  };
+  backupJobs.set(job.id, job);
+  activeBackupJob = job;
+  const child = spawn(BACKUP_SCRIPT, [], {
+    env: { ...process.env },
+    cwd: "/backup",
+    stdio: "ignore"
+  });
+  child.once("error", () => {
+    job.status = "failed";
+    job.finishedAt = new Date().toISOString();
+    if (activeBackupJob === job) activeBackupJob = null;
+  });
+  child.once("exit", (code, signal) => {
+    job.status = code === 0 ? "succeeded" : "failed";
+    job.finishedAt = new Date().toISOString();
+    if (activeBackupJob === job) activeBackupJob = null;
+    console.log("NEXORA backup job", job.id, job.status, "exit", code, "signal", signal || "none");
+  });
+  while (backupJobs.size > 20) {
+    const oldest = backupJobs.keys().next().value;
+    if (oldest === activeBackupJob?.id) break;
+    backupJobs.delete(oldest);
+  }
+  return send(res, 202, backupJobView(job));
+}
 
 // The public demo is deliberately self-contained and can run without PostgreSQL.
 // Authenticated provider webhooks still require DATABASE_URL and persistent storage.
@@ -1271,6 +1337,9 @@ const server = createServer(async (req, res) => {
       if (pool) await pool.query("SELECT 1");
       return send(res, 200, { status: "ok", service: "nexora-payment-integrity-api", mode: pool ? "database" : "demo-only" });
     }
+    const backupStatusMatch = /^\\/internal\\/backup\\/([0-9a-f-]{36})$/.exec(pathname);
+    if (req.method === "POST" && pathname === "/internal/backup") return startBackup(req, res);
+    if (req.method === "GET" && backupStatusMatch) return handleBackupStatus(req, res, backupStatusMatch[1]);
     if (req.method === "GET" && pathname === "/ready") {
       if (!pool) return send(res, 503, { status: "not_ready", reason: "DATABASE_URL is not configured" });
       await pool.query("SELECT 1");
