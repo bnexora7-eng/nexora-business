@@ -127,7 +127,7 @@ When resuming work, start with this file, then inspect the current main branch a
 - Added `.github/workflows/android-mobile-check.yml`, which validates the mobile TypeScript, checks the public Expo configuration, generates the Android project, builds a debug APK and uploads it as a short-lived artifact.
 - This validation workflow is independent of the private Play upload-key secrets, so build/type errors can be found before the owner configures release signing.
 - Hardened the signed Play AAB workflow by creating the keystore directory before decoding the private upload key and suppressing nonessential npm audit/fund output.
-- **Verification status:** workflow files committed; the new GitHub Actions run must complete successfully before treating this validation path as passed.
+- **Verification status:** the mobile validation workflow is committed; verify its latest run before treating the current Android build/type-check path as passed.
 
 
 ## Project enquiry flow — 13 November 2026
@@ -156,7 +156,7 @@ When resuming work, start with this file, then inspect the current main branch a
 - Browser bearer tokens are held in sessionStorage for the current browser session; the privacy policy now discloses this.
 - The deployment workflow now checks that the account page is publicly served and contains the registration endpoint.
 - **Verification gate:** wait for the latest GitHub Pages workflow to pass, then test registration and sign-in from a separate physical device/browser. The API's existing automated registration/login tests are not a substitute for that device test.
-- Email verification and password reset are not yet implemented in the browser account flow. Do not treat it as a finished public SaaS identity system.
+- The browser account flow includes email-verification, resend-verification, forgot-password and reset-password pages/endpoints. Backend integration tests cover the underlying account flows, but email delivery depends on private SMTP configuration and the complete user journey has not yet been verified on a separate physical device/browser. The Android app offers registration and resend-verification, but a native password-reset entry point and end-to-end device test remain to be verified.
 - Paid subscriptions are not enabled. No private ABN AMRO account details are published; bank-transfer collection and manual order activation still need a secure, tested order workflow.
 
 
