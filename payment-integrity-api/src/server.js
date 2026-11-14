@@ -863,7 +863,7 @@ async function handleBusinessAIPlan(req,res) {
 const server = createServer(async (req, res) => {
   try {
     cors(req, res);
-    const pathname = (req.url || "/").split("?")[0].replace(/\\/+$/, "") || "/";
+    const pathname = (req.url || "/").split("?")[0].replace(/\/+$/, "") || "/";
     if (req.method === "OPTIONS") { res.writeHead(204); return res.end(); }
     if (req.method === "GET" && pathname === "/") {
       return send(res, 200, { service: "NEXORA Payment Integrity API", status: "online", endpoints: { health: "/health", readiness: "/ready" }, message: "API is running. Use the documented /v1 endpoints for account, subscription and payment operations." });
