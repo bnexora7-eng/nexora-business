@@ -86,7 +86,7 @@ function startBackup(req, res) {
   };
   backupJobs.set(job.id, job);
   activeBackupJob = job;
-  const child = spawn(BACKUP_SCRIPT, [], {
+  const child = spawn("timeout", ["--signal=TERM", "--kill-after=30s", "3600s", BACKUP_SCRIPT], {
     env: { ...process.env },
     cwd: "/backup",
     stdio: "ignore"
