@@ -551,6 +551,11 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   assert.equal(createWorkspace.status, 200);
   const paymentOrderId = randomUUID();
   await pool.query("INSERT INTO own_payments (order_id,user_id,amount,description,status) VALUES ($1,$2,25.00,$3,$4)", [paymentOrderId, accountId, "Integration test payment", "paid"]);
+  await pool.query(
+    "INSERT INTO marketplace_listings (user_id,title,description,category,price) VALUES ($1,'Delete listing','Private test listing','service',10.00)",
+    [accountId]
+  );
+  await pool.query("INSERT INTO ai_usage_windows (user_id,request_count) VALUES ($1,1)", [accountId]);
   // Account deletion must verify and cancel an active provider-side
   // subscription before removing the account and its customer reference.
   mollieSubscriptionStatus = "active";
@@ -586,10 +591,19 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   });
   assert.equal(deletedProfile.status, 401);
   const deletedRows = await pool.query(
-    "SELECT (SELECT COUNT(*) FROM app_users WHERE email=$1)::int AS users, (SELECT COUNT(*) FROM community_posts WHERE user_id=$2)::int AS posts, (SELECT COUNT(*) FROM business_workspaces WHERE user_id=$2)::int AS workspaces",
+    `SELECT
+      (SELECT COUNT(*) FROM app_users WHERE email=$1)::int AS users,
+      (SELECT COUNT(*) FROM app_sessions WHERE user_id=$2)::int AS sessions,
+      (SELECT COUNT(*) FROM email_action_tokens WHERE user_id=$2)::int AS action_tokens,
+      (SELECT COUNT(*) FROM community_posts WHERE user_id=$2)::int AS posts,
+      (SELECT COUNT(*) FROM marketplace_listings WHERE user_id=$2)::int AS listings,
+      (SELECT COUNT(*) FROM business_workspaces WHERE user_id=$2)::int AS workspaces,
+      (SELECT COUNT(*) FROM ai_usage_windows WHERE user_id=$2)::int AS ai_usage`,
     [accountEmail, accountId]
   );
-  assert.deepEqual(deletedRows.rows[0], { users: 0, posts: 0, workspaces: 0 });
+  assert.deepEqual(deletedRows.rows[0], {
+    users: 0, sessions: 0, action_tokens: 0, posts: 0, listings: 0, workspaces: 0, ai_usage: 0
+  });
   const retainedPayment = await pool.query("SELECT user_id FROM own_payments WHERE order_id=$1", [paymentOrderId]);
   assert.equal(retainedPayment.rowCount, 1);
   assert.equal(retainedPayment.rows[0].user_id, null);
