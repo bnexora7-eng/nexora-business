@@ -74,7 +74,9 @@ function startBackup(req, res) {
     return send(res, 503, { error: "Backup destination or encryption is not configured" });
   }
   if (activeBackupJob && activeBackupJob.status === "running") {
-    return send(res, 409, { error: "A backup is already running", job: backupJobView(activeBackupJob) });
+    // Idempotent retry: if a caller lost the first HTTP response, return the
+    // already-running job rather than launching a second dump or failing polling.
+    return send(res, 202, backupJobView(activeBackupJob));
   }
   const job = {
     id: crypto.randomUUID(),
