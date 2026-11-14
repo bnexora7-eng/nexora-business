@@ -252,6 +252,7 @@ async function mollieRequest(path, options = {}) {
   if (!apiKey) throw Object.assign(new Error("Mollie is not configured"), { statusCode: 503 });
   const response = await fetch(MOLLIE_API_BASE + path, {
     ...options,
+    signal: options.signal || AbortSignal.timeout(15000),
     headers: {
       Authorization: "Bearer " + apiKey,
       Accept: "application/hal+json",
