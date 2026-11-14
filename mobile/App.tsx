@@ -155,7 +155,16 @@ export default function App() {
         { text: "Cancel", style: "cancel" },
         { text: "Delete account", style: "destructive", onPress: async () => {
           try {
+            if (!API_BASE) {
+              Alert.alert("Account not deleted", "The NEXORA account server is not configured. Your account has not been changed.");
+              return;
+            }
             const token = await SecureStore.getItemAsync("nexora_session");
+            if (!token) {
+              setAccount(null);
+              Alert.alert("Sign in required", "Your session is no longer available. Sign in again before deleting the account.");
+              return;
+            }
             const response = await fetch(API_BASE + "/v1/auth/account", { method: "DELETE", headers: { Authorization: "Bearer " + token } });
             const data = await response.json();
             if (!response.ok) throw new Error(data.error || "Account deletion failed.");
