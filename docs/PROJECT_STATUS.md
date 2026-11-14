@@ -43,6 +43,16 @@ The repository also contains a separate backend scaffold with webhook signature 
 - No production security/compliance certification, paying customers, revenue or commercial traction is claimed.
 - Member-facing web workspace now exists for Business Studio, Community and Marketplace. The workspace is connected to the existing authenticated API routes; automated UI-source checks and backend CI pass. AI generation still requires a secure server-side provider key and has not been live-tested. Marketplace listings are not a checkout or escrow system.
 
+## Business Studio AI — 14 November 2026
+
+- The Business Studio AI route uses a server-side OpenAI-compatible Chat Completions request. Default model: `gpt-4.1-mini`.
+- The API key is read only from the Render environment variable `OPENAI_API_KEY`; it is not present in browser code or committed files.
+- Requests require a verified account with NEXORA All Access. The route applies input-length limits, a per-account request limit, a 25-second timeout and a bounded output setting.
+- Added `docs/AI_PROVIDER_SETUP.md` with the secure setup and verification procedure.
+- CI now includes a local mock-provider test for the authenticated AI request and response. This does not call OpenAI or incur API charges.
+- No live OpenAI key has been configured; live model inference remains disabled until the owner approves separate API billing and adds the key privately in Render.
+- The per-account limiter is process-local and must be moved to shared storage before scaling beyond the current single-instance prototype.
+
 ## Member workspace — 14 November 2026
 
 - Added `/app/` as the signed-in web workspace with Business Studio save/load, AI plan generation, Community post/read and Marketplace listing/read/publish screens.
