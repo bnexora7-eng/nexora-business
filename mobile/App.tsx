@@ -4,7 +4,7 @@ import NexoraModules from "./NexoraModules";
 import { API_BASE } from "./api";
 import { Alert, BackHandler, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View, Linking } from "react-native";
 
-type Tab = "Home" | "Community" | "Marketplace" | "Business" | "Integrity" | "Payments" | "Profile";
+type Tab = "Home" | "Community" | "Marketplace" | "Business" | "Integrity" | "Profile";
 type Decision = "ACCEPT" | "REVIEW" | "REJECT";
 type Account = { id: string; email: string; created_at: string; subscription_status?: string };
 
@@ -30,9 +30,6 @@ export default function App() {
   const [pendingVerificationEmail,setPendingVerificationEmail] = useState("");
   const [account,setAccount] = useState<Account|null>(null);
   const [decision,setDecision] = useState<Decision|null>(null);
-  const [subscriptionStatus,setSubscriptionStatus] = useState("inactive");
-  const [subscriptionBusy,setSubscriptionBusy] = useState(false);
-  const [subscriptionMessage,setSubscriptionMessage] = useState("");
 
 
   useEffect(() => {
@@ -52,11 +49,6 @@ export default function App() {
     })();
     return () => { active = false; };
   }, []);
-
-  useEffect(() => {
-    if (account) refreshSubscription();
-    else { setSubscriptionStatus("inactive"); setSubscriptionMessage(""); }
-  }, [account]);
 
   const submitAuth = async () => {
     setAuthMessage("");
@@ -93,59 +85,6 @@ export default function App() {
     }
   };
 
-  async function refreshSubscription() {
-    if (!API_BASE) return;
-    try {
-      const token = await SecureStore.getItemAsync("nexora_session");
-      if (!token) return;
-      const response = await fetch(API_BASE + "/v1/subscriptions/me", { headers: { Authorization: "Bearer " + token } });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Nie można sprawdzić abonamentu.");
-      setSubscriptionStatus(data.status || "inactive");
-    } catch (error) {
-      setSubscriptionMessage(error instanceof Error ? error.message : "Nie można sprawdzić abonamentu.");
-    }
-  }
-
-  const startSubscription = () => {
-    setSubscriptionMessage("Płatności w aplikacji Android są obecnie wyłączone. Przed uruchomieniem abonamentu wdrożymy i zweryfikujemy Google Play Billing. Nie otwieramy tutaj zewnętrznego checkoutu Mollie.");
-  };
-
-  const cancelSubscription = () => {
-    Alert.alert("Anulować NEXORA All Access?", "Po anulowaniu kolejne miesięczne płatności zostaną zatrzymane.", [
-      { text: "Wróć", style: "cancel" },
-      { text: "Anuluj abonament", style: "destructive", onPress: async () => {
-        if (!API_BASE) {
-          setSubscriptionMessage("Serwer NEXORA nie jest skonfigurowany. Abonament nie został zmieniony.");
-          return;
-        }
-        setSubscriptionBusy(true);
-        try {
-          const token = await SecureStore.getItemAsync("nexora_session");
-          if (!token) {
-            setAccount(null);
-            setSubscriptionMessage("Sesja wygasła. Zaloguj się ponownie, aby zarządzać abonamentem.");
-            return;
-          }
-          const response = await fetch(API_BASE + "/v1/subscriptions/cancel", { method: "POST", headers: { Authorization: "Bearer " + token } });
-          const data = await response.json();
-          if (!response.ok) throw new Error(data.error || "Nie udało się anulować abonamentu.");
-          setSubscriptionStatus("canceled");
-          setSubscriptionMessage(data.message || "Abonament został anulowany.");
-        } catch (error) {
-          setSubscriptionMessage(error instanceof Error ? error.message : "Nie udało się anulować abonamentu.");
-        } finally {
-          setSubscriptionBusy(false);
-        }
-      }}
-    ]);
-  };
-
-  const subscriptionLabel = subscriptionStatus === "active" ? "AKTYWNY — pełny dostęp do NEXORA" :
-    subscriptionStatus === "activation_pending" ? "PŁATNOŚĆ POTWIERDZONA — aktywacja w toku" :
-    subscriptionStatus === "past_due" ? "PŁATNOŚĆ WYMAGA UWAGI" :
-    subscriptionStatus === "canceled" ? "ABONAMENT ANULOWANY" : "BRAK AKTYWNEGO ABONAMENTU";
-
   const signOut = async () => {
     try {
       const token = await SecureStore.getItemAsync("nexora_session");
@@ -159,7 +98,7 @@ export default function App() {
   const deleteAccount = () => {
     Alert.alert(
       "Delete NEXORA account?",
-      "This permanently deletes your account, posts, marketplace listings and business workspace. Any active NEXORA recurring subscription is canceled first. Payment records may be retained without your account link where legally required.",
+      "This permanently deletes your account, posts, marketplace listings and business workspace. Payment records may be retained without your account link where legally required.",
       [
         { text: "Cancel", style: "cancel" },
         { text: "Delete account", style: "destructive", onPress: async () => {
@@ -292,10 +231,9 @@ export default function App() {
             {!API_BASE&&<Text style={styles.note}>The account server must be deployed and connected before registration can work.</Text>}
           </>}
         </Card>
-        <Card><Text style={styles.kicker}>NEXORA ALL ACCESS</Text><Text style={styles.hero}>One membership for everything.</Text><Text style={[styles.hero,{color:C.cyan,fontSize:27}]}>€29.99<Text style={{fontSize:13,color:C.muted,fontWeight:"500"}}> / month</Text></Text><Text style={styles.muted}>{subscriptionLabel}</Text>{subscriptionStatus==="active" ? <TouchableOpacity style={[styles.action,{marginTop:12,borderColor:C.red}]} onPress={cancelSubscription} disabled={subscriptionBusy}><Text style={{color:C.red,fontWeight:"800"}}>{subscriptionBusy?"PLEASE WAIT":"CANCEL SUBSCRIPTION"}</Text></TouchableOpacity> : <TouchableOpacity style={[styles.primary,subscriptionBusy&&{opacity:0.6}]} disabled={subscriptionBusy||subscriptionStatus==="activation_pending"} onPress={()=>setTab("Payments")}><Text style={styles.primaryText}>VIEW ALL ACCESS CHECKOUT</Text></TouchableOpacity>}{!!subscriptionMessage&&<Text style={styles.note}>{subscriptionMessage}</Text>}</Card>
       </>}
     </ScrollView>
-    <View style={styles.nav}>{(["Home","Community","Marketplace","Business","Integrity","Payments","Profile"] as Tab[]).map(t=><TouchableOpacity key={t} onPress={()=>go(t)} style={styles.navItem}><View style={[styles.navMark,tab===t&&styles.navMarkActive]}/><Text numberOfLines={1} style={[styles.navText,tab===t&&{color:C.cyan}]}>{t==="Marketplace"?"Market":t==="Community"?"Social":t==="Integrity"?"Check":t==="Payments"?"Pay":t}</Text></TouchableOpacity>)}</View>
+    <View style={styles.nav}>{(["Home","Community","Marketplace","Business","Integrity","Profile"] as Tab[]).map(t=><TouchableOpacity key={t} onPress={()=>go(t)} style={styles.navItem}><View style={[styles.navMark,tab===t&&styles.navMarkActive]}/><Text numberOfLines={1} style={[styles.navText,tab===t&&{color:C.cyan}]}>{t==="Marketplace"?"Market":t==="Community"?"Social":t==="Integrity"?"Check" :t}</Text></TouchableOpacity>)}</View>
   </SafeAreaView>;
 }
 
