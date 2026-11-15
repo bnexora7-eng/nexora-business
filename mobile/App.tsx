@@ -150,7 +150,6 @@ export default function App() {
     Marketplace:"NEXORA Marketplace",
     Business:"Business Tools",
     Integrity:"Payment Integrity",
-    Payments:"NEXORA All Access",
     Profile:"Your NEXORA account"
   };
 
@@ -187,20 +186,6 @@ export default function App() {
         <Text style={styles.section}>Decision outcomes</Text>
         <View style={styles.outcomes}><Text style={{color:C.green,fontWeight:"800"}}>ACCEPT</Text><Text style={{color:C.amber,fontWeight:"800"}}>REVIEW</Text><Text style={{color:C.red,fontWeight:"800"}}>REJECT</Text></View>
         <Text style={styles.note}>Duplicate-event protection and the separate API prototype remain part of the existing project. This mobile demo is not a regulated payment service.</Text>
-      </>}
-      {tab==="Payments" && <>
-        <Card>
-          <Text style={styles.kicker}>NEXORA ALL ACCESS</Text>
-          <Text style={styles.hero}>One plan. The full platform.</Text>
-          <Text style={[styles.hero,{color:C.cyan,fontSize:30}]}>€29.99<Text style={{fontSize:14,color:C.muted,fontWeight:"500"}}> / month</Text></Text>
-          <Text style={styles.muted}>One monthly membership unlocks the NEXORA platform: Business Studio, opportunities, community and productivity tools. Android checkout is disabled until Google Play Billing is implemented and verified.</Text>
-          <Text style={[styles.note,{marginTop:16}]}>{subscriptionLabel}</Text>
-          {subscriptionStatus==="active" ?
-            <TouchableOpacity style={[styles.action,{marginTop:12,borderColor:C.red}]} onPress={cancelSubscription} disabled={subscriptionBusy}><Text style={{color:C.red,fontWeight:"800"}}>{subscriptionBusy?"PLEASE WAIT":"CANCEL SUBSCRIPTION"}</Text></TouchableOpacity> :
-            <TouchableOpacity style={[styles.primary,{opacity:0.55}]} disabled onPress={startSubscription}><Text style={styles.primaryText}>ANDROID SUBSCRIPTION NOT AVAILABLE YET</Text></TouchableOpacity>}
-          <TouchableOpacity style={styles.action} onPress={refreshSubscription}><View style={{flex:1}}><Text style={styles.actionTitle}>Refresh membership status</Text><Text style={styles.muted}>The server confirms access after Mollie payment webhooks.</Text></View><Text style={styles.arrow}>↻</Text></TouchableOpacity>
-          {!!subscriptionMessage&&<Text style={styles.note}>{subscriptionMessage}</Text>}
-        </Card>
       </>}
       {tab==="Profile" && <>
         <Card>
