@@ -48,6 +48,8 @@ let pool = null;
 // if Render restarts or terminates the process.
 const BACKUP_SCRIPT = "/backup/run.sh";
 const BACKUP_TOKEN = process.env.BACKUP_TRIGGER_TOKEN || "";
+let activeBackupChild = null;
+let activeBackupDone = null;
 const BACKUP_LOCK_KEY_1 = 1313162578;
 const BACKUP_LOCK_KEY_2 = 1111577682;
 
@@ -129,6 +131,9 @@ async function startBackup(req, res) {
       cwd: "/backup",
       stdio: "ignore"
     });
+    activeBackupChild = child;
+    let resolveBackupDone;
+    activeBackupDone = new Promise((resolve) => { resolveBackupDone = resolve; });
     let settled = false;
     const finish = async (status, reason = null) => {
       if (settled) return;
@@ -144,6 +149,9 @@ async function startBackup(req, res) {
         await releaseLock();
       }
       console.log("NEXORA backup job", jobId, status);
+      if (activeBackupChild === child) activeBackupChild = null;
+      if (resolveBackupDone) resolveBackupDone();
+      activeBackupDone = null;
     };
     child.once("error", () => { void finish("failed", "process_start_failed"); });
     child.once("exit", (code) => { void finish(code === 0 ? "succeeded" : "failed", code === 0 ? null : "backup_process_failed"); });
@@ -1440,7 +1448,18 @@ server.requestTimeout = 30_000;
 server.keepAliveTimeout = 5_000;
 server.listen(PORT, "0.0.0.0", () => console.log("NEXORA Payment Integrity API listening on port " + PORT));
 async function shutdown() {
-  server.close(async () => { if (pool) await pool.end(); process.exit(0); });
+  server.close(async () => {
+    const child = activeBackupChild;
+    if (child && child.exitCode === null && !child.killed) child.kill("SIGTERM");
+    if (activeBackupDone) {
+      await Promise.race([
+        activeBackupDone,
+        new Promise((resolve) => setTimeout(resolve, 35_000))
+      ]);
+    }
+    if (pool) await pool.end();
+    process.exit(0);
+  });
 }
 process.on("SIGTERM", shutdown);
 process.on("SIGINT", shutdown);
