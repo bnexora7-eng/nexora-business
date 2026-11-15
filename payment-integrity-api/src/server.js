@@ -1201,13 +1201,8 @@ async function requireUser(req, res) {
   if (!pool) { send(res, 503, { error: "Database is not configured" }); return null; }
   const user = await getAuthenticatedUser(req);
   if (!user) { send(res, 401, { error: "Sign in to use this feature" }); return null; }
-  const subscriptionAccess = user.subscription_status === "active" ||
-    (user.subscription_status === "canceled" && user.subscription_access_until &&
-      new Date(user.subscription_access_until).getTime() > Date.now());
-  if (!subscriptionAccess) {
-    send(res, 402, { error: "NEXORA All Access is required. Activate your €29.99/month subscription to use this feature.", code: "subscription_required" });
-    return null;
-  }
+  // Temporary launch mode: verified account holders can use the platform
+  // without a paid membership. Subscription billing is disabled for now.
   return user;
 }
 async function handleCommunity(req, res) {
