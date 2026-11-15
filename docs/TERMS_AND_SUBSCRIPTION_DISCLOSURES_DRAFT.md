@@ -63,6 +63,12 @@ Before requesting payment:
 
 A browser redirect is not proof of payment. Any future checkout must reconcile the exact order, amount, currency and provider status server-side and safely handle duplicate webhooks, failed/canceled/refunded payments and disputes.
 
+### Project payment milestones — required in every quotation
+
+Each project is paid as a **one-time project fee**, which may be split into an advance payment and a final balance. The split is agreed individually for each project; it is not automatically 50/50 and no fixed percentage is promised. The written quotation must state the exact advance amount or percentage, the amount remaining, and the due date or objective milestone for each instalment. As a working commercial option, the advance may be 25% with 75% due at completion, but the actual split must reflect project size, duration, risk and agreed deliverables.
+
+Unless the signed quotation expressly states otherwise and applicable law permits it, work starts only after the agreed advance has cleared. The remaining balance becomes due after the deliverables have been completed and presented for the acceptance process defined in the quotation. For longer projects, the parties may agree additional milestone payments in writing. Any cancellation, refund, withdrawal or dispute is handled under the contract and mandatory statutory rights; an advance is not automatically non-refundable.
+
 ## 6. Consumer rights and cancellation
 
 Some customers may have statutory distance-contract withdrawal rights, digital-service conformity rights or other mandatory consumer protections. The exact treatment depends on the customer, service, contract and applicable Dutch/EU law. Do not use a blanket “no refunds” term or require a customer to waive statutory rights without a legally valid basis.
