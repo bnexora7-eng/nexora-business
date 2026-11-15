@@ -115,6 +115,23 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   assert.equal(readiness.status, 200, "readiness must confirm PostgreSQL connectivity");
   assert.deepEqual(await readiness.json(), { status: "ready", database: "connected" });
 
+  const jobsBeforePreflight = await pool.query("SELECT COUNT(*)::int AS count FROM backup_jobs");
+  const preflightUnauthenticated = await fetch(`http://127.0.0.1:${port}/internal/backup/preflight`);
+  assert.equal(preflightUnauthenticated.status, 401, "backup preflight must reject requests without its secret");
+  const preflightResponse = await fetch(`http://127.0.0.1:${port}/internal/backup/preflight`, {
+    headers: { authorization: "Bearer integration-backup-trigger-token-for-tests-only" }
+  });
+  assert.equal(preflightResponse.status, 200, "authenticated preflight should report read-only database diagnostics");
+  const preflight = await preflightResponse.json();
+  assert.equal(preflight.database.name, "nexora_business_db");
+  assert.ok(Number.isSafeInteger(preflight.database.size_bytes) && preflight.database.size_bytes > 0);
+  assert.ok(Number.isFinite(preflight.database.size_mib) && preflight.database.size_mib > 0);
+  assert.equal(typeof preflight.configuration.github_token_configured, "boolean");
+  assert.equal(typeof preflight.configuration.repository_configured, "boolean");
+  assert.equal(typeof preflight.configuration.encryption_key_configured, "boolean");
+  const jobsAfterPreflight = await pool.query("SELECT COUNT(*)::int AS count FROM backup_jobs");
+  assert.equal(jobsAfterPreflight.rows[0].count, jobsBeforePreflight.rows[0].count, "preflight must not create a backup job");
+
   const durableJobId = randomUUID();
   await pool.query("INSERT INTO backup_jobs (id,status,finished_at) VALUES ($1,'succeeded',NOW())", [durableJobId]);
   const durableStatus = await fetch(`http://127.0.0.1:${port}/internal/backup/${durableJobId}`, {
