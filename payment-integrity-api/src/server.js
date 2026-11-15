@@ -433,6 +433,9 @@ async function handleCreatePayment(req, res) {
   if (!pool) return send(res, 503, { error: "Payment service requires the database" });
   const user = await getAuthenticatedUser(req);
   if (!user) return send(res, 401, { error: "Sign in to create a payment" });
+  if (process.env.ENABLE_ONE_OFF_PAYMENTS !== "true") {
+    return send(res, 503, { error: "One-off checkout is disabled until NEXORA business and payment-provider readiness is confirmed", code: "one_off_payments_disabled" });
+  }
   if (!process.env.MOLLIE_API_KEY) return send(res, 503, { error: "Payment provider is not configured yet" });
   if (!process.env.MOLLIE_API_KEY.startsWith("test_") && !(process.env.MOLLIE_API_KEY.startsWith("live_") && process.env.ENABLE_LIVE_PAYMENTS === "true")) return send(res, 503, { error: "Live payments are disabled until explicitly approved; configure a Mollie test key first" });
   const rawBody = await readBody(req);
