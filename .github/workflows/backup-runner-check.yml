@@ -23,6 +23,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Test retention pagination and deletion safety
+        run: python3 backup/test_backup_retention.py
+
       - name: Build backup container
         run: docker build --pull -t nexora-backup-check ./backup
 
@@ -35,7 +38,6 @@ jobs:
             sh -n /backup/run.sh
             sh -n /backup/restore.sh
             python3 -m py_compile /backup/crypto.py /backup/upload_backup.py /backup/backup_retention.py
-            python3 /backup/test_backup_retention.py
           '
 
       - name: Verify authenticated encryption and tamper rejection
