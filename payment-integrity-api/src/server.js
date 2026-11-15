@@ -1448,7 +1448,7 @@ const server = createServer(async (req, res) => {
     if (pathname === "/v1/business/workspace") return await handleBusinessWorkspace(req,res);
     if (pathname === "/v1/business/ai-plan") return await handleBusinessAIPlan(req,res);
     if (req.method === "POST" && pathname === "/v1/payments") return await handleCreatePayment(req, res);
-    if (req.method === "POST" && pathname === "/v1/subscriptions/checkout") return await handleCreateSubscriptionCheckout(req,res);
+    if (req.method === "POST" && pathname === "/v1/subscriptions/checkout") return send(res, 410, { error: "NEXORA subscription checkout is temporarily disabled.", code: "subscription_disabled" });
     if (req.method === "GET" && pathname === "/v1/subscriptions/me") return await handleGetSubscription(req,res);
     if (req.method === "POST" && pathname === "/v1/subscriptions/cancel") return await handleCancelSubscription(req,res);
     if (req.method === "POST" && pathname === "/v1/payments/mollie-webhook") return await handleMollieWebhook(req, res);
