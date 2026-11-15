@@ -17,6 +17,12 @@ NEXORA accounts are free. Each paid engagement is a separate project with a defi
 7. **Provider reconciliation** — webhook notification triggers a server-to-server provider lookup. Match provider payment ID, internal order ID, amount, currency and expected status. Browser redirects never mark an order paid.
 8. **Delivery and closure** — unlock project delivery only after verified payment (or the explicitly agreed milestone). Record completion and retain required accounting/audit data.
 
+## Payment milestones for each project
+
+The one-time project fee may be split into an advance and a final balance. The split is set in the accepted written quotation for that specific project; it is not automatically 50/50. The quote must state the exact amount or percentage and due date / delivery milestone for each instalment. A possible example is 25% before work starts and 75% after completion, but this is illustrative only, not a mandatory default. Longer projects may use additional written milestones.
+
+Work begins only after the agreed advance is confirmed as received, unless the accepted quote and applicable law provide otherwise. The final balance is invoiced when the agreed deliverables are completed and submitted for the acceptance process defined in the quote. Statutory withdrawal, cancellation, refund and dispute rights remain applicable; do not treat an advance as automatically non-refundable.
+
 ## Proposed order states
 
 - `enquiry`
