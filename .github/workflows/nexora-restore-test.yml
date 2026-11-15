@@ -98,7 +98,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 -m pip install --disable-pip-version-check cryptography
+          python3 -m venv "$RUNNER_TEMP/nexora-venv"
+          "$RUNNER_TEMP/nexora-venv/bin/python" -m pip install --disable-pip-version-check cryptography
           sudo install -d /usr/share/postgresql-common/pgdg
           sudo curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc
           echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(. /etc/os-release && echo "$VERSION_CODENAME")-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
@@ -112,7 +113,7 @@ jobs:
         run: |
           set -euo pipefail
           chmod 700 "$RUNNER_TEMP/nexora-backup"
-          python3 payment-integrity-api/backup-runtime/crypto.py decrypt "$BACKUP_DUMP" "$RUNNER_TEMP/nexora-backup/recovery.dump"
+          "$RUNNER_TEMP/nexora-venv/bin/python" payment-integrity-api/backup-runtime/crypto.py decrypt "$BACKUP_DUMP" "$RUNNER_TEMP/nexora-backup/recovery.dump"
           test -s "$RUNNER_TEMP/nexora-backup/recovery.dump"
           chmod 600 "$RUNNER_TEMP/nexora-backup/recovery.dump"
           echo "AES-256-GCM authentication/decryption PASS; plaintext remains in temporary runner storage only."
