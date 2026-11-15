@@ -182,6 +182,7 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   const unauthenticatedRequests = [
     ["GET", "/v1/auth/me"],
     ["POST", "/v1/auth/logout"],
+    ["DELETE", "/v1/auth/account"],
     ["POST", "/v1/subscriptions/checkout"],
     ["GET", "/v1/subscriptions/me"],
     ["POST", "/v1/subscriptions/cancel"],
