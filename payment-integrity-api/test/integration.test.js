@@ -412,177 +412,19 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   assert.equal(communityRead.status, 200);
   assert.ok(Array.isArray((await communityRead.json()).posts));
 
-  // Start from a clean billing state before exercising the subscription lifecycle.
-  await pool.query("UPDATE app_users SET subscription_status='inactive',mollie_customer_id=NULL,mollie_subscription_id=NULL,subscription_access_until=NULL WHERE id=$1",[accountId]);
-
-  // Exercise the complete subscription lifecycle against an isolated Mollie-compatible test server.
-  // Two simultaneous checkout requests for one account must not create
-  // duplicate Mollie first payments or duplicate local subscription orders.
-  const checkoutResponses = await Promise.all([1, 2].map(() =>
-    fetch(`http://127.0.0.1:${port}/v1/subscriptions/checkout`, {
-      method: "POST", headers: { authorization: "Bearer " + loggedIn.token, "content-type": "application/json" },
-      body: JSON.stringify({})
-    })
-  ));
-  const checkoutBodies = await Promise.all(checkoutResponses.map(response => response.json()));
-  assert.equal(checkoutResponses.filter(response => response.status === 201).length, 1,
-    "only one concurrent request may create a new checkout");
-  assert.ok(checkoutResponses.every(response => [200, 201, 409].includes(response.status)),
-    "concurrent checkout requests must resolve predictably");
-  const checkout = checkoutResponses.find(response => response.status === 201);
-  const checkoutBody = checkoutBodies[checkoutResponses.indexOf(checkout)];
-  const checkoutOrders = await pool.query(
-    "SELECT COUNT(*)::int AS count FROM own_payments WHERE user_id=$1 AND description='NEXORA All Access monthly subscription' AND status IN ('creating','open','pending','authorized')",
-    [accountId]
-  );
-  assert.equal(checkoutOrders.rows[0].count, 1, "only one pending All Access order may exist per account");
-  assert.equal(checkoutBody.amount.value, "29.99");
-  assert.equal(checkoutBody.mode, "test");
-  mockFirstPaymentMetadata = { order_id: checkoutBody.order_id, user_id: String(accountId), product: "nexora_all_access" };
-
-  firstPaymentStatus = "paid";
-  await pool.query("UPDATE own_payments SET status='paid' WHERE order_id=$1", [checkoutBody.order_id]);
-  const prematureDelete = await fetch(`http://127.0.0.1:${port}/v1/auth/account`, {
-    method: "DELETE", headers: { authorization: "Bearer " + loggedIn.token }
-  });
-  assert.equal(prematureDelete.status, 409);
-  assert.match((await prematureDelete.json()).error, /subscription activation is not yet reconciled/i);
-  const stillExistingAccount = await pool.query(
-    "SELECT id,mollie_subscription_id,subscription_status FROM app_users WHERE id=$1",
-    [accountId]
-  );
-  assert.equal(stillExistingAccount.rowCount, 1);
-  assert.equal(stillExistingAccount.rows[0].mollie_subscription_id, null);
-
-  const firstWebhook = await fetch(`http://127.0.0.1:${port}/v1/payments/mollie-webhook`, {
-    method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: "id=tr_nexorafirst"
-  });
-  assert.equal(firstWebhook.status, 200);
-  assert.equal(mollieSubscriptionCreateCount, 1, "first paid webhook should create exactly one recurring subscription");
-  const duplicateFirstWebhook = await fetch(`http://127.0.0.1:${port}/v1/payments/mollie-webhook`, {
-    method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: "id=tr_nexorafirst"
-  });
-  assert.equal(duplicateFirstWebhook.status, 200);
-  assert.equal(mollieSubscriptionCreateCount, 1, "duplicate first-payment webhook must not create a second recurring subscription");
-  let subscriptionState = await fetch(`http://127.0.0.1:${port}/v1/subscriptions/me`, {
-    headers: { authorization: "Bearer " + loggedIn.token }
-  });
-  assert.equal((await subscriptionState.json()).status, "active");
-
-  const failedRenewal = await fetch(`http://127.0.0.1:${port}/v1/payments/mollie-webhook`, {
-    method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: "id=tr_nexorarecurring"
-  });
-  assert.equal(failedRenewal.status, 200);
-  subscriptionState = await fetch(`http://127.0.0.1:${port}/v1/subscriptions/me`, {
-    headers: { authorization: "Bearer " + loggedIn.token }
-  });
-  assert.equal((await subscriptionState.json()).status, "active", "a failed renewal attempt must not revoke access while Mollie keeps the subscription active");
-
-  // A terminal provider state, unlike one failed attempt, must move the local
-  // entitlement to past_due after the failed payment is verified.
-  mollieSubscriptionStatus = "suspended";
-  recurringPaymentCreatedAt = "2026-11-14T10:30:00Z";
-  const terminalFailedRenewal = await fetch(`http://127.0.0.1:${port}/v1/payments/mollie-webhook`, {
-    method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: "id=tr_nexorarecurring"
-  });
-  assert.equal(terminalFailedRenewal.status, 200);
-  subscriptionState = await fetch(`http://127.0.0.1:${port}/v1/subscriptions/me`, {
-    headers: { authorization: "Bearer " + loggedIn.token }
-  });
-  assert.equal((await subscriptionState.json()).status, "past_due",
-    "a Mollie-confirmed suspended subscription must move to past_due");
-
-  mollieSubscriptionStatus = "active";
-  recurringPaymentStatus = "paid";
-  recurringPaymentAmount = { currency: "EUR", value: "0.01" };
-  const mismatchedRenewal = await fetch(`http://127.0.0.1:${port}/v1/payments/mollie-webhook`, {
-    method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: "id=tr_nexorarecurring"
-  });
-  assert.equal(mismatchedRenewal.status, 409);
-  subscriptionState = await fetch(`http://127.0.0.1:${port}/v1/subscriptions/me`, {
-    headers: { authorization: "Bearer " + loggedIn.token }
-  });
-  assert.equal((await subscriptionState.json()).status, "past_due", "an amount-mismatched webhook must not change the current entitlement after Mollie confirmed suspension");
-
-  recurringPaymentAmount = { currency: "EUR", value: "29.99" };
-  recurringPaymentCreatedAt = "2026-11-14T11:00:00Z";
-  const successfulRenewal = await fetch(`http://127.0.0.1:${port}/v1/payments/mollie-webhook`, {
-    method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: "id=tr_nexorarecurring"
-  });
-  assert.equal(successfulRenewal.status, 200);
-  subscriptionState = await fetch(`http://127.0.0.1:${port}/v1/subscriptions/me`, {
-    headers: { authorization: "Bearer " + loggedIn.token }
-  });
-  assert.equal((await subscriptionState.json()).status, "active");
-
-  // An older failed notification arriving after a newer paid renewal must not
-  // downgrade the membership. Mollie's createdAt, not webhook arrival order,
-  // determines which payment event is newest.
-  recurringPaymentStatus = "failed";
-  recurringPaymentCreatedAt = "2026-11-13T10:00:00Z";
-  const delayedFailedRenewal = await fetch(`http://127.0.0.1:${port}/v1/payments/mollie-webhook`, {
-    method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: "id=tr_nexorarecurring"
-  });
-  assert.equal(delayedFailedRenewal.status, 200);
-  subscriptionState = await fetch(`http://127.0.0.1:${port}/v1/subscriptions/me`, {
-    headers: { authorization: "Bearer " + loggedIn.token }
-  });
-  assert.equal((await subscriptionState.json()).status, "active",
-    "a delayed older failed payment must not downgrade a newer paid subscription");
-
-  const cancelSubscription = await fetch(`http://127.0.0.1:${port}/v1/subscriptions/cancel`, {
+  // Monthly membership is disabled: a signed-in account must never start a subscription checkout.
+  const disabledCheckout = await fetch(`http://127.0.0.1:${port}/v1/subscriptions/checkout`, {
     method: "POST", headers: { authorization: "Bearer " + loggedIn.token, "content-type": "application/json" },
     body: JSON.stringify({})
   });
-  const cancelSubscriptionBody = await cancelSubscription.text();
-  assert.equal(cancelSubscription.status, 200, cancelSubscriptionBody);
-  const canceledBody = JSON.parse(cancelSubscriptionBody);
-  assert.equal(canceledBody.status, "canceled");
-  assert.equal(canceledBody.access, true);
-  subscriptionState = await fetch(`http://127.0.0.1:${port}/v1/subscriptions/me`, {
-    headers: { authorization: "Bearer " + loggedIn.token }
-  });
-  const canceledState = await subscriptionState.json();
-  assert.equal(canceledState.status, "canceled");
-  assert.equal(canceledState.access, true);
-
-  // Recover the case where Mollie canceled successfully but the local status
-  // write did not complete. Mollie omits nextPaymentDate after cancellation,
-  // so the API must use the paid-through date persisted before the DELETE.
-  await pool.query("UPDATE app_users SET subscription_status='active' WHERE id=$1", [accountId]);
-  const reconcileCanceledSubscription = await fetch(`http://127.0.0.1:${port}/v1/subscriptions/cancel`, {
-    method: "POST", headers: { authorization: "Bearer " + loggedIn.token }
-  });
-  assert.equal(reconcileCanceledSubscription.status, 200);
-  const reconciledCancellation = await reconcileCanceledSubscription.json();
-  assert.equal(reconciledCancellation.status, "canceled");
-  assert.equal(reconciledCancellation.access, true);
-  const reconciledLocalState = await pool.query(
-    "SELECT subscription_status,subscription_access_until FROM app_users WHERE id=$1",
+  assert.equal(disabledCheckout.status, 410);
+  const disabledCheckoutBody = await disabledCheckout.json();
+  assert.equal(disabledCheckoutBody.code, "subscription_disabled");
+  const noSubscriptionOrders = await pool.query(
+    "SELECT COUNT(*)::int AS count FROM own_payments WHERE user_id=$1 AND description='NEXORA All Access monthly subscription'",
     [accountId]
   );
-  assert.equal(reconciledLocalState.rows[0].subscription_status, "canceled");
-  assert.ok(reconciledLocalState.rows[0].subscription_access_until);
-
-  // A later-arriving paid notification must never resurrect a canceled plan.
-  recurringPaymentStatus = "paid";
-  recurringPaymentCreatedAt = "2026-11-14T12:00:00Z";
-  const paidAfterCancellation = await fetch(`http://127.0.0.1:${port}/v1/payments/mollie-webhook`, {
-    method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: "id=tr_nexorarecurring"
-  });
-  assert.equal(paidAfterCancellation.status, 200);
-  subscriptionState = await fetch(`http://127.0.0.1:${port}/v1/subscriptions/me`, {
-    headers: { authorization: "Bearer " + loggedIn.token }
-  });
-  assert.equal((await subscriptionState.json()).status, "canceled",
-    "a paid webhook must not reactivate a canceled subscription");
-
-  const duplicateCancel = await fetch(`http://127.0.0.1:${port}/v1/subscriptions/cancel`, {
-    method: "POST", headers: { authorization: "Bearer " + loggedIn.token }
-  });
-  assert.equal(duplicateCancel.status, 200);
-  assert.equal((await duplicateCancel.json()).status, "canceled",
-    "repeating cancellation must be safe and must not reactivate the subscription");
+  assert.equal(noSubscriptionOrders.rows[0].count, 0, "monthly membership must not create payment orders");
 
   // Create user-owned content, then verify account deletion removes it.
   const createPost = await fetch(`http://127.0.0.1:${port}/v1/community/posts`, {
@@ -602,34 +444,10 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
     [accountId]
   );
   await pool.query("INSERT INTO ai_usage_windows (user_id,request_count) VALUES ($1,1) ON CONFLICT (user_id) DO NOTHING", [accountId]);
-  // Account deletion must verify and cancel an active provider-side
-  // subscription before removing the account and its customer reference.
-  mollieSubscriptionStatus = "active";
-  firstPaymentStatus = "open";
-  await pool.query("UPDATE own_payments SET status='open' WHERE order_id=$1", [checkoutBody.order_id]);
-  await pool.query(
-    "UPDATE app_users SET subscription_status='active',subscription_access_until=NULL WHERE id=$1",
-    [accountId]
-  );
-  // A mismatched provider subscription must stop deletion without deleting
-  // the account or issuing a DELETE against an unverified subscription.
-  mollieSubscriptionIdentityMismatch = true;
-  const unsafeDelete = await fetch(`http://127.0.0.1:${port}/v1/auth/account`, {
-    method: "DELETE", headers: { authorization: "Bearer " + loggedIn.token }
-  });
-  assert.equal(unsafeDelete.status, 409);
-  assert.equal(mollieSubscriptionStatus, "active");
-  const accountAfterUnsafeDelete = await pool.query("SELECT id FROM app_users WHERE id=$1", [accountId]);
-  assert.equal(accountAfterUnsafeDelete.rowCount, 1);
-  mollieSubscriptionIdentityMismatch = false;
-
+  // There is no monthly subscription to cancel; account deletion removes the account and its data.
   const deleteResponse = await fetch(`http://127.0.0.1:${port}/v1/auth/account`, {
     method: "DELETE", headers: { authorization: "Bearer " + loggedIn.token }
   });
-  assert.equal(firstPaymentStatus, "canceled",
-    "account deletion must cancel the pending first payment before deleting the account");
-  assert.equal(mollieSubscriptionStatus, "canceled",
-    "account deletion must cancel the active Mollie subscription first");
   assert.equal(deleteResponse.status, 200);
   assert.equal((await deleteResponse.json()).status, "account_deleted");
   const deletedProfile = await fetch(`http://127.0.0.1:${port}/v1/auth/me`, {
