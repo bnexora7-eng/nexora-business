@@ -34,7 +34,8 @@ jobs:
             timeout --version | head -n 1
             sh -n /backup/run.sh
             sh -n /backup/restore.sh
-            python3 -m py_compile /backup/crypto.py /backup/upload_backup.py
+            python3 -m py_compile /backup/crypto.py /backup/upload_backup.py /backup/backup_retention.py
+            python3 /backup/test_backup_retention.py
           '
 
       - name: Verify authenticated encryption and tamper rejection
