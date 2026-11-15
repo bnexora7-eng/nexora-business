@@ -1,0 +1,156 @@
+name: NEXORA isolated PostgreSQL restore test
+
+on:
+  workflow_dispatch:
+    inputs:
+      backup_stamp:
+        description: "UTC backup stamp, exactly YYYYMMDDTHHMMSSZ (from the private backup release)"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  restore-test:
+    name: Restore into disposable PostgreSQL 18
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: nexora_test
+          POSTGRES_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U nexora_test -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      BACKUP_REPOSITORY: bnexora7-eng/nexora-private-backups
+      BACKUP_STAMP: ${{ inputs.backup_stamp }}
+      BACKUP_ENCRYPTION_KEY: ${{ secrets.BACKUP_ENCRYPTION_KEY }}
+      GH_TOKEN: ${{ secrets.BACKUP_READ_TOKEN }}
+      PGHOST: 127.0.0.1
+      PGPORT: "5432"
+      PGUSER: nexora_test
+      PGPASSWORD: ${{ secrets.GITHUB_TOKEN }}
+      PGDATABASE: postgres
+
+    steps:
+      - name: Validate inputs and required secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$BACKUP_STAMP" =~ ^[0-9]{8}T[0-9]{6}Z$ ]] || { echo "::error::Invalid UTC backup stamp"; exit 1; }
+          [[ -n "$BACKUP_ENCRYPTION_KEY" ]] || { echo "::error::BACKUP_ENCRYPTION_KEY secret is missing"; exit 1; }
+          [[ -n "$GH_TOKEN" ]] || { echo "::error::BACKUP_READ_TOKEN secret is missing"; exit 1; }
+          [[ "${#BACKUP_ENCRYPTION_KEY}" -ge 24 ]] || { echo "::error::Backup key is shorter than 24 characters"; exit 1; }
+          echo "Backup selection and required secret presence validated; secret values are not displayed."
+
+      - name: Check out NEXORA restore tooling
+        uses: actions/checkout@v4
+
+      - name: Download selected encrypted backup and manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -m 700 "$RUNNER_TEMP/nexora-backup"
+          TAG="nexora-backup-$BACKUP_STAMP"
+          DUMP="nexora-$BACKUP_STAMP.dump.enc"
+          MANIFEST="nexora-$BACKUP_STAMP.manifest.json"
+          gh release download "$TAG" --repo "$BACKUP_REPOSITORY" --pattern "$DUMP" --pattern "$MANIFEST" --dir "$RUNNER_TEMP/nexora-backup"
+          test -s "$RUNNER_TEMP/nexora-backup/$DUMP"
+          test -s "$RUNNER_TEMP/nexora-backup/$MANIFEST"
+          echo "BACKUP_DUMP=$RUNNER_TEMP/nexora-backup/$DUMP" >> "$GITHUB_ENV"
+          echo "BACKUP_MANIFEST=$RUNNER_TEMP/nexora-backup/$MANIFEST" >> "$GITHUB_ENV"
+
+      - name: Verify manifest and encrypted SHA-256
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib, json, os, pathlib, sys
+          manifest = json.loads(pathlib.Path(os.environ["BACKUP_MANIFEST"]).read_text())
+          dump = pathlib.Path(os.environ["BACKUP_DUMP"])
+          stamp = os.environ["BACKUP_STAMP"]
+          expected_name = f"nexora-{stamp}.dump.enc"
+          if manifest.get("created_at_utc") != stamp:
+              sys.exit("Manifest timestamp mismatch")
+          if manifest.get("encrypted_file") != expected_name:
+              sys.exit("Manifest encrypted filename mismatch")
+          if manifest.get("postgres_major_version") != 18:
+              sys.exit("Backup is not marked as PostgreSQL major version 18")
+          if dump.stat().st_size != manifest.get("encrypted_size_bytes"):
+              sys.exit("Encrypted asset size mismatch")
+          actual = hashlib.sha256(dump.read_bytes()).hexdigest()
+          if actual != manifest.get("encrypted_sha256"):
+              sys.exit("Encrypted asset SHA-256 mismatch")
+          print(f"Manifest/hash verification PASS; encrypted bytes={dump.stat().st_size}; SHA-256={actual}")
+          PY
+
+      - name: Install crypto dependency and PostgreSQL 18 client
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --disable-pip-version-check cryptography
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(. /etc/os-release && echo "$VERSION_CODENAME")-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-18
+          pg_restore --version
+          pg_dump --version
+
+      - name: Decrypt and authenticate backup
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod 700 "$RUNNER_TEMP/nexora-backup"
+          python3 payment-integrity-api/backup-runtime/crypto.py decrypt "$BACKUP_DUMP" "$RUNNER_TEMP/nexora-backup/recovery.dump"
+          test -s "$RUNNER_TEMP/nexora-backup/recovery.dump"
+          chmod 600 "$RUNNER_TEMP/nexora-backup/recovery.dump"
+          echo "AES-256-GCM authentication/decryption PASS; plaintext remains in temporary runner storage only."
+
+      - name: Verify archive and PostgreSQL server version
+        shell: bash
+        run: |
+          set -euo pipefail
+          pg_restore --list "$RUNNER_TEMP/nexora-backup/recovery.dump" >/dev/null
+          SERVER_VERSION="$(psql -X -A -t -v ON_ERROR_STOP=1 -c 'SHOW server_version_num')"
+          [[ "$SERVER_VERSION" =~ ^18 ]] || { echo "::error::Recovery server is not PostgreSQL 18"; exit 1; }
+          echo "Archive listing PASS; disposable recovery server major version 18."
+
+      - name: Restore into a newly created disposable database
+        shell: bash
+        run: |
+          set -euo pipefail
+          createdb --maintenance-db=postgres nexora_recovery_test
+          pg_restore --exit-on-error --no-owner --no-acl --dbname=nexora_recovery_test "$RUNNER_TEMP/nexora-backup/recovery.dump"
+          echo "pg_restore completed successfully."
+
+      - name: Validate restored schema without displaying customer data
+        shell: bash
+        run: |
+          set -euo pipefail
+          TABLE_COUNT="$(psql -X -A -t -v ON_ERROR_STOP=1 -d nexora_recovery_test -c "SELECT count(*) FROM information_schema.tables WHERE table_schema NOT IN ('pg_catalog','information_schema') AND table_type='BASE TABLE'")"
+          INDEX_COUNT="$(psql -X -A -t -v ON_ERROR_STOP=1 -d nexora_recovery_test -c "SELECT count(*) FROM pg_indexes WHERE schemaname NOT IN ('pg_catalog','information_schema')")"
+          [[ "$TABLE_COUNT" =~ ^[0-9]+$ ]] && (( TABLE_COUNT > 0 )) || { echo "::error::No application tables found after restore"; exit 1; }
+          echo "Schema validation PASS; application_tables=$TABLE_COUNT; indexes=$INDEX_COUNT"
+          echo "No application row contents were queried or printed."
+
+      - name: Remove temporary plaintext dump
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          if [[ -n "${RUNNER_TEMP:-}" ]]; then
+            rm -f "$RUNNER_TEMP/nexora-backup/recovery.dump"
+            rm -rf "$RUNNER_TEMP/nexora-backup"
+          fi
+          echo "Temporary plaintext dump cleanup attempted; hosted runner and PostgreSQL service are ephemeral."
