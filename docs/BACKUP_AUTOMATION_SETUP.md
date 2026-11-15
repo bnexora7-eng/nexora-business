@@ -7,6 +7,7 @@
 - GitHub Actions runs daily at 03:30 UTC and can also be started manually.
 - It calls the authenticated `POST /internal/backup` endpoint on the Render API.
 - The API runs the PostgreSQL 18 dump inside the Render container, using Render's private `DATABASE_URL`. The database IP allowlist stays unchanged and is never opened to GitHub-hosted runners.
+- Backup job state is stored in PostgreSQL. A session advisory lock enforces one active dump across API instances; if Render restarts, the next trigger marks an orphaned running job as failed before starting another.
 - The dump is checked with `pg_restore --list`, encrypted using AES-256-GCM, and uploaded as ciphertext to the separate private repository `bnexora7-eng/nexora-private-backups`.
 - The upload script downloads the assets again and verifies their SHA-256 before the job reports success.
 - GitHub Actions polls the authenticated job status and fails closed if the Render process disappears or status cannot be verified.
