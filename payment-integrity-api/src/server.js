@@ -86,12 +86,16 @@ async function startBackup(req, res) {
   const releaseLock = async () => {
     if (released) return;
     released = true;
+    let releaseError = null;
     try {
       if (lockHeld) await client.query("SELECT pg_advisory_unlock($1, $2)", [BACKUP_LOCK_KEY_1, BACKUP_LOCK_KEY_2]);
     } catch (error) {
+      releaseError = error;
       console.error("NEXORA backup lock release failed", error.code || error.name || "Error");
     } finally {
-      client.release();
+      // Destroy a connection if unlocking failed; returning it to the pool
+      // could leave the session-level advisory lock held by an idle client.
+      client.release(releaseError);
     }
   };
 
@@ -156,7 +160,7 @@ async function startBackup(req, res) {
     await releaseLock();
     throw error;
   } finally {
-    if (!lockHeld) client.release();
+    if (!lockHeld && !released) client.release();
   }
 }
 
