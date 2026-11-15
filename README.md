@@ -20,7 +20,7 @@ NEXORA is a proposed digital ecosystem bringing four connected experiences into 
 3. **Marketplace** — service offers and collaboration opportunities.
 4. **Business tools** — guided AI-style planning and a business workspace concept.
 
-The wider ecosystem remains a pre-production concept with partial account and backend functionality. Community publishing, Marketplace publishing, Business workspace operations and AI planning are already guarded server-side by the active All Access entitlement check; expand regression coverage across every paid route before launch; live AI connectivity, real-time messaging and monetary rewards are not ready for production.
+The wider ecosystem remains a pre-production concept with partial account and backend functionality. Accounts are free; private and write operations require authentication, not a paid membership. Live AI connectivity, real-time messaging and monetary rewards are not ready for production.
 
 ## Payment Integrity sandbox
 
@@ -59,7 +59,7 @@ The repository also contains a Node.js API backend scaffold with provider HMAC-S
 - Static HTML, CSS and JavaScript front end.
 - GitHub Actions deploys the public site to GitHub Pages.
 - Payment Integrity demo API is hosted separately on Render.
-- The public browser demo and the account/subscription backend are separate systems; the demo is not a production payment service.
-- NEXORA's intended commercial model is one owner-operated membership: All Access at €29.99/month. Paid access is not enabled until recurring billing and server-side entitlements pass end-to-end tests.
+- The public browser demo and the account backend are separate systems; the demo is not a production payment service.
+- NEXORA's current commercial model is free accounts and one-time project fees after a written scope and quotation. There is no monthly membership or recurring platform fee. Checkout is disabled until Dutch business/tax status, payment-provider eligibility and all release gates are verified.
 
 For the current detailed handover, see [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md). For the external-facing overview, see [docs/PROJECT_BRIEF.md](docs/PROJECT_BRIEF.md).
