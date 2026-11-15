@@ -109,6 +109,15 @@ jobs:
             fi
             sleep 20
           done
+          # Render auto-deploys the same commit independently of this Pages workflow.
+          # Give its rolling restart time to finish before testing the in-memory demo dedupe cache.
+          sleep 30
+          status="$(curl --silent --show-error --output /tmp/nexora-health-after-settle.json --write-out '%{http_code}' --max-time 20 "$API_BASE_URL/health" || true)"
+          if [ "$status" != "200" ] || ! grep -q '"status":"ok"' /tmp/nexora-health-after-settle.json; then
+            echo "FAIL: Render API did not remain healthy after deployment settling."
+            cat /tmp/nexora-health-after-settle.json 2>/dev/null || true
+            exit 1
+          fi
           node --input-type=module <<'NODE'
           const base = process.env.API_BASE_URL;
           const headers = { "content-type": "application/json", origin: process.env.DEMO_ORIGIN };
