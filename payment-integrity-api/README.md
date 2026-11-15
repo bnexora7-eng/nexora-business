@@ -38,18 +38,29 @@ Passwords are stored as salted scrypt hashes. Session and email-action tokens ar
 
 Transactional email is sent through the Brevo HTTPS API when `BREVO_API_KEY` and a verified `BREVO_FROM` sender are configured. SMTP variables remain for environments that permit outbound SMTP; Render Free web services block outbound SMTP ports 25, 465 and 587.
 
-## Membership and billing
+## Project fees and payment readiness
 
-- `POST /v1/subscriptions/checkout` — starts the first €29.99 EUR All Access payment through Mollie
-- `GET /v1/subscriptions/me` — returns the server-confirmed entitlement state
-- `POST /v1/subscriptions/cancel` — cancels the recurring Mollie subscription while preserving paid-through access
-- `POST /v1/payments/mollie-webhook` — retrieves payment details from Mollie and reconciles the provider state; browser redirects alone never grant access
-- `POST /v1/payments` — generic one-off payment endpoint
-- `GET /v1/payments/{order_id}` — status of an authenticated user's own order
+NEXORA has no monthly membership, recurring platform fee or mandatory subscription. Accounts are free. Customers first discuss a defined service, receive an agreed written scope and one-time project quotation, and only then may pay for that specific project.
 
-Mollie checkout requires a server-side API key. Live payments additionally require `ENABLE_LIVE_PAYMENTS=true`; keep this disabled until merchant onboarding, legal/business setup and end-to-end test-mode verification are complete. Do not expose credentials in the mobile app.
+- `POST /v1/subscriptions/checkout` — permanently disabled for the current product model; returns HTTP 410.
+- `POST /v1/payments` — one-off Mollie checkout is fail-closed by default. It returns HTTP 503 with `one_off_payments_disabled` unless `ENABLE_ONE_OFF_PAYMENTS=true` is explicitly set after all business, legal, provider and operational release gates have passed.
+- `POST /v1/payments/mollie-webhook` and `GET /v1/payments/{order_id}` — legacy provider reconciliation/status routes; they do not enable checkout by themselves.
+- `GET /v1/subscriptions/me` and `POST /v1/subscriptions/cancel` — legacy compatibility routes only; no new subscription is sold or required.
 
-The Android client intentionally blocks external Mollie checkout. Android subscriptions remain unavailable until Google Play Billing is implemented or NEXORA is accepted into the applicable EEA alternative-billing program and its APIs/reporting/customer-support requirements are completed.
+Do not set `ENABLE_ONE_OFF_PAYMENTS=true` as part of routine deployment. Live payment activation additionally requires provider merchant approval, a confirmed business bank account, approved customer terms, correct VAT/invoicing treatment, end-to-end sandbox tests, webhook reconciliation, refunds/disputes handling, backup/restore verification and an explicit owner decision. The Mollie API key must remain server-side in Render. PayPal is excluded.
+
+The initial public price list is indicative, not an automatic charge: €149 business analysis; €295 AI assistant prototype; €495 business-specific AI prototype; system integration from €950; €950–€2,500 multi-step automation; €5,000–€15,000+ individually scoped enterprise work. Final price and deliverables require written agreement and feasibility review.
+
+## Product routes
+
+- `GET/POST /v1/community/posts` — public read preview; authenticated accounts can publish in the current free-access mode.
+- `GET/POST /v1/marketplace/listings` — public read preview; authenticated accounts can publish; checkout/escrow is not implemented.
+- `GET/PUT /v1/business/workspace` — authenticated account workspace.
+- `POST /v1/business/ai-plan` — authenticated route; requires a server-side AI provider key and explicit budget controls.
+- `POST /v1/events` — signed provider event screening with HMAC-SHA256, timestamp checks and idempotency.
+- `POST /v1/demo/events` — simulated browser-demo events only when the public demo is enabled and restricted to its configured origin.
+
+AI planning stays unavailable unless a provider key and monthly token budget are configured. The deterministic Payment Integrity rules are a prototype, not machine learning or certified fraud detection.
 
 ## Product routes
 
