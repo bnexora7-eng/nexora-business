@@ -115,6 +115,14 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   assert.equal(readiness.status, 200, "readiness must confirm PostgreSQL connectivity");
   assert.deepEqual(await readiness.json(), { status: "ready", database: "connected" });
 
+  const durableJobId = randomUUID();
+  await pool.query("INSERT INTO backup_jobs (id,status,finished_at) VALUES ($1,'succeeded',NOW())", [durableJobId]);
+  const durableStatus = await fetch(`http://127.0.0.1:${port}/internal/backup/${durableJobId}`, {
+    headers: { authorization: "Bearer integration-backup-trigger-token-for-tests-only" }
+  });
+  assert.equal(durableStatus.status, 200);
+  assert.equal((await durableStatus.json()).status, "succeeded");
+
   const backupUnauthenticated = await fetch(`http://127.0.0.1:${port}/internal/backup`, { method: "POST" });
   assert.equal(backupUnauthenticated.status, 401, "backup trigger must reject requests without its secret");
   const backupAuthenticatedButUnconfigured = await fetch(`http://127.0.0.1:${port}/internal/backup`, {
