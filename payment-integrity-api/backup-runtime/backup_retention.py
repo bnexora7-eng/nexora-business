@@ -31,6 +31,7 @@ def prune_expired_releases(api_json, current_release_id, now=None):
         if created < cutoff:
             expired.append((item["id"], tag))
 
+    # Deletion starts only after the full, stable candidate set is collected.
     for release_id, tag in expired:
         api_json("DELETE", "releases/" + str(release_id))
         api_json("DELETE", "git/refs/tags/" + tag)
