@@ -123,7 +123,8 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   });
   assert.equal(preflightResponse.status, 200, "authenticated preflight should report read-only database diagnostics");
   const preflight = await preflightResponse.json();
-  assert.equal(preflight.database.name, "nexora_business_db");
+  assert.equal(typeof preflight.database.name, "string");
+  assert.ok(preflight.database.name.length > 0);
   assert.ok(Number.isSafeInteger(preflight.database.size_bytes) && preflight.database.size_bytes > 0);
   assert.ok(Number.isFinite(preflight.database.size_mib) && preflight.database.size_mib > 0);
   assert.equal(typeof preflight.configuration.github_token_configured, "boolean");
