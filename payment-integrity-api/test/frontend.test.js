@@ -11,12 +11,12 @@ test("member workspace page has valid JavaScript and all required product sectio
   const script = html.match(/<script>([\s\S]*?)<\/script>/i)?.[1];
   assert.ok(script, "workspace page must include its application script");
   assert.doesNotThrow(() => new vm.Script(script), "workspace application script must parse");
+  assert.doesNotMatch(script, /subscriptions\/me|29\.99|All Access required/i, "workspace must not enforce a paid membership");
   for (const id of ["workspace-form", "ai-form", "post-form", "listing-form"]) {
     assert.match(html, new RegExp('id="' + id + '"'), "missing UI form: " + id);
   }
   for (const endpoint of [
     "/v1/auth/me",
-    "/v1/subscriptions/me",
     "/v1/business/workspace",
     "/v1/business/ai-plan",
     "/v1/community/posts",
@@ -31,4 +31,5 @@ test("member workspace page has valid JavaScript and all required product sectio
 test("account dashboard links to the member workspace", async () => {
   const html = await readFile(accountPath, "utf8");
   assert.match(html, /href="\.\.\/app\/">OPEN NEXORA WORKSPACE/);
+  assert.doesNotMatch(html, /€29\.99|NEXORA All Access|subscribe-button/i, "account page must not advertise or expose subscription checkout");
 });
