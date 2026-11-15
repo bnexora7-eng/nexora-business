@@ -17,6 +17,8 @@
 
 NEXORA accounts are free. There is no monthly membership, recurring platform fee or mandatory subscription. Revenue is intended to come from individually scoped services paid once per agreed project.
 
+Each project quotation must define an individually agreed advance payment before work starts and a remaining balance after completion/acceptance; the split is project-specific, not automatically 50/50. The exact amounts and milestones must be written into the accepted quote.
+
 The public indicative prices are:
 - €149 — business process analysis and AI opportunity proposal
 - €295 — focused AI assistant prototype
