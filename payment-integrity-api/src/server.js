@@ -73,6 +73,34 @@ async function handleBackupStatus(req, res, id) {
   if (!result.rowCount) return send(res, 404, { error: "Backup job not found" });
   return send(res, 200, backupJobView(result.rows[0]));
 }
+async function handleBackupPreflight(req, res) {
+  if (!backupAuthorized(req)) return send(res, 401, { error: "Authentication required" });
+  if (!pool || !DATABASE_URL) return send(res, 503, { error: "Database is not configured" });
+
+  // Read-only diagnostic: never creates a backup job, acquires a lock, or starts pg_dump.
+  const result = await pool.query(
+    "SELECT current_database() AS database_name, pg_database_size(current_database())::text AS database_size_bytes"
+  );
+  const databaseSizeBytes = Number(result.rows[0].database_size_bytes);
+  const maxUploadBytes = 90 * 1024 * 1024;
+  const repository = process.env.BACKUP_REPOSITORY || "";
+  const configuration = {
+    github_token_configured: Boolean(process.env.GITHUB_TOKEN),
+    repository_configured: repository === "bnexora7-eng/nexora-private-backups",
+    encryption_key_configured: Boolean(process.env.BACKUP_ENCRYPTION_KEY)
+  };
+  const configured = Object.values(configuration).every(Boolean);
+  return send(res, 200, {
+    status: configured && databaseSizeBytes <= maxUploadBytes ? "preflight_passed" : "preflight_attention_required",
+    database: {
+      name: result.rows[0].database_name,
+      size_bytes: databaseSizeBytes,
+      size_mib: Number((databaseSizeBytes / (1024 * 1024)).toFixed(2)),
+      below_90_mib_database_size_threshold: databaseSizeBytes <= maxUploadBytes
+    },
+    configuration
+  });
+}
 async function startBackup(req, res) {
   if (!backupAuthorized(req)) return send(res, 401, { error: "Authentication required" });
   if (!pool || !DATABASE_URL) return send(res, 503, { error: "Database is not configured" });
@@ -1402,6 +1430,7 @@ const server = createServer(async (req, res) => {
       return send(res, 200, { status: "ok", service: "nexora-payment-integrity-api", mode: pool ? "database" : "demo-only" });
     }
     const backupStatusMatch = /^\/internal\/backup\/([0-9a-f-]{36})$/.exec(pathname);
+    if (req.method === "GET" && pathname === "/internal/backup/preflight") return await handleBackupPreflight(req, res);
     if (req.method === "POST" && pathname === "/internal/backup") return await startBackup(req, res);
     if (req.method === "GET" && backupStatusMatch) return await handleBackupStatus(req, res, backupStatusMatch[1]);
     if (req.method === "GET" && pathname === "/ready") {
