@@ -11,6 +11,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 repo = os.environ["BACKUP_REPOSITORY"]
+if repo != "bnexora7-eng/nexora-private-backups":
+    raise SystemExit("BACKUP_REPOSITORY must be the designated private NEXORA backup repository")
 token = os.environ["GITHUB_TOKEN"]
 branch = os.environ.get("BACKUP_BRANCH", "main")
 stamp = os.environ["BACKUP_STAMP"]
