@@ -63,7 +63,7 @@ h3{margin:0 0 8px;font-size:18px}
 <h2>Initial technical focus: NEXORA Payment Integrity</h2>
 <div class="card">
 <p>NEXORA Payment Integrity is a provider-neutral prototype for screening synthetic incoming payment-event notifications. It demonstrates deterministic ACCEPT, REVIEW and REJECT decisions and duplicate-event detection.</p>
-<p>A separate Node.js and PostgreSQL backend scaffold explores HMAC-SHA256 signature verification, timestamp-window checks, idempotency and audit records. The browser demonstration and backend scaffold are not yet connected as one deployed service.</p>
+<p>The public browser demonstration is connected to the Render-hosted Node.js API: simulated payment events are sent to the server and evaluated there. The public demo uses temporary in-memory event storage with duplicate-event detection; it does not use the persistent PostgreSQL event-ingestion route or connect to a live bank or payment provider. The API also contains a separate authenticated event-ingestion path, PostgreSQL-backed records and HMAC-SHA256 signature verification for future integration work.</p>
 <div class="links">
 <a href="https://splendid-lokum-02523e.netlify.app/">Open the Payment Integrity demonstration</a>
 <a href="https://github.com/bnexora7-eng/nexora-business">View the public development repository</a>
@@ -86,7 +86,7 @@ h3{margin:0 0 8px;font-size:18px}
 <h2>Development roadmap</h2>
 <ol class="list">
 <li>Validate one initial customer segment and a specific, valuable payment-event use case.</li>
-<li>Connect the browser demonstration to the Node.js/PostgreSQL API and verify the complete flow.</li>
+<li>Extend the connected demo into a controlled pilot architecture: durable event records, provider-specific sandbox integration, operational monitoring and independently reviewed security controls.</li>
 <li>Strengthen key management, authentication, rate limiting, monitoring and audit retention.</li>
 <li>Deploy a secured pilot and test with a consenting design partner using synthetic data first.</li>
 <li>Use customer evidence to define the next stages of the wider NEXORA product ecosystem.</li>
