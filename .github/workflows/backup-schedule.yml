@@ -26,6 +26,32 @@ jobs:
             exit 1
           fi
 
+      - name: Run read-only backup preflight
+        shell: bash
+        env:
+          BACKUP_TOKEN: ${{ secrets.NEXORA_BACKUP_TRIGGER_TOKEN }}
+          API_URL: https://nexora-payment-integrity-api.onrender.com
+        run: |
+          set -euo pipefail
+          response="$(mktemp)"
+          trap 'rm -f "$response"' EXIT
+          status="$(curl --silent --show-error --output "$response" --write-out '%{http_code}' \
+            --connect-timeout 10 --max-time 35 \
+            -H "Authorization: Bearer $BACKUP_TOKEN" \
+            "$API_URL/internal/backup/preflight" || true)"
+          if [ "$status" != "200" ]; then
+            echo "Preflight request failed (HTTP ${status:-none}); backup will not start."
+            cat "$response" 2>/dev/null || true
+            exit 1
+          fi
+          state="$(jq -er '.status' "$response")"
+          cat "$response"
+          if [ "$state" != "preflight_passed" ]; then
+            echo "Preflight did not pass; backup will not start."
+            exit 1
+          fi
+          echo "PASS: database size and backup configuration passed the read-only preflight."
+
       - name: Trigger backup inside Render
         id: trigger
         shell: bash
