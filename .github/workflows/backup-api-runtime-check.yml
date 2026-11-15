@@ -33,6 +33,7 @@ jobs:
           cmp backup/run.sh payment-integrity-api/backup-runtime/run.sh
           cmp backup/crypto.py payment-integrity-api/backup-runtime/crypto.py
           cmp backup/upload_backup.py payment-integrity-api/backup-runtime/upload_backup.py
+          cmp backup/backup_retention.py payment-integrity-api/backup-runtime/backup_retention.py
 
       - name: Build production API image with backup runtime
         run: docker build --pull -t nexora-api-backup-check ./payment-integrity-api
