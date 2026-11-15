@@ -132,6 +132,8 @@ jobs:
           const duplicateId = id + "-duplicate";
           const first = await post(duplicateId, "succeeded");
           const replay = await post(duplicateId, "succeeded");
+          console.log("Duplicate first response:", JSON.stringify(first));
+          console.log("Duplicate replay response:", JSON.stringify(replay));
           checks.push(["DUPLICATE", first.decision === "ACCEPT" && replay.decision === "REJECT" && replay.duplicate === true]);
           for (const [name, passed] of checks) console.log((passed ? "PASS " : "FAIL ") + name);
           if (checks.some(([, passed]) => !passed)) throw new Error("One or more live Render API checks failed");
