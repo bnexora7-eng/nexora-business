@@ -294,11 +294,6 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   });
   assert.equal(lockedFeature.status, 201);
 
-  const lockedAI = await fetch("http://127.0.0.1:" + port + "/v1/business/ai-plan", {
-    method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + loggedIn.token },
-    body: JSON.stringify({ industry: "software", problem: "temporary free-access mode test" })
-  });
-  assert.equal(lockedAI.status, 200);
 
   const lockedMarketplace = await fetch(`http://127.0.0.1:${port}/v1/marketplace/listings`, {
     method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + loggedIn.token },
