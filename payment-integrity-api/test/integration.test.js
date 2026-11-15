@@ -445,6 +445,7 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   );
   await pool.query("INSERT INTO ai_usage_windows (user_id,request_count) VALUES ($1,1) ON CONFLICT (user_id) DO NOTHING", [accountId]);
   // There is no monthly subscription to cancel; account deletion removes the account and its data.
+  await pool.query("UPDATE app_users SET subscription_status='inactive',mollie_customer_id=NULL,mollie_subscription_id=NULL,subscription_access_until=NULL WHERE id=$1",[accountId]);
   const deleteResponse = await fetch(`http://127.0.0.1:${port}/v1/auth/account`, {
     method: "DELETE", headers: { authorization: "Bearer " + loggedIn.token }
   });
