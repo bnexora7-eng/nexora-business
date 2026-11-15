@@ -426,6 +426,20 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   );
   assert.equal(noSubscriptionOrders.rows[0].count, 0, "monthly membership must not create payment orders");
 
+  // One-off checkout is also fail-closed until business and provider readiness are approved.
+  const disabledOneOffCheckout = await fetch(`http://127.0.0.1:${port}/v1/payments`, {
+    method: "POST", headers: { authorization: "Bearer " + loggedIn.token, "content-type": "application/json" },
+    body: JSON.stringify({ amount: "149.00", description: "NEXORA business analysis" })
+  });
+  assert.equal(disabledOneOffCheckout.status, 503);
+  const disabledOneOffBody = await disabledOneOffCheckout.json();
+  assert.equal(disabledOneOffBody.code, "one_off_payments_disabled");
+  const noOneOffOrders = await pool.query(
+    "SELECT COUNT(*)::int AS count FROM own_payments WHERE user_id=$1 AND description='NEXORA business analysis'",
+    [accountId]
+  );
+  assert.equal(noOneOffOrders.rows[0].count, 0, "disabled checkout must not create a payment order");
+
   // Create user-owned content, then verify account deletion removes it.
   const createPost = await fetch(`http://127.0.0.1:${port}/v1/community/posts`, {
     method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + loggedIn.token },
