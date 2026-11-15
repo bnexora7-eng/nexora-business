@@ -7,9 +7,12 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives import hashes
 
-MAGIC = b"NEXORA1\0"
+MAGIC = b"NEXORA1\\0"
 SALT_LEN = 16
 NONCE_LEN = 12
+TAG_LEN = 16
+MAX_ENCRYPTED_BYTES = 90 * 1024 * 1024
+MAX_PLAINTEXT_BYTES = MAX_ENCRYPTED_BYTES - len(MAGIC) - SALT_LEN - NONCE_LEN - TAG_LEN
 ITERATIONS = 600_000
 
 def derive(passphrase: str, salt: bytes) -> bytes:
@@ -19,6 +22,8 @@ def derive(passphrase: str, salt: bytes) -> bytes:
     return kdf.derive(passphrase.encode("utf-8"))
 
 def encrypt(source: Path, target: Path, passphrase: str) -> None:
+    if source.stat().st_size > MAX_PLAINTEXT_BYTES:
+        raise SystemExit("Database dump exceeds the 90 MiB encrypted-backup safety limit")
     salt = os.urandom(SALT_LEN)
     nonce = os.urandom(NONCE_LEN)
     key = derive(passphrase, salt)
@@ -27,6 +32,8 @@ def encrypt(source: Path, target: Path, passphrase: str) -> None:
     os.chmod(target, 0o600)
 
 def decrypt(source: Path, target: Path, passphrase: str) -> None:
+    if source.stat().st_size > MAX_ENCRYPTED_BYTES:
+        raise SystemExit("Encrypted backup exceeds the 90 MiB safety limit")
     blob = source.read_bytes()
     header_len = len(MAGIC) + SALT_LEN + NONCE_LEN
     if len(blob) <= header_len or not blob.startswith(MAGIC):
