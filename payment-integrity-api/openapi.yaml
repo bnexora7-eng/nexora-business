@@ -3,9 +3,7 @@ info:
   title: NEXORA API
   version: 0.2.0
   description: >
-    Pre-production NEXORA account, subscription, workspace and synthetic
-    Payment Integrity API. Real customer billing, live AI and public launch
-    remain disabled until the production-readiness gates are complete.
+    Pre-production NEXORA account, free workspace and synthetic Payment Integrity API. One-time project checkout remains disabled until the production-readiness gates are complete.
 servers:
   - url: https://nexora-payment-integrity-api.onrender.com
     description: Render pre-production API
@@ -114,7 +112,7 @@ paths:
         "429": { description: Rate limit reached }
   /v1/auth/me:
     get:
-      summary: Get current account profile and subscription status
+      summary: Get current account profile
       security: [{ bearerAuth: [] }]
       responses:
         "200": { description: Current account profile }
@@ -182,25 +180,20 @@ paths:
         "429": { description: Rate limit reached }
   /v1/subscriptions/checkout:
     post:
-      summary: Create first Mollie payment for NEXORA All Access
+      summary: Disabled legacy subscription checkout
       description: >
-        €29.99 EUR monthly subscription. Requires server-side Mollie configuration.
-        Live payments must remain disabled until merchant onboarding and all
-        legal, support and end-to-end test gates pass.
+        Recurring memberships are not part of the current NEXORA product model.
+        This endpoint always returns HTTP 410 subscription_disabled.
       security: [{ bearerAuth: [] }]
       responses:
-        "201": { description: Mollie checkout created in the configured mode }
-        "401": { description: Authentication required }
-        "402": { description: Existing entitlement or payment state prevents a new checkout }
-        "409": { description: Pending payment or provider result requires reconciliation }
-        "503": { description: Mollie checkout is not configured }
+        "410": { description: Subscription checkout permanently disabled for the current product model }
   /v1/subscriptions/me:
     get:
-      summary: Read server-confirmed All Access entitlement
+      summary: Read legacy subscription state (not used for account access)
       security: [{ bearerAuth: [] }]
       responses:
         "200":
-          description: Subscription state
+          description: Legacy subscription fields; no membership is sold or required
           content:
             application/json:
               schema:
@@ -208,20 +201,20 @@ paths:
         "401": { description: Authentication required }
   /v1/subscriptions/cancel:
     post:
-      summary: Cancel recurring Mollie subscription
+      summary: Legacy subscription cancellation compatibility endpoint
       security: [{ bearerAuth: [] }]
       responses:
-        "200": { description: Subscription canceled; access remains through paid-through date }
+        "200": { description: Legacy provider subscription canceled if one exists; does not affect free account access }
         "401": { description: Authentication required }
         "409": { description: Provider status could not be safely reconciled }
   /v1/payments:
     post:
-      summary: Create a one-off Mollie payment
+      summary: Create a one-off project payment (disabled by default)
       security: [{ bearerAuth: [] }]
       responses:
-        "201": { description: Payment order created }
+        "201": { description: Payment order created only when ENABLE_ONE_OFF_PAYMENTS=true and provider checks pass }
         "401": { description: Authentication required }
-        "503": { description: Payment provider is not configured }
+        "503": { description: One-off checkout disabled by default or provider is not configured }
   /v1/payments/{order_id}:
     get:
       summary: Read the authenticated user's payment status
@@ -252,8 +245,8 @@ paths:
       summary: Publish a Community post
       security: [{ bearerAuth: [] }]
       responses:
-        "201": { description: Post created for an eligible All Access account }
-        "402": { description: Active All Access entitlement required }
+        "201": { description: Post created for an authenticated account }
+        "401": { description: Authentication required }
   /v1/marketplace/listings:
     get:
       summary: Read public Marketplace listings
@@ -263,21 +256,21 @@ paths:
       summary: Publish a Marketplace listing
       security: [{ bearerAuth: [] }]
       responses:
-        "201": { description: Listing created for an eligible All Access account }
-        "402": { description: Active All Access entitlement required }
+        "201": { description: Listing created for an authenticated account }
+        "401": { description: Authentication required }
   /v1/business/workspace:
     get:
       summary: Read authenticated Business Studio workspace
       security: [{ bearerAuth: [] }]
       responses:
         "200": { description: Workspace data }
-        "402": { description: Active All Access entitlement required }
+        "401": { description: Authentication required }
     put:
       summary: Update Business Studio workspace
       security: [{ bearerAuth: [] }]
       responses:
         "200": { description: Workspace saved }
-        "402": { description: Active All Access entitlement required }
+        "401": { description: Authentication required }
   /v1/business/ai-plan:
     post:
       summary: Generate an AI business plan
@@ -285,7 +278,7 @@ paths:
       security: [{ bearerAuth: [] }]
       responses:
         "200": { description: Generated plan }
-        "402": { description: Active All Access entitlement required }
+        "401": { description: Authentication required }
         "429": { description: Per-account or monthly AI quota reached }
         "503": { description: AI provider is not configured or AI is disabled }
   /v1/events:
