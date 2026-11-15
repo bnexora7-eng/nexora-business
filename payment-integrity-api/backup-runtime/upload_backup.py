@@ -9,6 +9,7 @@ import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from backup_retention import prune_expired_releases
 
 repo = os.environ["BACKUP_REPOSITORY"]
 if repo != "bnexora7-eng/nexora-private-backups":
@@ -149,28 +150,9 @@ def upload_asset(name, payload):
 dump_asset = upload_asset(backup_path.name, encrypted)
 manifest_asset = upload_asset("nexora-" + stamp + ".manifest.json", manifest_bytes)
 
-# Keep 30 days of daily releases. Delete only releases created by this backup job.
-cutoff = datetime.now(timezone.utc) - timedelta(days=30)
-page = 1
-while True:
-    releases = api_json("GET", f"releases?per_page=100&page={page}")
-    if not isinstance(releases, list) or not releases:
-        break
-    for item in releases:
-        old_tag = item.get("tag_name", "")
-        match = re.fullmatch(r"nexora-backup-(\d{8}T\d{6}Z)", old_tag)
-        if not match or item.get("id") == release_id:
-            continue
-        try:
-            created = datetime.strptime(match.group(1), "%Y%m%dT%H%M%SZ").replace(tzinfo=timezone.utc)
-        except ValueError:
-            continue
-        if created < cutoff:
-            api_json("DELETE", "releases/" + str(item["id"]))
-            api_json("DELETE", "git/refs/tags/" + urllib.parse.quote(old_tag, safe=""))
-    if len(releases) < 100:
-        break
-    page += 1
+# Fetch every page before deleting anything: deleting during offset pagination
+# shifts later pages and can silently skip expired releases.
+prune_expired_releases(api_json, release_id)
 
 print(json.dumps({
     "status": "verified",
