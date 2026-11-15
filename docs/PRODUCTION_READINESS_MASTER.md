@@ -39,13 +39,17 @@ This file is the current release-gate summary. A green CI check validates only t
 - Render Free blocks outbound SMTP ports 25, 465 and 587; use Brevo HTTPS rather than relying on SMTP.
 - Required: create a Brevo API key, verify the sender/domain, enter secrets directly into Render, then test registration, resend verification, password reset and delivery to real inboxes. Never send API keys in chat.
 
-### C. Mollie merchant and recurring billing
+### C. One-time project payments and merchant readiness
 
-- Subscription lifecycle and webhook reconciliation are covered by a Mollie-compatible mocked server, not the real Mollie sandbox.
-- No live merchant onboarding, API credentials or end-to-end provider transaction has been verified.
-- Required: complete merchant onboarding and legal/business checks, configure test credentials in Render, verify first payment, recurring renewal, failed renewal, cancellation, refunds/disputes and account deletion. Keep `ENABLE_LIVE_PAYMENTS` disabled until all gates pass.
-- Browser redirects alone never grant subscription access; the API must reconcile provider state.
-- PayPal is permanently excluded from this project.
+- **Current commercial decision (15 November 2026):** NEXORA accounts are free. There is no monthly membership or recurring platform fee. Work is sold only as a separately scoped, one-time project with written customer approval.
+- The public price list is indicative: €149 business analysis; €295 AI assistant prototype; €495 business-specific AI prototype; system integration from €950; €950–€2,500 multi-step automation; €5,000–€15,000+ individually scoped enterprise work. No automatic checkout is offered from these prices.
+- `POST /v1/subscriptions/checkout` returns HTTP 410. Generic one-off checkout `POST /v1/payments` now fails closed by default and returns `one_off_payments_disabled` unless `ENABLE_ONE_OFF_PAYMENTS=true` is explicitly enabled after all gates and owner approval. Keep it disabled.
+- The current generic one-off checkout implementation is still Mollie-specific. No provider has been approved for live transactions, and no live merchant onboarding or end-to-end provider transaction has been verified. PayPal is permanently excluded.
+- KVK's published criteria say registration is required when the person independently supplies (or prepares to supply) goods/services, charges a commercial price and does so regularly for others. KVK also says business activity may begin with steps such as launching a business website; assess the criteria and start date rather than assuming registration can wait until the first payment. See https://www.kvk.nl/en/starting/do-you-need-to-register-your-business-with-kvk/ and https://www.kvk.nl/en/starting/on-what-date-must-i-register-my-business-with-kvk/.
+- Mollie states it serves registered businesses, not private individuals, and requires business registration details, legal representative/UBO identity, a bank account and website/business information. Do not attempt merchant onboarding as a private individual or represent a personal bank account as a business account. See https://help.mollie.com/hc/en-us/articles/25897821634322-What-does-Mollie-need-to-verify-my-account.
+- Before any invoice or charge: confirm the legal operator, legal form, KVK/Tax Administration status, business bank account/provider eligibility, VAT treatment (including cross-border B2B/B2C), invoice numbering and mandatory invoice details, customer terms, scope/acceptance, delivery, refunds/cancellations and record retention. Belastingdienst invoice requirements: https://www.belastingdienst.nl/wps/wcm/connect/bldcontenten/belastingdienst/business/vat/vat_in_the_netherlands/vat_administration/invoice_requirements.
+- Intended workflow: enquiry → feasibility and scope review → written one-time quote → customer acceptance → compliant invoice/payment request → provider-confirmed payment → delivery and audit record. Never treat a browser redirect as proof of payment; reconcile provider state server-side.
+- Required technical gates: test-mode checkout only after provider approval and owner authorization; verify successful, failed, canceled, expired and refunded payments; duplicate/retried webhook idempotency; amount/currency/order matching; status visibility; dispute/refund procedure; account deletion/data retention; backups and restore. No live payment until all gates pass and the owner explicitly approves activation.
 
 ### D. Android / Google Play
 
