@@ -33,3 +33,15 @@ test("account dashboard links to the member workspace", async () => {
   assert.match(html, /href="\.\.\/app\/">OPEN NEXORA WORKSPACE/);
   assert.doesNotMatch(html, /€29\.99|NEXORA All Access|subscribe-button/i, "account page must not advertise or expose subscription checkout");
 });
+
+test("project enquiry form prepares a local email without a third-party form processor", async () => {
+  const orderPath = new URL("../../order.html", import.meta.url);
+  const html = await readFile(orderPath, "utf8");
+  const script = html.match(/<script>([\\s\\S]*?)<\\/script>/i)?.[1];
+  assert.ok(script, "project enquiry page must include its form script");
+  assert.doesNotThrow(() => new vm.Script(script), "project enquiry script must parse");
+  assert.match(html, /Prepare email enquiry/);
+  assert.match(script, /mailto:bnexora7@gmail\\.com/);
+  assert.match(html, /privacy notice/);
+  assert.doesNotMatch(html, /formsubmit\\.co|formsubmit/i, "enquiry data must not be sent to an unreviewed third-party form processor");
+});
