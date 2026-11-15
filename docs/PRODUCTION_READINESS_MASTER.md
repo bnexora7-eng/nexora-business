@@ -1,8 +1,8 @@
 # NEXORA — Production Readiness Master Checklist
 
-**Last reviewed:** 14 November 2026  
+**Last reviewed:** 15 November 2026  
 **Release status:** **PRE-PRODUCTION — NOT CLEARED FOR PUBLIC PAID LAUNCH**  
-**Commercial model:** NEXORA All Access — €29.99/month. NEXORA remains owner-operated and independent.
+**Commercial model:** free accounts and individually scoped one-time project fees. No monthly membership or recurring platform fee.
 
 This file is the current release-gate summary. A green CI check validates only the scope of that check; it does not substitute for provider onboarding, live sandbox testing, a real database backup/restore, legal approval or physical-device acceptance.
 
