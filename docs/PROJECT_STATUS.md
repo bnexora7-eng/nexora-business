@@ -80,6 +80,7 @@ Before paid trading, assess the KVK entrepreneur criteria and registration date,
 ## Source-of-truth documents
 
 - [Production Readiness Master Record](PRODUCTION_READINESS_MASTER.md)
+- [One-time Project Payment Flow](ONE_TIME_PROJECT_PAYMENT_FLOW.md)
 - [Monetization Architecture](MONETIZATION_ARCHITECTURE.md)
 - [Feature Availability Matrix](ALL_ACCESS_FEATURE_MATRIX.md)
 - [Project Services Terms — internal draft only](TERMS_AND_SUBSCRIPTION_DISCLOSURES_DRAFT.md)
