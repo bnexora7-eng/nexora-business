@@ -37,7 +37,7 @@ test("account dashboard links to the member workspace", async () => {
 test("project enquiry form prepares a local email without a third-party form processor", async () => {
   const orderPath = new URL("../../order.html", import.meta.url);
   const html = await readFile(orderPath, "utf8");
-  const script = html.match(/<script>([\\s\\S]*?)<\\/script>/i)?.[1];
+  const script = html.match(/<script>([\s\S]*?)<\/script>/i)?.[1];
   assert.ok(script, "project enquiry page must include its form script");
   assert.doesNotThrow(() => new vm.Script(script), "project enquiry script must parse");
   assert.match(html, /Prepare email enquiry/);
