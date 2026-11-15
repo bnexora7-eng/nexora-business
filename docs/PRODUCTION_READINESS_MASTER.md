@@ -56,13 +56,13 @@ This file is the current release-gate summary. A green CI check validates only t
 - A signed AAB rebuild completed successfully in workflow 43619876826 on 14 November 2026. Dependency audit, TypeScript, Expo config, target SDK 36, upload-keystore verification, `bundleRelease`, and signed-AAB verification all passed. The workflow uploaded the signed AAB as a GitHub Actions artifact. It has **not** been submitted to Play Console. Any older AAB predating the Android Mollie-checkout safety block is obsolete — do not upload it. A new debug validation APK completed successfully in run 43619889691 (SHA-256 `a3af0ae5cb902d03cd6e97eb1c4429469c695025a3fbeb06bd9c3c83c538a315`); release APK signature/package verification completed in 43619871789. Signed test artifact `app-release.apk` is 56,741,823 bytes (SHA-256 `22fa7e79e3f09e6c4447548c52d26d61a6cfaafbafed621d0b633fb4ce2236fd`); it is for physical-device testing, not Play upload.
 - A fresh Android validation APK build was running in workflow 43619553600; another installable APK build was triggered after the latest workflow corrections.
 - Expo SDK 54+ and target SDK 36 baseline passed CI. Upload keystore alias `nexora-upload-2026` and signing configuration passed validation. The temporary decoded key is deleted by the workflow.
-- Android external Mollie checkout is intentionally disabled. Before enabling digital subscriptions, either implement Google Play Billing with server-side purchase verification or complete Google's EEA alternative-billing enrollment and all applicable APIs, reporting, user disclosure, customer-support and dispute requirements. EEA alternative billing requires a registered business.
+- Android external Mollie checkout is intentionally disabled. The current model does not sell digital subscriptions; do not add subscription billing to Android. Any future paid digital functionality requires a separate review of current Google Play policy and the appropriate approved billing route.
 - Play Console developer registration fee has **not** been paid; the AAB has not been submitted to Play Console; store listing, Data Safety declarations, App Signing confirmation and physical-device acceptance tests remain open.
 - The current Play build is a candidate artifact, not a published or approved app.
 
 ### E. AI provider and cost controls
 
-- AI route is authenticated and All Access-gated.
+- AI route is authenticated. It is unavailable for live use until a provider key and an explicitly approved budget are configured; it is not gated by a paid membership.
 - No production provider key or approved monthly budget is configured. Render now explicitly sets `AI_MONTHLY_TOKEN_LIMIT=0`; `ENABLE_LIVE_PAYMENTS=false` is also explicitly set. The environment update was deployed and the Render readiness smoke test passed (run 43620259235).
 - Required before enabling: add the server-side key directly to Render, set a conservative monthly token limit, configure provider-side spending alerts/limits, verify quota reservation/reconciliation and test abuse/rate-limit behavior. No paid AI usage without explicit budget approval.
 
@@ -70,8 +70,8 @@ This file is the current release-gate summary. A green CI check validates only t
 
 - Public privacy page was corrected: it no longer describes a FormSubmit web form that the site does not use; it now describes the email link, Brevo conditional processing and website/mobile token storage.
 - A scheduled production smoke monitor verifies the public privacy and account-deletion pages and API readiness. Latest monitor run 43619617134 passed.
-- Internal terms and subscription disclosures draft: `docs/TERMS_AND_SUBSCRIPTION_DISCLOSURES_DRAFT.md`. It is **not published and not legally approved**.
-- Required before paid launch: actual operator/legal name, legal form, KVK number, registered address, VAT treatment of €29.99, verified support contact, final feature availability matrix, consumer withdrawal/refund/cancellation disclosures and Dutch/EU legal review.
+- Internal project-services terms draft: `docs/TERMS_AND_SUBSCRIPTION_DISCLOSURES_DRAFT.md`. It is **not published and not legally approved**.
+- Required before paid project work: actual operator/legal name, legal form and applicable KVK/Tax Administration registration, business address, VAT treatment for each customer market/type, verified support contact, project scope/acceptance terms, consumer withdrawal/refund disclosures where applicable, and Dutch/EU legal review.
 - Do not invent company identity or publish placeholder terms. Marketplace remains listings only; no checkout or escrow is implemented. Payment Integrity is a synthetic prototype, not a regulated payment service or certified fraud engine.
 
 ### G. Hosting and operational resilience
@@ -91,11 +91,12 @@ PostCSS is pinned to 8.5.33 to address the current PostCSS advisories. Full rati
 
 1. Add a payment method in Render for the approved backup Cron only. The private backup repository and narrowly scoped GitHub token already exist; after the Render service is created, add the token directly to its environment and verify the first backup.
 2. Create the Brevo API key and verify the sender/domain; enter secrets directly in Render.
-3. Complete the required Dutch business registration and legal identity/VAT details before merchant onboarding and publication.
-4. Complete Mollie test-mode and merchant verification, then select the Android billing route.
-5. Decide when to pay the Google Play Console one-time developer registration fee and complete store declarations.
-6. Install the latest APK on the Samsung phone and test registration, email verification, login, session persistence, Community/Marketplace, account deletion, subscription status and error handling.
+3. Assess KVK entrepreneur criteria and registration timing; confirm the appropriate Dutch business form, Tax Administration status and VAT treatment before paid trading.
+4. Confirm a suitable business bank account and payment-provider eligibility; choose a provider only after its onboarding requirements are met.
+5. Complete one-time quote, invoice/payment, webhook, refund and dispute tests in sandbox; keep checkout disabled until explicit approval.
+6. Decide separately when to pay the Google Play Console one-time developer registration fee and complete store declarations.
+7. Install the latest APK on a physical device and test registration, email verification, login, session persistence, Community/Marketplace, account deletion and error handling.
 
 ## 5. Release rule
 
-Do not enable live payments, paid AI, or public paid subscriptions until: a real encrypted backup exists and restore has passed; email delivery works end to end; Mollie test lifecycle and merchant onboarding are complete; AI budgets are enforced; Android billing is policy-compliant; legal documents are approved; the database has durable production backup/retention; and physical-device acceptance tests pass.
+Do not enable one-time checkout or paid AI until: a real encrypted backup exists and restore has passed; email delivery works end to end; Dutch business and tax/VAT position are confirmed; a suitable business bank account and payment provider are approved; one-time payment lifecycle, webhook, refunds and disputes are tested; AI budgets are enforced; legal documents are reviewed; the database has durable production backup/retention; and physical-device acceptance tests pass. Live activation also requires explicit owner approval.
