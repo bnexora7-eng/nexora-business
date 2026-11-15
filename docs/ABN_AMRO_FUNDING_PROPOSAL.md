@@ -17,7 +17,7 @@ This is an exploratory request for a discussion, not a representation that NEXOR
 
 - A publicly accessible interactive demonstration: https://bnexora7-eng.github.io/nexora-business/payment-integrity-demo/demo.html
 - A source repository and project documentation: https://github.com/bnexora7-eng/nexora-business
-- A separate technical backend scaffold covering webhook-signature verification, timestamp checks, PostgreSQL schema, idempotency and audit-related functionality.
+- The public browser demonstration is connected to the Render-hosted Node.js API. Simulated events are evaluated server-side, with temporary in-memory demo storage and duplicate-event detection. The API also contains a separate authenticated event-ingestion path, PostgreSQL-backed records and HMAC-SHA256 signature verification intended for future provider integration.
 - Automated checks recorded in GitHub Actions, including synthetic ACCEPT, REVIEW, REJECT and DUPLICATE scenarios.
 - A project brief: https://github.com/bnexora7-eng/nexora-business/blob/main/docs/PROJECT_BRIEF.md
 
@@ -51,7 +51,7 @@ The timeline and acceptance criteria would be agreed with the selected partner. 
 
 ## 5. Current limitations and risk controls
 
-NEXORA is **not a production banking system, payment processor or validated fraud-detection service**. It does not currently process real payments or connect to live bank/payment-provider systems. The public demo uses synthetic data and deterministic decision rules. The separate backend scaffold is not yet integrated with the public demo as a production service.
+NEXORA is **not a production banking system, payment processor or validated fraud-detection service**. It does not currently process real payments or connect to live bank/payment-provider systems. The public demo uses synthetic data and deterministic decision rules. The connected demonstration is not a production service: its public demo events are held in temporary memory, it does not use the persistent authenticated event-ingestion route, and no live bank or payment-provider integration has been completed.
 
 No real personal, banking or payment data should be submitted to the public demonstration. Any future pilot involving real data would require appropriate technical integration, security testing, privacy review, legal/compliance assessment and partner approval.
 
