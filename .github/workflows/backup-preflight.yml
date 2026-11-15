@@ -1,0 +1,63 @@
+name: NEXORA read-only backup preflight
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "payment-integrity-api/src/server.js"
+      - ".github/workflows/backup-preflight.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Validate trigger secret
+        env:
+          BACKUP_TOKEN: ${{ secrets.NEXORA_BACKUP_TRIGGER_TOKEN }}
+        run: |
+          if [ -z "$BACKUP_TOKEN" ]; then
+            echo "Missing GitHub Actions secret NEXORA_BACKUP_TRIGGER_TOKEN."
+            exit 1
+          fi
+
+      - name: Read database size and backup configuration without starting a backup
+        shell: bash
+        env:
+          BACKUP_TOKEN: ${{ secrets.NEXORA_BACKUP_TRIGGER_TOKEN }}
+          API_URL: https://nexora-payment-integrity-api.onrender.com
+        run: |
+          set -euo pipefail
+          response="$(mktemp)"
+          trap 'rm -f "$response"' EXIT
+          status=""
+          for attempt in $(seq 1 18); do
+            status="$(curl --silent --show-error --output "$response" --write-out '%{http_code}' \
+              --connect-timeout 10 --max-time 35 \
+              -H "Authorization: Bearer $BACKUP_TOKEN" \
+              "$API_URL/internal/backup/preflight" || true)"
+            if [ "$status" = "200" ]; then break; fi
+            if [ "$status" = "401" ]; then
+              echo "Render rejected the preflight token."
+              cat "$response"
+              exit 1
+            fi
+            sleep 20
+          done
+          if [ "$status" != "200" ]; then
+            echo "Preflight endpoint did not become ready (HTTP ${status:-none})."
+            cat "$response" 2>/dev/null || true
+            exit 1
+          fi
+          cat "$response"
+          state="$(jq -er '.status' "$response")"
+          if [ "$state" != "preflight_passed" ]; then
+            echo "Preflight requires attention. No backup was started."
+            exit 1
+          fi
+          echo "PASS: read-only preflight succeeded. No backup job was created."

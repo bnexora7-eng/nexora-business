@@ -87,7 +87,7 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   const providerId = "integration-provider";
   const child = spawn(process.execPath, ["src/server.js"], {
     cwd: process.cwd(),
-    env: { ...process.env, NODE_ENV: "test", SMTP_TEST_MODE: "true", MOLLIE_API_KEY: "test_nexora_integration_key", MOLLIE_API_BASE: "http://127.0.0.1:8082/v2", OPENAI_API_KEY: "test_nexora_ai_key", OPENAI_MODEL: "gpt-4.1-mini", OPENAI_API_URL: "http://127.0.0.1:8083/v1/chat/completions", AI_MONTHLY_TOKEN_LIMIT: "100000", PORT: String(port), PROVIDER_SECRETS: JSON.stringify({ [providerId]: secret }), ENABLE_PUBLIC_DEMO: "true", DEMO_ORIGIN: "https://bnexora7-eng.github.io" },
+    env: { ...process.env, NODE_ENV: "test", SMTP_TEST_MODE: "true", BACKUP_TRIGGER_TOKEN: "integration-backup-trigger-token-for-tests-only", MOLLIE_API_KEY: "test_nexora_integration_key", MOLLIE_API_BASE: "http://127.0.0.1:8082/v2", OPENAI_API_KEY: "test_nexora_ai_key", OPENAI_MODEL: "gpt-4.1-mini", OPENAI_API_URL: "http://127.0.0.1:8083/v1/chat/completions", AI_MONTHLY_TOKEN_LIMIT: "100000", PORT: String(port), PROVIDER_SECRETS: JSON.stringify({ [providerId]: secret }), ENABLE_PUBLIC_DEMO: "true", DEMO_ORIGIN: "https://bnexora7-eng.github.io" },
     stdio: "ignore"
   });
   t.after(async () => {
@@ -114,6 +114,41 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   const readiness = await fetch(`http://127.0.0.1:${port}/ready`);
   assert.equal(readiness.status, 200, "readiness must confirm PostgreSQL connectivity");
   assert.deepEqual(await readiness.json(), { status: "ready", database: "connected" });
+
+  const jobsBeforePreflight = await pool.query("SELECT COUNT(*)::int AS count FROM backup_jobs");
+  const preflightUnauthenticated = await fetch(`http://127.0.0.1:${port}/internal/backup/preflight`);
+  assert.equal(preflightUnauthenticated.status, 401, "backup preflight must reject requests without its secret");
+  const preflightResponse = await fetch(`http://127.0.0.1:${port}/internal/backup/preflight`, {
+    headers: { authorization: "Bearer integration-backup-trigger-token-for-tests-only" }
+  });
+  assert.equal(preflightResponse.status, 200, "authenticated preflight should report read-only database diagnostics");
+  const preflight = await preflightResponse.json();
+  assert.equal(typeof preflight.database.name, "string");
+  assert.ok(preflight.database.name.length > 0);
+  assert.ok(Number.isSafeInteger(preflight.database.size_bytes) && preflight.database.size_bytes > 0);
+  assert.ok(Number.isFinite(preflight.database.size_mib) && preflight.database.size_mib > 0);
+  assert.equal(typeof preflight.configuration.github_token_configured, "boolean");
+  assert.equal(typeof preflight.configuration.repository_configured, "boolean");
+  assert.equal(typeof preflight.configuration.encryption_key_configured, "boolean");
+  const jobsAfterPreflight = await pool.query("SELECT COUNT(*)::int AS count FROM backup_jobs");
+  assert.equal(jobsAfterPreflight.rows[0].count, jobsBeforePreflight.rows[0].count, "preflight must not create a backup job");
+
+  const durableJobId = randomUUID();
+  await pool.query("INSERT INTO backup_jobs (id,status,finished_at) VALUES ($1,'succeeded',NOW())", [durableJobId]);
+  const durableStatus = await fetch(`http://127.0.0.1:${port}/internal/backup/${durableJobId}`, {
+    headers: { authorization: "Bearer integration-backup-trigger-token-for-tests-only" }
+  });
+  assert.equal(durableStatus.status, 200);
+  assert.equal((await durableStatus.json()).status, "succeeded");
+
+  const backupUnauthenticated = await fetch(`http://127.0.0.1:${port}/internal/backup`, { method: "POST" });
+  assert.equal(backupUnauthenticated.status, 401, "backup trigger must reject requests without its secret");
+  const backupAuthenticatedButUnconfigured = await fetch(`http://127.0.0.1:${port}/internal/backup`, {
+    method: "POST",
+    headers: { authorization: "Bearer integration-backup-trigger-token-for-tests-only" }
+  });
+  assert.equal(backupAuthenticatedButUnconfigured.status, 503, "backup trigger must fail closed until destination and encryption secrets exist");
+  assert.equal((await backupAuthenticatedButUnconfigured.json()).error, "Backup destination or encryption is not configured");
 
   assert.equal(readiness.headers.get("x-content-type-options"), "nosniff");
   assert.equal(readiness.headers.get("x-frame-options"), "DENY");

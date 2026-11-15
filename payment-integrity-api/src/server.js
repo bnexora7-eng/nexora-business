@@ -2,6 +2,7 @@ import { createServer } from "node:http";
 import crypto from "node:crypto";
 import pg from "pg";
 import { readFile } from "node:fs/promises";
+import { spawn } from "node:child_process";
 import { screenEvent, verifySignature } from "./screening.js";
 import { createSessionToken, hashPassword, hashSessionToken, verifyPassword } from "./auth.js";
 import { createActionToken, hashActionToken, sendPasswordResetEmail, sendVerificationEmail } from "./email.js";
@@ -41,6 +42,163 @@ const AI_API_URL = process.env.OPENAI_API_URL || "https://api.openai.com/v1/chat
 const AI_MONTHLY_TOKEN_LIMIT = Number.parseInt(process.env.AI_MONTHLY_TOKEN_LIMIT || "0", 10);
 if (!Number.isSafeInteger(AI_MONTHLY_TOKEN_LIMIT) || AI_MONTHLY_TOKEN_LIMIT < 0) throw new Error("AI_MONTHLY_TOKEN_LIMIT must be a non-negative integer");
 let pool = null;
+
+// Backup jobs are persisted in PostgreSQL. A session advisory lock prevents
+// concurrent dumps across API instances; PostgreSQL releases it automatically
+// if Render restarts or terminates the process.
+const BACKUP_SCRIPT = "/backup/run.sh";
+const BACKUP_TOKEN = process.env.BACKUP_TRIGGER_TOKEN || "";
+let activeBackupChild = null;
+let activeBackupDone = null;
+const BACKUP_LOCK_KEY_1 = 1313162578;
+const BACKUP_LOCK_KEY_2 = 1111577682;
+
+function backupAuthorized(req) {
+  const supplied = bearerToken(req);
+  if (BACKUP_TOKEN.length < 40 || !supplied) return false;
+  const expected = Buffer.from(BACKUP_TOKEN, "utf8");
+  const actual = Buffer.from(supplied, "utf8");
+  return expected.length === actual.length && crypto.timingSafeEqual(expected, actual);
+}
+function backupJobView(job) {
+  return { id: job.id, status: job.status, started_at: job.started_at, finished_at: job.finished_at || null };
+}
+async function handleBackupStatus(req, res, id) {
+  if (!backupAuthorized(req)) return send(res, 401, { error: "Authentication required" });
+  if (!pool) return send(res, 503, { error: "Database is not configured" });
+  const result = await pool.query(
+    "SELECT id, status, started_at, finished_at FROM backup_jobs WHERE id = $1",
+    [id]
+  );
+  if (!result.rowCount) return send(res, 404, { error: "Backup job not found" });
+  return send(res, 200, backupJobView(result.rows[0]));
+}
+async function handleBackupPreflight(req, res) {
+  if (!backupAuthorized(req)) return send(res, 401, { error: "Authentication required" });
+  if (!pool || !DATABASE_URL) return send(res, 503, { error: "Database is not configured" });
+
+  // Read-only diagnostic: never creates a backup job, acquires a lock, or starts pg_dump.
+  const result = await pool.query(
+    "SELECT current_database() AS database_name, pg_database_size(current_database())::text AS database_size_bytes"
+  );
+  const databaseSizeBytes = Number(result.rows[0].database_size_bytes);
+  const maxUploadBytes = 90 * 1024 * 1024;
+  const repository = process.env.BACKUP_REPOSITORY || "";
+  const configuration = {
+    github_token_configured: Boolean(process.env.GITHUB_TOKEN),
+    repository_configured: repository === "bnexora7-eng/nexora-private-backups",
+    encryption_key_configured: Boolean(process.env.BACKUP_ENCRYPTION_KEY)
+  };
+  const configured = Object.values(configuration).every(Boolean);
+  return send(res, 200, {
+    status: configured && databaseSizeBytes <= maxUploadBytes ? "preflight_passed" : "preflight_attention_required",
+    database: {
+      name: result.rows[0].database_name,
+      size_bytes: databaseSizeBytes,
+      size_mib: Number((databaseSizeBytes / (1024 * 1024)).toFixed(2)),
+      below_90_mib_database_size_threshold: databaseSizeBytes <= maxUploadBytes
+    },
+    configuration
+  });
+}
+async function startBackup(req, res) {
+  if (!backupAuthorized(req)) return send(res, 401, { error: "Authentication required" });
+  if (!pool || !DATABASE_URL) return send(res, 503, { error: "Database is not configured" });
+  const required = ["GITHUB_TOKEN", "BACKUP_REPOSITORY", "BACKUP_ENCRYPTION_KEY"];
+  if (required.some((key) => !process.env[key])) {
+    return send(res, 503, { error: "Backup destination or encryption is not configured" });
+  }
+
+  const client = await pool.connect();
+  let lockHeld = false;
+  let released = false;
+  let jobId = null;
+  const releaseLock = async () => {
+    if (released) return;
+    released = true;
+    let releaseError = null;
+    try {
+      if (lockHeld) await client.query("SELECT pg_advisory_unlock($1, $2)", [BACKUP_LOCK_KEY_1, BACKUP_LOCK_KEY_2]);
+    } catch (error) {
+      releaseError = error;
+      console.error("NEXORA backup lock release failed", error.code || error.name || "Error");
+    } finally {
+      // Destroy a connection if unlocking failed; returning it to the pool
+      // could leave the session-level advisory lock held by an idle client.
+      client.release(releaseError);
+    }
+  };
+
+  try {
+    const lock = await client.query(
+      "SELECT pg_try_advisory_lock($1, $2) AS locked",
+      [BACKUP_LOCK_KEY_1, BACKUP_LOCK_KEY_2]
+    );
+    lockHeld = lock.rows[0].locked === true;
+    if (!lockHeld) {
+      const active = await pool.query(
+        "SELECT id, status, started_at, finished_at FROM backup_jobs WHERE status = 'running' ORDER BY started_at DESC LIMIT 1"
+      );
+      if (active.rowCount) return send(res, 202, backupJobView(active.rows[0]));
+      return send(res, 409, { error: "Another backup operation holds the execution lock" });
+    }
+
+    // A running row without the advisory lock belongs to a process that died.
+    // Mark it failed before creating a new job; never report it as successful.
+    await client.query(
+      "UPDATE backup_jobs SET status = 'failed', finished_at = NOW(), failure_reason = 'process_interrupted' WHERE status = 'running'"
+    );
+    const inserted = await client.query(
+      "INSERT INTO backup_jobs (status) VALUES ('running') RETURNING id, status, started_at, finished_at"
+    );
+    const job = inserted.rows[0];
+    jobId = job.id;
+
+    const child = spawn("timeout", ["--signal=TERM", "--kill-after=30s", "3600s", BACKUP_SCRIPT], {
+      env: { ...process.env },
+      cwd: "/backup",
+      stdio: "ignore"
+    });
+    activeBackupChild = child;
+    let resolveBackupDone;
+    activeBackupDone = new Promise((resolve) => { resolveBackupDone = resolve; });
+    let settled = false;
+    const finish = async (status, reason = null) => {
+      if (settled) return;
+      settled = true;
+      try {
+        await client.query(
+          "UPDATE backup_jobs SET status = $2, finished_at = NOW(), failure_reason = $3 WHERE id = $1",
+          [jobId, status, reason]
+        );
+      } catch (error) {
+        console.error("NEXORA backup job state update failed", error.code || error.name || "Error");
+      } finally {
+        await releaseLock();
+      }
+      console.log("NEXORA backup job", jobId, status);
+      if (activeBackupChild === child) activeBackupChild = null;
+      if (resolveBackupDone) resolveBackupDone();
+      activeBackupDone = null;
+    };
+    child.once("error", () => { void finish("failed", "process_start_failed"); });
+    child.once("exit", (code) => { void finish(code === 0 ? "succeeded" : "failed", code === 0 ? null : "backup_process_failed"); });
+    return send(res, 202, backupJobView(job));
+  } catch (error) {
+    if (jobId) {
+      try {
+        await client.query(
+          "UPDATE backup_jobs SET status = 'failed', finished_at = NOW(), failure_reason = 'request_setup_failed' WHERE id = $1 AND status = 'running'",
+          [jobId]
+        );
+      } catch {}
+    }
+    await releaseLock();
+    throw error;
+  } finally {
+    if (!lockHeld && !released) client.release();
+  }
+}
 
 // The public demo is deliberately self-contained and can run without PostgreSQL.
 // Authenticated provider webhooks still require DATABASE_URL and persistent storage.
@@ -1271,6 +1429,10 @@ const server = createServer(async (req, res) => {
       if (pool) await pool.query("SELECT 1");
       return send(res, 200, { status: "ok", service: "nexora-payment-integrity-api", mode: pool ? "database" : "demo-only" });
     }
+    const backupStatusMatch = /^\/internal\/backup\/([0-9a-f-]{36})$/.exec(pathname);
+    if (req.method === "GET" && pathname === "/internal/backup/preflight") return await handleBackupPreflight(req, res);
+    if (req.method === "POST" && pathname === "/internal/backup") return await startBackup(req, res);
+    if (req.method === "GET" && backupStatusMatch) return await handleBackupStatus(req, res, backupStatusMatch[1]);
     if (req.method === "GET" && pathname === "/ready") {
       if (!pool) return send(res, 503, { status: "not_ready", reason: "DATABASE_URL is not configured" });
       await pool.query("SELECT 1");
@@ -1315,7 +1477,18 @@ server.requestTimeout = 30_000;
 server.keepAliveTimeout = 5_000;
 server.listen(PORT, "0.0.0.0", () => console.log("NEXORA Payment Integrity API listening on port " + PORT));
 async function shutdown() {
-  server.close(async () => { if (pool) await pool.end(); process.exit(0); });
+  server.close(async () => {
+    const child = activeBackupChild;
+    if (child && child.exitCode === null && !child.killed) child.kill("SIGTERM");
+    if (activeBackupDone) {
+      await Promise.race([
+        activeBackupDone,
+        new Promise((resolve) => setTimeout(resolve, 35_000))
+      ]);
+    }
+    if (pool) await pool.end();
+    process.exit(0);
+  });
 }
 process.on("SIGTERM", shutdown);
 process.on("SIGINT", shutdown);

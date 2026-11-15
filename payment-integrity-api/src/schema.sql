@@ -135,3 +135,13 @@ CREATE TABLE IF NOT EXISTS ai_monthly_usage (
   request_count BIGINT NOT NULL DEFAULT 0 CHECK (request_count >= 0),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS backup_jobs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  status TEXT NOT NULL CHECK (status IN ('running','succeeded','failed')),
+  started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  finished_at TIMESTAMPTZ,
+  failure_reason TEXT
+);
+CREATE INDEX IF NOT EXISTS backup_jobs_started_at_idx ON backup_jobs (started_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS backup_jobs_single_running_idx ON backup_jobs ((status)) WHERE status = 'running';

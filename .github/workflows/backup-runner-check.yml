@@ -23,6 +23,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Test retention pagination and deletion safety
+        run: python3 backup/test_backup_retention.py
+
       - name: Build backup container
         run: docker build --pull -t nexora-backup-check ./backup
 
@@ -34,7 +37,18 @@ jobs:
             timeout --version | head -n 1
             sh -n /backup/run.sh
             sh -n /backup/restore.sh
-            python3 -m py_compile /backup/crypto.py /backup/upload_backup.py
+            python3 -m py_compile /backup/crypto.py /backup/upload_backup.py /backup/backup_retention.py
+          '
+
+      - name: Verify restore refuses an unconfirmed target
+        run: |
+          docker run --rm --entrypoint sh nexora-backup-check -c '
+            set -eu
+            if BACKUP_ENCRYPTION_KEY="test-only-restore-guard-key-2026-not-secret" RESTORE_DATABASE_URL="postgresql://invalid.invalid/recovery" RESTORE_CONFIRM_SEPARATE_DATABASE=NO sh /backup/restore.sh /tmp/not-used.dump.enc; then
+              echo "FAIL: restore accepted an unconfirmed target."
+              exit 1
+            fi
+            echo "PASS: restore refuses to run without explicit separate-database confirmation."
           '
 
       - name: Verify authenticated encryption and tamper rejection

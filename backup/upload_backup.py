@@ -9,8 +9,11 @@ import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from backup_retention import prune_expired_releases
 
 repo = os.environ["BACKUP_REPOSITORY"]
+if repo != "bnexora7-eng/nexora-private-backups":
+    raise SystemExit("BACKUP_REPOSITORY must be the designated private NEXORA backup repository")
 token = os.environ["GITHUB_TOKEN"]
 branch = os.environ.get("BACKUP_BRANCH", "main")
 stamp = os.environ["BACKUP_STAMP"]
@@ -58,6 +61,52 @@ def raw_request(method, url, data=None, accept="application/vnd.github+json", co
         detail = exc.read(2048).decode("utf-8", "replace")
         raise RuntimeError(f"GitHub asset transfer failed ({exc.code}): {detail}") from exc
 
+def download_asset(asset_id):
+    # GitHub may redirect the authenticated asset API request to a CDN.
+    # Do not let urllib forward the repository token to that second host.
+    url = base_url + "/releases/assets/" + str(asset_id)
+    request = urllib.request.Request(
+        url,
+        headers={**headers, "Accept": "application/octet-stream"},
+        method="GET",
+    )
+    # Use a handler that refuses redirects so the credential-bearing request
+    # cannot silently forward Authorization to a different hostname.
+    class NoRedirect(urllib.request.HTTPRedirectHandler):
+        def redirect_request(self, req, fp, code, msg, response_headers, newurl):
+            return None
+
+    opener = urllib.request.build_opener(NoRedirect())
+    try:
+        with opener.open(request, timeout=180) as response:
+            return response.read()
+    except urllib.error.HTTPError as exc:
+        if exc.code not in (301, 302, 303, 307, 308):
+            detail = exc.read(2048).decode("utf-8", "replace")
+            raise RuntimeError(f"GitHub asset download failed ({exc.code}): {detail}") from exc
+        location = exc.headers.get("Location")
+        exc.close()
+    if not location:
+        raise RuntimeError("GitHub asset redirect did not include a Location header")
+    parsed = urllib.parse.urlsplit(location)
+    host = parsed.hostname or ""
+    if (
+        parsed.scheme != "https"
+        or not (host == "github.com" or host.endswith(".githubusercontent.com"))
+        or parsed.username
+        or parsed.password
+        or parsed.port not in (None, 443)
+    ):
+        raise RuntimeError("GitHub asset redirect target is not an approved HTTPS host")
+    # The signed CDN URL is sufficient; deliberately send no GitHub token.
+    request = urllib.request.Request(
+        location,
+        headers={"User-Agent": "NEXORA-Encrypted-Backup", "Accept": "application/octet-stream"},
+        method="GET",
+    )
+    with urllib.request.urlopen(request, timeout=180) as response:
+        return response.read()
+
 metadata = api_json("GET", "")
 if metadata.get("private") is not True:
     raise SystemExit("Backup destination repository must be private; refusing to upload")
@@ -93,8 +142,7 @@ def upload_asset(name, payload):
     result = json.loads(response.decode("utf-8"))
     if result.get("size") != len(payload):
         raise SystemExit("GitHub asset size mismatch for " + name)
-    downloaded = raw_request("GET", base_url + "/releases/assets/" + str(result["id"]),
-                             accept="application/octet-stream")
+    downloaded = download_asset(result["id"])
     if hashlib.sha256(downloaded).digest() != hashlib.sha256(payload).digest():
         raise SystemExit("GitHub asset read-back hash mismatch for " + name)
     return result
@@ -102,28 +150,9 @@ def upload_asset(name, payload):
 dump_asset = upload_asset(backup_path.name, encrypted)
 manifest_asset = upload_asset("nexora-" + stamp + ".manifest.json", manifest_bytes)
 
-# Keep 30 days of daily releases. Delete only releases created by this backup job.
-cutoff = datetime.now(timezone.utc) - timedelta(days=30)
-page = 1
-while True:
-    releases = api_json("GET", f"releases?per_page=100&page={page}")
-    if not isinstance(releases, list) or not releases:
-        break
-    for item in releases:
-        old_tag = item.get("tag_name", "")
-        match = re.fullmatch(r"nexora-backup-(\d{8}T\d{6}Z)", old_tag)
-        if not match or item.get("id") == release_id:
-            continue
-        try:
-            created = datetime.strptime(match.group(1), "%Y%m%dT%H%M%SZ").replace(tzinfo=timezone.utc)
-        except ValueError:
-            continue
-        if created < cutoff:
-            api_json("DELETE", "releases/" + str(item["id"]))
-            api_json("DELETE", "git/refs/tags/" + urllib.parse.quote(old_tag, safe=""))
-    if len(releases) < 100:
-        break
-    page += 1
+# Fetch every page before deleting anything: deleting during offset pagination
+# shifts later pages and can silently skip expired releases.
+prune_expired_releases(api_json, release_id)
 
 print(json.dumps({
     "status": "verified",
