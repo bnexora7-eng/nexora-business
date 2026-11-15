@@ -28,10 +28,10 @@
 <div class="field"><label for="budget">Indicative budget (optional)</label><select id="budget" name="budget"><option value="">Prefer to discuss</option><option>Under €500</option><option>€500–€1,000</option><option>€1,000–€5,000</option><option>€5,000+</option></select></div>
 <div class="field"><label for="timeline">Desired timeline (optional)</label><select id="timeline" name="timeline"><option value="">Flexible</option><option>As soon as practical</option><option>Within 1 month</option><option>Within 3 months</option><option>Longer-term</option></select></div>
 <div class="field full"><label for="details">What do you need built or solved? *</label><textarea id="details" name="details" required maxlength="3000" placeholder="Describe the problem, desired result and any important requirements. Do not include passwords, bank details, card data or real customer payment records."></textarea></div>
-<div class="field full"><label class="check"><input type="checkbox" name="privacy" required><span>I have read the <a href="privacy/">privacy notice</a> and agree to submit the information in this form so NEXORA can respond to my enquiry.</span></label></div>
+<div class="field full"><label class="check"><input type="checkbox" name="privacy" required><span>I have read the <a href="privacy/">privacy notice</a> and understand that this form will prepare an email in my email application. My enquiry is sent only when I press Send there.</span></label></div>
 </div>
 <div class="notice"><strong>Important:</strong> This is a non-binding enquiry, not a confirmed order, invoice or payment request. No bank account details are published here. We will agree the scope, price and permitted payment method before any paid work begins.</div>
-<button class="btn" id="submit-button" type="submit">Send project enquiry</button>
+<button class="btn" id="submit-button" type="submit">Prepare email enquiry</button>
 <p class="fine">Your enquiry will be sent through our form-processing provider. You will remain on this page and see whether the submission was accepted.</p>
 </form>
 <div class="result" id="result" role="status" aria-live="polite"></div>
@@ -43,47 +43,31 @@
  const form=document.getElementById("enquiry-form");
  const result=document.getElementById("result");
  const button=document.getElementById("submit-button");
- form.addEventListener("submit",async function(event){
+ form.addEventListener("submit",function(event){
   event.preventDefault();
   if(!form.reportValidity()) return;
   const data=new FormData(form);
-  const payload={
-   name:data.get("name"),
-   email:data.get("email"),
-   _replyto:data.get("email"),
-   company:data.get("company")||"Not provided",
-   country:data.get("country"),
-   project_type:data.get("service"),
-   indicative_budget:data.get("budget")||"To discuss",
-   timeline:data.get("timeline")||"Flexible",
-   requirements:data.get("details"),
-   privacy_notice_acknowledged:"Yes",
-   _subject:"NEXORA project enquiry — "+data.get("service"),
-   _url:window.location.href
-  };
-  button.disabled=true;
-  button.textContent="Sending…";
+  const subject="NEXORA project enquiry — "+data.get("service");
+  const body=[
+   "NEXORA project enquiry",
+   "",
+   "Name: "+data.get("name"),
+   "Email: "+data.get("email"),
+   "Company: "+(data.get("company")||"Not provided"),
+   "Country: "+data.get("country"),
+   "Project type: "+data.get("service"),
+   "Indicative budget: "+(data.get("budget")||"To discuss"),
+   "Desired timeline: "+(data.get("timeline")||"Flexible"),
+   "",
+   "Requirements:",
+   data.get("details"),
+   "",
+   "Privacy notice acknowledged: Yes"
+  ].join("\n");
+  const mailto="mailto:bnexora7@gmail.com?subject="+encodeURIComponent(subject)+"&body="+encodeURIComponent(body);
   result.style.display="block";
-  result.textContent="Sending your enquiry. Please wait…";
-  try{
-   const response=await fetch("https://formsubmit.co/ajax/bnexora7@gmail.com",{
-    method:"POST",
-    headers:{"Content-Type":"application/json","Accept":"application/json"},
-    body:JSON.stringify(payload)
-   });
-   const answer=await response.json();
-   if(answer.success==="true"){
-    form.reset();
-    result.textContent="Thank you. Your project enquiry has been submitted successfully to NEXORA. We will review it and reply to the email address you provided.";
-   }else{
-    result.textContent="The enquiry was not accepted. Your information is still in this form. Please try again later or contact bnexora7@gmail.com. Details: "+(answer.message||"Submission could not be confirmed.");
-   }
-  }catch(error){
-   result.textContent="We could not confirm delivery because of a connection problem. Your information is still in this form. Please try again or contact bnexora7@gmail.com.";
-  }finally{
-   button.disabled=false;
-   button.textContent="Send project enquiry";
-  }
+  result.textContent="Your email application should now open with the enquiry prepared. Check the recipient and message, then press Send to submit it to NEXORA. If no email application opens, contact bnexora7@gmail.com directly.";
+  window.location.href=mailto;
  });
 })();
 </script>
