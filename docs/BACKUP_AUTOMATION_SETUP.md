@@ -1,10 +1,11 @@
 # NEXORA backup automation — deployment checklist
 
-**State: isolated branch only. Not deployed to Render. No backup has been created.**
+**State: backup code and GitHub Actions workflow are present on `main`; secrets and the private backup repository are not yet verified/configured. No backup has been created and no restore test has passed.**
 
 ## Design
 
-- GitHub Actions runs daily at 03:30 UTC and can also be started manually.
+- Preferred low-cost path: GitHub Actions runs daily at 03:17 UTC and can also be started manually. This does not create a paid Render Cron service.
+- `render-backup.yaml` describes a separate paid Render Cron option. Do not deploy that Blueprint unless the owner separately approves its recurring cost.
 - It calls the authenticated `POST /internal/backup` endpoint on the Render API.
 - The API runs the PostgreSQL 18 dump inside the Render container, using Render's private `DATABASE_URL`. The database IP allowlist stays unchanged and is never opened to GitHub-hosted runners.
 - Backup job state is stored in PostgreSQL. A session advisory lock enforces one active dump across API instances; if Render restarts, the next trigger marks an orphaned running job as failed before starting another.
