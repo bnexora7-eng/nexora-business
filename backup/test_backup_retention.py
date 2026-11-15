@@ -16,9 +16,9 @@ class RetentionTests(unittest.TestCase):
 
         def api(method, path):
             calls.append((method, path))
-            if method == "GET" and "page=1" in path:
+            if method == "GET" and path.endswith("page=1"):
                 return old
-            if method == "GET" and "page=2" in path:
+            if method == "GET" and path.endswith("page=2"):
                 return fresh
             return {}
 
