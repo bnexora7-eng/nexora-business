@@ -1,8 +1,6 @@
 name: NEXORA scheduled encrypted database backup
 
 on:
-  schedule:
-    - cron: "30 3 * * *"
   workflow_dispatch:
 
 permissions:
