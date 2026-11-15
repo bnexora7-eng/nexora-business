@@ -290,40 +290,35 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
 
   const lockedFeature = await fetch(`http://127.0.0.1:${port}/v1/community/posts`, {
     method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + loggedIn.token },
-    body: JSON.stringify({ body: "must require a paid subscription" })
+    body: JSON.stringify({ body: "verified accounts can publish without a subscription" })
   });
-  assert.equal(lockedFeature.status, 402);
-  assert.equal((await lockedFeature.json()).code, "subscription_required");
+  assert.equal(lockedFeature.status, 201);
 
   const lockedAI = await fetch("http://127.0.0.1:" + port + "/v1/business/ai-plan", {
     method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + loggedIn.token },
-    body: JSON.stringify({ industry: "software", problem: "subscription gate test" })
+    body: JSON.stringify({ industry: "software", problem: "temporary free-access mode test" })
   });
-  assert.equal(lockedAI.status, 402);
-  assert.equal((await lockedAI.json()).code, "subscription_required");
-  assert.equal(aiRequestObserved, null);
+  assert.equal(lockedAI.status, 200);
 
   const lockedMarketplace = await fetch(`http://127.0.0.1:${port}/v1/marketplace/listings`, {
     method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + loggedIn.token },
-    body: JSON.stringify({ title: "Blocked listing", description: "An unpaid account must not publish this.", category: "service", price: "1.00" })
+    body: JSON.stringify({ title: "Free-mode listing", description: "A verified account can publish without a subscription.", category: "service", price: "1.00" })
   });
-  assert.equal(lockedMarketplace.status, 402);
-  assert.equal((await lockedMarketplace.json()).code, "subscription_required");
+  assert.equal(lockedMarketplace.status, 201);
 
   const lockedWorkspace = await fetch(`http://127.0.0.1:${port}/v1/business/workspace`, {
     headers: { authorization: "Bearer " + loggedIn.token }
   });
-  assert.equal(lockedWorkspace.status, 402);
-  assert.equal((await lockedWorkspace.json()).code, "subscription_required");
+  assert.equal(lockedWorkspace.status, 200);
 
-  // Verify canceled subscriptions retain access only through the already-paid period.
+  // Temporary free-access mode ignores subscription state, including expired legacy states.
   await pool.query(
     "UPDATE app_users SET subscription_status='canceled',subscription_access_until=NOW() + INTERVAL '1 day' WHERE id=$1",
     [accountId]
   );
   const retainedAccess = await fetch(`http://127.0.0.1:${port}/v1/community/posts`, {
     method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + loggedIn.token },
-    body: JSON.stringify({ body: "paid period access remains after cancellation" })
+    body: JSON.stringify({ body: "account access remains after legacy cancellation" })
   });
   assert.equal(retainedAccess.status, 201);
   await pool.query(
@@ -332,12 +327,11 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   );
   const expiredAccess = await fetch(`http://127.0.0.1:${port}/v1/community/posts`, {
     method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + loggedIn.token },
-    body: JSON.stringify({ body: "expired paid period must not retain access" })
+    body: JSON.stringify({ body: "expired legacy membership must not block account access" })
   });
-  assert.equal(expiredAccess.status, 402);
-  assert.equal((await expiredAccess.json()).code, "subscription_required");
+  assert.equal(expiredAccess.status, 201);
 
-  // Grant the test account All Access before exercising paid member endpoints.
+  // No paid membership is required in temporary free-access mode.
   await pool.query("UPDATE app_users SET subscription_status='active',subscription_access_until=NULL WHERE id=$1",[accountId]);
 
   // Verify the paid Business Studio AI route calls only the configured server-side provider.
