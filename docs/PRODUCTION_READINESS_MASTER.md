@@ -28,14 +28,14 @@ This file is the current release-gate summary. A green CI check validates only t
 - Render PostgreSQL 18 database `nexora-business-db` is on the Free plan in Frankfurt.
 - Current expiry: **12 December 2026**. Free plan has no automated backups or point-in-time recovery.
 - No actual database export or restore test has been completed.
-- Encrypted backup Cron Blueprint and runner code are prepared. Container and encryption checks passed, but Render has not created the Cron service.
+- Encrypted backup runner and a separate `render-backup.yaml` Blueprint are prepared. Container and encryption checks passed. The separate Blueprint `exs-dbt262mc6qcc73ah50pg` was created, but Render's first planning attempt failed with `need_payment_info`; no Cron service was created and no database backup has run.
 - The private GitHub repository `bnexora7-eng/nexora-private-backups` and a fine-grained token scoped only to that repository have been created. The token is valid for 90 days. The Cron still requires Render to accept a payment method before the service can be planned and created. The user authorized a maximum of approximately **$1/month** for this backup service only.
 - After setup: plan and review the single Cron resource, deploy it, create the first encrypted backup, verify the private release assets and hashes, then restore into a separate PostgreSQL 18 recovery database. Do not overwrite production. Any additional paid recovery resource requires separate approval.
 
 ### B. Transactional email
 
-- Brevo HTTPS delivery is implemented; unit tests cover sender, recipient, message payload and provider failure handling.
-- Actual delivery is **not verified** because `BREVO_API_KEY` and a verified `BREVO_FROM` sender have not been configured. `NEXORA_ACCOUNT_URL` and `PUBLIC_API_URL` have been explicitly set in Render and redeployed.
+- Brevo HTTPS delivery is implemented; unit tests cover sender, recipient, message payload and provider failure handling. The Brevo account-validation email and API-key-creation alert were received on 14 November 2026.
+- Actual delivery is **not verified**: the newly created `NEXORA-RENDER` API key still must be entered directly into Render as `BREVO_API_KEY`, and a verified sender address must be configured as `BREVO_FROM`. Do not copy the key into GitHub, email, chat or source files. `NEXORA_ACCOUNT_URL` and `PUBLIC_API_URL` have been explicitly set in Render and redeployed.
 - Render Free blocks outbound SMTP ports 25, 465 and 587; use Brevo HTTPS rather than relying on SMTP.
 - Required: create a Brevo API key, verify the sender/domain, enter secrets directly into Render, then test registration, resend verification, password reset and delivery to real inboxes. Never send API keys in chat.
 
@@ -70,7 +70,7 @@ Each project quotation must specify a project-specific advance before work start
 
 ### F. Legal, privacy and business identity
 
-- Public privacy page was corrected: it no longer describes a FormSubmit web form that the site does not use; it now describes the email link, Brevo conditional processing and website/mobile token storage.
+- Public enquiry form now validates its fields and prepares a message in the visitor's own email application; the visitor must press Send. It no longer transmits enquiry data to FormSubmit or another web-form processor. The privacy notice now describes this exact flow, alongside conditional Brevo account-email processing and website/mobile token storage.
 - A scheduled production smoke monitor verifies the public privacy and account-deletion pages and API readiness. Latest monitor run 43619617134 passed.
 - Internal project-services terms draft: `docs/TERMS_AND_SUBSCRIPTION_DISCLOSURES_DRAFT.md`. It is **not published and not legally approved**.
 - Required before paid project work: actual operator/legal name, legal form and applicable KVK/Tax Administration registration, business address, VAT treatment for each customer market/type, verified support contact, project scope/acceptance terms, consumer withdrawal/refund disclosures where applicable, and Dutch/EU legal review.
