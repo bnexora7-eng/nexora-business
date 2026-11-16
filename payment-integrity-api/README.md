@@ -48,7 +48,7 @@ Quotation workflow:
 - Both operator routes require a server-side `QUOTE_ADMIN_TOKEN` environment secret (at least 40 characters) sent as a Bearer token. Never expose this token in browser code, the repository, or customer-facing pages.
 - Draft quotations expire after 30 days by default; the operator may set 1–90 days.
 - `POST /v1/payments` — requires an authenticated customer and an approved, unexpired `quote_id`. The server reads the amount, currency and description from PostgreSQL. Client-supplied amount/description values are not used. Row locking and a unique payment-to-quote index prevent duplicate checkout attempts for one quotation.
-- A successful Mollie webhook marks the quotation paid. A canceled, expired or failed provider payment returns it to approved status.
+- A successful Mollie webhook marks the quotation paid. A canceled, expired or failed provider payment closes the quotation. A new payment attempt requires a newly issued quotation, preventing late webhook events from causing a second charge.
 - If the provider outcome is uncertain during checkout creation, the quotation stays locked in `payment_pending` for reconciliation rather than risking a second charge.
 
 One-off checkout remains fail-closed by default. It returns HTTP 503 with `one_off_payments_disabled` unless `ENABLE_ONE_OFF_PAYMENTS=true` is explicitly set after all business, legal, provider and operational release gates have passed. Live payments additionally require `ENABLE_LIVE_PAYMENTS=true` and an approved live Mollie merchant setup. PayPal is excluded.
