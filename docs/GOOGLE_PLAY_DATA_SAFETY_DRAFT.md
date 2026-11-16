@@ -1,4 +1,4 @@
-# NEXORA — Google Play Data safety form draft
+# ALPINOSS — Google Play Data safety form draft
 
 **Status: working draft only — do not submit without checking the exact production build and server configuration.**
 
@@ -6,7 +6,7 @@ The Data safety form must describe the data actually collected or shared by the 
 
 ## Candidate data types to review
 
-| Play Console category | NEXORA data flow | Draft treatment |
+| Play Console category | ALPINOSS data flow | Draft treatment |
 |---|---|---|
 | Personal info — Email address | Email used to register and sign in | Collected; required for account operation |
 | Personal info — User IDs | Internal account ID and session association | Collected; account operation |
@@ -24,7 +24,7 @@ Passwords are transmitted to the account API for authentication and stored serve
 - Render hosts the API and PostgreSQL database. Confirm its current data-processing terms, region and retention.
 - Mollie receives checkout information only if payment checkout is enabled and used. Live checkout is currently disabled in Render configuration.
 - The configured AI provider may receive business-planning prompts only if the AI planning endpoint is enabled and used. Confirm the provider and transfer configuration before enabling it.
-- NEXORA does not use advertising SDKs or sell personal data, based on the current reviewed implementation.
+- ALPINOSS does not use advertising SDKs or sell personal data, based on the current reviewed implementation.
 
 Do not answer “not shared” until the service-provider processing flows and final production configuration have been reviewed against Google Play's definitions.
 
