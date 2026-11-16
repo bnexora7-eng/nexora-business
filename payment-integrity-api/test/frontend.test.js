@@ -30,8 +30,8 @@ test("member workspace page has valid JavaScript and all required product sectio
 
 test("account dashboard links to the member workspace", async () => {
   const html = await readFile(accountPath, "utf8");
-  assert.match(html, /href="\.\.\/app\/">OPEN NEXORA WORKSPACE/);
-  assert.doesNotMatch(html, /€29\.99|NEXORA All Access|subscribe-button/i, "account page must not advertise or expose subscription checkout");
+  assert.match(html, /href="\.\.\/app\/">OPEN ALPINOSS WORKSPACE/);
+  assert.doesNotMatch(html, /€29\.99|ALPINOSS All Access|subscribe-button/i, "account page must not advertise or expose subscription checkout");
 });
 
 test("project enquiry form prepares a local email without a third-party form processor", async () => {
