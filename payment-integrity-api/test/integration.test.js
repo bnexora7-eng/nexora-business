@@ -218,7 +218,7 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   assert.equal((await profile.json()).user.email, accountEmail);
 
   // Project quotations can only be created and approved by the operator token.
-  const quotePayload = { user_id: Number(accountId), amount: "375.00", description: "ALPINOSS small-company project", company_size_tier: "small_company", expiry_days: 14 };
+  const quotePayload = { customer_email: accountEmail, amount: "375.00", description: "ALPINOSS small-company project", company_size_tier: "small_company", expiry_days: 14 };
   const quoteWithoutOperator = await fetch(`http://127.0.0.1:${port}/internal/quotes`, {
     method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(quotePayload)
   });
