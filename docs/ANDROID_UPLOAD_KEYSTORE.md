@@ -1,4 +1,4 @@
-# NEXORA Android upload key — owner instructions
+# ALPINOSS Android upload key — owner instructions
 
 The replacement upload keystore was generated and verified by the repository owner on 13 November 2026.
 
@@ -22,8 +22,8 @@ The current `.github/workflows/android-play-aab.yml` workflow requires two **rep
 | Secret name | Value |
 |---|---|
 | `ANDROID_KEYSTORE_BASE64` | Base64 encoding of `$HOME/nexora-upload-2026.jks`, without line breaks |
-| `NEXORA_UPLOAD_STORE_PASSWORD` | The new keystore password |
-| `NEXORA_UPLOAD_KEY_PASSWORD` | Optional key password; if omitted, the workflow uses `NEXORA_UPLOAD_STORE_PASSWORD` |
+| `ALPINOSS_UPLOAD_STORE_PASSWORD` | The new keystore password |
+| `ALPINOSS_UPLOAD_KEY_PASSWORD` | Optional key password; if omitted, the workflow uses `ALPINOSS_UPLOAD_STORE_PASSWORD` |
 
 On Termux, if `termux-clipboard-set` is available, copy the Base64 directly to the Android clipboard without displaying it in the terminal:
 
@@ -37,7 +37,7 @@ In GitHub, open the repository **Settings → Secrets and variables → Actions 
 
 ## 3. Build the Play upload bundle
 
-After the required secrets exist, open **Actions → NEXORA Android build (Play AAB when signing key is configured) → Run workflow** on the `main` branch.
+After the required secrets exist, open **Actions → ALPINOSS Android build (Play AAB when signing key is configured) → Run workflow** on the `main` branch.
 
 The workflow checks the secrets, decodes and verifies the keystore alias, configures release signing, builds `app-release.aab`, verifies the bundle signature, removes the temporary keystore from the runner, and uploads the AAB as a short-lived workflow artifact.
 
