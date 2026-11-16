@@ -225,9 +225,11 @@ paths:
           application/json:
             schema:
               type: object
-              required: [user_id, amount, description, company_size_tier]
+              required: [amount, description, company_size_tier]
+              description: Provide customer_email (preferred) or user_id to identify the customer account.
               properties:
-                user_id: { type: integer, minimum: 1 }
+                customer_email: { type: string, format: email, maxLength: 254 }
+                user_id: { type: integer, minimum: 1, deprecated: true }
                 amount: { type: string, pattern: "^\\d{1,5}(\\.\\d{1,2})?$", example: "375.00" }
                 description: { type: string, minLength: 3, maxLength: 100 }
                 company_size_tier: { type: string, enum: [small_company, large_company] }
