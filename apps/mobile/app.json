@@ -1,0 +1,14 @@
+{
+  "expo": {
+    "name": "NEXORA",
+    "slug": "nexora",
+    "scheme": "nexora",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "plugins": ["expo-router"],
+    "android": {"package":"com.nexora.platform","adaptiveIcon":{"backgroundColor":"#0B1020"}},
+    "ios": {"bundleIdentifier":"com.nexora.platform"}
+  }
+}
