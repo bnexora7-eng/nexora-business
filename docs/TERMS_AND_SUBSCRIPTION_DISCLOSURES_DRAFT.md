@@ -1,4 +1,4 @@
-# NEXORA — Project Services Terms (INTERNAL DRAFT)
+# ALPINOSS — Project Services Terms (INTERNAL DRAFT)
 
 **Status:** internal working draft only — NOT published, NOT accepted by customers, and NOT legal advice.  
 **Prepared:** 15 November 2026  
@@ -16,15 +16,15 @@
 - Support email and response time: **[OPERATOR INPUT REQUIRED]**
 - Complaints and legal-notices contact: **[OPERATOR INPUT REQUIRED]**
 
-NEXORA is a brand/product name and must not be presented as a separate legal person unless a legal entity has actually been established.
+ALPINOSS is a brand/product name and must not be presented as a separate legal person unless a legal entity has actually been established.
 
 ## 2. Free account
 
-Creating a NEXORA account does not require a subscription or payment. Account access is separate from any paid custom project engagement. Account registration, email verification, privacy, acceptable-use and deletion terms must be completed and reviewed before launch.
+Creating a ALPINOSS account does not require a subscription or payment. Account access is separate from any paid custom project engagement. Account registration, email verification, privacy, acceptable-use and deletion terms must be completed and reviewed before launch.
 
 ## 3. Project enquiry, scope and quotation
 
-A website enquiry is non-binding and is not an order. NEXORA must assess feasibility, requirements, deliverables, dependencies, exclusions, delivery timeline, support/maintenance and price before offering a project.
+A website enquiry is non-binding and is not an order. ALPINOSS must assess feasibility, requirements, deliverables, dependencies, exclusions, delivery timeline, support/maintenance and price before offering a project.
 
 Each paid engagement requires a written quotation or statement of work identifying:
 - the contracting parties and the legal supplier;
@@ -52,7 +52,7 @@ The final quote must state whether the amount includes or excludes VAT, based on
 
 ## 5. Invoicing and payment
 
-Payment checkout is disabled by default. No provider is approved for live NEXORA transactions at this stage. PayPal is excluded.
+Payment checkout is disabled by default. No provider is approved for live ALPINOSS transactions at this stage. PayPal is excluded.
 
 Before requesting payment:
 - confirm the contracting legal entity/operator and its registration/tax position;
@@ -81,7 +81,7 @@ Do not request bank credentials, card data or unnecessary sensitive personal dat
 
 ## 8. Intellectual property and third-party services
 
-The quotation must identify pre-existing NEXORA materials, customer materials, newly created deliverables, licence/transfer terms, open-source components and third-party provider costs. Ownership must not be assumed or transferred by silence.
+The quotation must identify pre-existing ALPINOSS materials, customer materials, newly created deliverables, licence/transfer terms, open-source components and third-party provider costs. Ownership must not be assumed or transferred by silence.
 
 ## 9. Unresolved launch gates
 
