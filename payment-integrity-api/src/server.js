@@ -437,6 +437,19 @@ function quoteAdminAuthorized(req) {
   const actual = Buffer.from(supplied, "utf8");
   return expected.length === actual.length && crypto.timingSafeEqual(expected, actual);
 }
+async function handleGetQuotes(req,res) {
+  if (!pool) return send(res,503,{error:"Quote service requires the database"});
+  const user = await getAuthenticatedUser(req);
+  if (!user) return send(res,401,{error:"Authentication required"});
+  const result = await pool.query(
+    `SELECT id,amount,currency,description,company_size_tier,status,expires_at,created_at,approved_at
+     FROM project_quotes
+     WHERE user_id=$1 AND status <> 'draft'
+     ORDER BY created_at DESC LIMIT 20`,
+    [user.id]
+  );
+  return send(res,200,{quotes:result.rows});
+}
 async function handleCreateQuote(req, res) {
   if (!pool) return send(res, 503, { error: "Quote service requires the database" });
   if (!quoteAdminAuthorized(req)) return send(res, 401, { error: "Operator authentication required" });
@@ -1517,6 +1530,7 @@ const server = createServer(async (req, res) => {
     if (pathname === "/v1/marketplace/listings") return await handleMarketplace(req,res);
     if (pathname === "/v1/business/workspace") return await handleBusinessWorkspace(req,res);
     if (pathname === "/v1/business/ai-plan") return await handleBusinessAIPlan(req,res);
+    if (req.method === "GET" && pathname === "/v1/quotes") return await handleGetQuotes(req,res);
     if (req.method === "POST" && pathname === "/internal/quotes") return await handleCreateQuote(req,res);
     const approveQuoteMatch = new RegExp("^/internal/quotes/([0-9a-f-]{36})/approve$").exec(pathname);
     if (req.method === "POST" && approveQuoteMatch) return await handleApproveQuote(req,res,approveQuoteMatch[1]);
