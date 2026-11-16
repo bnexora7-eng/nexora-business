@@ -84,6 +84,8 @@ ALTER TABLE own_payments
 DROP INDEX IF EXISTS own_payments_quote_id_unique_idx;
 CREATE INDEX IF NOT EXISTS own_payments_quote_id_idx
   ON own_payments (quote_id) WHERE quote_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS own_payments_quote_id_unique_idx
+  ON own_payments (quote_id) WHERE quote_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS project_quotes_user_status_idx
   ON project_quotes (user_id,status,created_at DESC);
 
