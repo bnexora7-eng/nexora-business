@@ -41,7 +41,7 @@ test("project enquiry form prepares a local email without a third-party form pro
   assert.ok(script, "project enquiry page must include its form script");
   assert.doesNotThrow(() => new vm.Script(script), "project enquiry script must parse");
   assert.match(html, /Prepare email enquiry/);
-  assert.match(script, /mailto:alpinooslpinoos@gmail\.com/);
+  assert.match(script, /mailto:alpinoosalpinoos@gmail\.com/);
   assert.match(html, /privacy notice/);
   assert.doesNotMatch(html, /formsubmit\\.co|formsubmit/i, "enquiry data must not be sent to an unreviewed third-party form processor");
 });
