@@ -16,7 +16,7 @@ Before enabling live account registration:
 |---|---|
 | `BREVO_API_KEY` | The private Brevo API key |
 | `BREVO_FROM` | The verified sender email address in Brevo |
-| `ALPINOSS_ACCOUNT_URL` | `https://bnexora7-eng.github.io/nexora-business/account` |
+| `NEXORA_ACCOUNT_URL` | `https://bnexora7-eng.github.io/nexora-business/account` |
 
 4. Save and redeploy the API. Do not paste the API key into chat, GitHub, website JavaScript, mobile app, or screenshots.
 5. Verify delivery by registering with an email address you control, then confirm the message arrives and the link opens the ALPINOSS verification page. Also test password reset.
