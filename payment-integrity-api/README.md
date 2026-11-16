@@ -1,4 +1,4 @@
-# NEXORA API — pre-production backend
+# ALPINOSS API — pre-production backend
 
 This service is the server-side API for NEXORA's account, quotations, Community, Marketplace, Business workspace and Payment Integrity prototype. It is deployed on Render in Frankfurt and uses PostgreSQL 18.
 
@@ -43,6 +43,7 @@ Transactional email is sent through the Brevo HTTPS API when `BREVO_API_KEY` and
 ALPINOSS uses one-time project fees only. There are no monthly memberships, recurring platform fees or subscriptions. Company-size pricing is recorded as either `small_company` or `large_company`. The two public price amounts are not yet confirmed and must not be invented or published. A project quotation records the amount and scope agreed for that customer.
 
 Quotation workflow:
+- `GET /v1/quotes` — authenticated customer view of approved and historical quotations; draft offers are hidden.
 - `POST /internal/quotes` — operator-only; creates a draft quotation for an existing `user_id`, with an amount, description and company-size tier.
 - `POST /internal/quotes/{quote_id}/approve` — operator-only; approves a draft quotation before the customer can pay.
 - Both operator routes require a server-side `QUOTE_ADMIN_TOKEN` environment secret (at least 40 characters) sent as a Bearer token. Never expose this token in browser code, the repository, or customer-facing pages.
