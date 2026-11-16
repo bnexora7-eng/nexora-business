@@ -209,6 +209,13 @@ paths:
         "200": { description: Customer quotations; draft operator quotations are excluded }
         "401": { description: Authentication required }
   /internal/quotes:
+    get:
+      summary: List recent project quotations with customer emails (operator only)
+      security: [{ quoteAdminAuth: [] }]
+      responses:
+        "200": { description: Up to 100 recent quotations }
+        "401": { description: Operator authentication required }
+  /internal/quotes:
     post:
       summary: Create a draft project quotation (operator only)
       security: [{ quoteAdminAuth: [] }]
