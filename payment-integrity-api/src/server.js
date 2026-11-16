@@ -1451,9 +1451,11 @@ const server = createServer(async (req, res) => {
     if (pathname === "/v1/business/workspace") return await handleBusinessWorkspace(req,res);
     if (pathname === "/v1/business/ai-plan") return await handleBusinessAIPlan(req,res);
     if (req.method === "POST" && pathname === "/v1/payments") return await handleCreatePayment(req, res);
-    if (req.method === "POST" && pathname === "/v1/subscriptions/checkout") return send(res, 410, { error: "NEXORA subscription checkout is temporarily disabled.", code: "subscription_disabled" });
-    if (req.method === "GET" && pathname === "/v1/subscriptions/me") return await handleGetSubscription(req,res);
-    if (req.method === "POST" && pathname === "/v1/subscriptions/cancel") return await handleCancelSubscription(req,res);
+    // ALPINOSS uses one-time project fees only. Retire every legacy subscription
+    // endpoint so old clients cannot read or mutate recurring-membership state.
+    if (pathname === "/v1/subscriptions/checkout" || pathname === "/v1/subscriptions/me" || pathname === "/v1/subscriptions/cancel") {
+      return send(res, 410, { error: "Subscriptions are not part of ALPINOSS. Payments are one-time project fees.", code: "subscription_disabled" });
+    }
     if (req.method === "POST" && pathname === "/v1/payments/mollie-webhook") return await handleMollieWebhook(req, res);
     const paymentStatusMatch = /^\/v1\/payments\/([0-9a-f-]{36})$/.exec(pathname);
     if (req.method === "GET" && paymentStatusMatch) return await handleGetPayment(req, res, paymentStatusMatch[1]);
