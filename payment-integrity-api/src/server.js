@@ -469,12 +469,15 @@ async function handleCreateQuote(req, res) {
   const rawBody = await readBody(req);
   let input;
   try { input = JSON.parse(rawBody.toString("utf8")); } catch { return send(res, 400, { error: "Invalid JSON" }); }
-  const userId = Number(input?.user_id);
+  const userId = input?.user_id === undefined || input?.user_id === null || input?.user_id === "" ? null : Number(input.user_id);
+  const customerEmail = typeof input?.customer_email === "string" ? input.customer_email.trim().toLowerCase() : null;
   const amountText = String(input?.amount ?? "").trim().replace(",", ".");
   const description = typeof input?.description === "string" ? input.description.trim().replace(/[<>]/g, "") : "";
   const tier = input?.company_size_tier;
   const expiryDays = input?.expiry_days === undefined ? 30 : Number(input.expiry_days);
-  if (!Number.isSafeInteger(userId) || userId < 1) return send(res, 422, { error: "A valid user_id is required" });
+  const validUserId = userId !== null && Number.isSafeInteger(userId) && userId > 0;
+  const validCustomerEmail = customerEmail !== null && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail) && customerEmail.length <= 254;
+  if (!validUserId && !validCustomerEmail) return send(res, 422, { error: "A valid customer_email or user_id is required" });
   if (!/^\d{1,5}(?:\.\d{1,2})?$/.test(amountText) || !Number.isFinite(Number(amountText)) || Number(amountText) < 1 || Number(amountText) > 5000) return send(res, 422, { error: "Quote amount must be between €1.00 and €5,000.00" });
   if (description.length < 3 || description.length > 100) return send(res, 422, { error: "Description must contain 3 to 100 characters" });
   if (tier !== "small_company" && tier !== "large_company") return send(res, 422, { error: "company_size_tier must be small_company or large_company" });
@@ -482,10 +485,13 @@ async function handleCreateQuote(req, res) {
   const quoteId = crypto.randomUUID();
   const result = await pool.query(
     `INSERT INTO project_quotes (id,user_id,amount,currency,description,company_size_tier,status,expires_at)
-     SELECT $1,id,$3,'EUR',$4,$5,'draft',NOW()+($6 * INTERVAL '1 day')
-     FROM app_users WHERE id=$2
+     SELECT $1,id,$4,'EUR',$5,$6,'draft',NOW()+($7 * INTERVAL '1 day')
+     FROM app_users
+     WHERE ($2::bigint IS NOT NULL AND id=$2::bigint)
+        OR ($3::text IS NOT NULL AND lower(email)=lower($3))
+     LIMIT 1
      RETURNING id,user_id,amount,currency,description,company_size_tier,status,expires_at`,
-    [quoteId,userId,Number(amountText).toFixed(2),description,tier,expiryDays]
+    [quoteId,validUserId?userId:null,validCustomerEmail?customerEmail:null,Number(amountText).toFixed(2),description,tier,expiryDays]
   );
   if (!result.rowCount) return send(res, 404, { error: "Customer account not found" });
   return send(res, 201, { quote: result.rows[0] });
