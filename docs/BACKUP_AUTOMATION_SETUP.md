@@ -30,7 +30,7 @@ The existing Render `DATABASE_URL` is reused. Do not copy it into GitHub.
 
 In the application repository, create the Actions secret:
 
-- Name: `ALPINOSS_BACKUP_TRIGGER_TOKEN`
+- Name: `NEXORA_BACKUP_TRIGGER_TOKEN`
 - Value: exactly the same value as Render's `BACKUP_TRIGGER_TOKEN`.
 
 Never put either secret in source code, workflow YAML, chat, screenshots, or logs. Do not use the GitHub Actions token for database access.
