@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import * as SecureStore from "expo-secure-store";
-import NexoraModules from "./NexoraModules";
+import AlpinossModules from "./AlpinossModules";
 import { API_BASE } from "./api";
 import { Alert, BackHandler, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View, Linking } from "react-native";
 
@@ -8,7 +8,7 @@ type Tab = "Home" | "Community" | "Marketplace" | "Business" | "Integrity" | "Pr
 type Decision = "ACCEPT" | "REVIEW" | "REJECT";
 type Account = { id: string; email: string; created_at: string; subscription_status?: string };
 
-const C = { bg:"#08111F", panel:"#111E30", panel2:"#17263B", line:"#263A53", text:"#F3F7FC", muted:"#91A4BA", cyan:"#4DE1D2", blue:"#6EA8FF", green:"#43D19E", amber:"#F5BD58", red:"#FF7777" };
+const C = { bg:"#08111F", panel:"#111E30", panel2:"#17263B", line:"#263A53", text:"#F3F7FC", muted:"#91A4BA", cyan:"#4b8dff", blue:"#6EA8FF", green:"#43D19E", amber:"#F5BD58", red:"#FF7777" };
 
 function Pill({label,active,onPress}:{label:string;active?:boolean;onPress:()=>void}) {
   return <TouchableOpacity onPress={onPress} style={[styles.pill,active&&styles.pillActive]}><Text style={[styles.pillText,active&&{color:C.bg}]}>{label}</Text></TouchableOpacity>;
@@ -52,7 +52,7 @@ export default function App() {
 
   const submitAuth = async () => {
     setAuthMessage("");
-    if (!API_BASE) { setAuthMessage("Logowanie będzie dostępne po podłączeniu serwera NEXORA."); return; }
+    if (!API_BASE) { setAuthMessage("Logowanie będzie dostępne po podłączeniu serwera ALPINOSS."); return; }
     if (!email.trim() || !password) { setAuthMessage("Wpisz adres e-mail i hasło."); return; }
     setAuthBusy(true);
     try {
@@ -69,7 +69,7 @@ export default function App() {
       if (data.status === "verification_required") {
         setPendingVerificationEmail(data.email || email.trim());
         setPassword("");
-        setAuthMessage("Konto utworzone. Otwórz wiadomość e-mail od NEXORA i potwierdź adres. Dopiero wtedy możesz się zalogować.");
+        setAuthMessage("Konto utworzone. Otwórz wiadomość e-mail od ALPINOSS i potwierdź adres. Dopiero wtedy możesz się zalogować.");
         return;
       }
       await SecureStore.setItemAsync("nexora_session", data.token);
@@ -97,14 +97,14 @@ export default function App() {
 
   const deleteAccount = () => {
     Alert.alert(
-      "Delete NEXORA account?",
+      "Delete ALPINOSS account?",
       "This permanently deletes your account, posts, marketplace listings and business workspace. Payment records may be retained without your account link where legally required.",
       [
         { text: "Cancel", style: "cancel" },
         { text: "Delete account", style: "destructive", onPress: async () => {
           try {
             if (!API_BASE) {
-              Alert.alert("Account not deleted", "The NEXORA account server is not configured. Your account has not been changed.");
+              Alert.alert("Account not deleted", "The ALPINOSS account server is not configured. Your account has not been changed.");
               return;
             }
             const token = await SecureStore.getItemAsync("nexora_session");
@@ -117,7 +117,7 @@ export default function App() {
             const data = await response.json();
             if (!response.ok) throw new Error(data.error || "Account deletion failed.");
             await SecureStore.deleteItemAsync("nexora_session");
-            setAccount(null); setPassword(""); setAuthMessage("Your NEXORA account and associated content have been deleted.");
+            setAccount(null); setPassword(""); setAuthMessage("Your ALPINOSS account and associated content have been deleted.");
             setTab("Home");
           } catch (error) {
             Alert.alert("Account not deleted", error instanceof Error ? error.message : "Please try again.");
@@ -146,17 +146,17 @@ export default function App() {
   }, [tab]);
   const heading:Record<Tab,string> = {
     Home:"What do you want to get done today?",
-    Community:"NEXORA Community",
-    Marketplace:"NEXORA Marketplace",
+    Community:"ALPINOSS Community",
+    Marketplace:"ALPINOSS Marketplace",
     Business:"Business Tools",
     Integrity:"Payment Integrity",
-    Profile:"Your NEXORA account"
+    Profile:"Your ALPINOSS account"
   };
 
   return <SafeAreaView style={styles.safe}>
     <StatusBar barStyle="light-content" backgroundColor={C.bg}/>
     <View style={styles.header}>
-      <View style={{flexDirection:"row",alignItems:"center",gap:10}}><View style={styles.brandMark}><Text style={styles.brandMarkText}>N</Text><View style={styles.brandChip}/></View><View><Text style={styles.brand}>NEXORA<Text style={{color:C.cyan}}>.</Text></Text><Text style={styles.tag}>A PLACE TO MOVE FORWARD</Text></View></View>
+      <View style={{flexDirection:"row",alignItems:"center",gap:10}}><View style={styles.brandMark}><Text style={styles.brandMarkText}>N</Text><View style={styles.brandChip}/></View><View><Text style={styles.brand}>ALPINOSS<Text style={{color:C.cyan}}>.</Text></Text><Text style={styles.tag}>A PLACE TO MOVE FORWARD</Text></View></View>
       <View style={styles.status}><View style={styles.dot}/><Text style={styles.statusText}>PROTOTYPE</Text></View>
     </View>
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
@@ -164,7 +164,7 @@ export default function App() {
       <Text style={styles.heading}>{heading[tab]}</Text>
       {tab==="Home" && <>
         <Card>
-          <Text style={styles.kicker}>WELCOME TO NEXORA</Text>
+          <Text style={styles.kicker}>WELCOME TO ALPINOSS</Text>
           <Text style={styles.hero}>One simple place to make your next move.</Text>
           <Text style={styles.muted}>Build something, find your next opportunity, meet people or get help moving an idea forward. Choose a starting point below.</Text>
         </Card>
@@ -175,7 +175,7 @@ export default function App() {
         <Action title="Get things done" subtitle="Open your tools and work on your next step" onPress={()=>go("Business")}/>
         <Text style={styles.note}>Start with one simple step. You can explore the other areas whenever you need them.</Text>
       </>}
-      {(tab==="Community"||tab==="Marketplace"||tab==="Business")&&<NexoraModules screen={tab} signedIn={!!account} onNavigate={go}/>}
+      {(tab==="Community"||tab==="Marketplace"||tab==="Business")&&<AlpinossModules screen={tab} signedIn={!!account} onNavigate={go}/>}
       {tab==="Integrity" && <>
         <Card><Text style={styles.kicker}>PAYMENT INTEGRITY • DEMO</Text><Text style={styles.hero}>Screen a payment event.</Text><Text style={styles.muted}>Local demonstration only. This does not connect to a bank, move money or approve a real payment.</Text>
           <Text style={styles.label}>AMOUNT (EUR)</Text><TextInput value={amount} onChangeText={setAmount} keyboardType="decimal-pad" placeholder="950.00" placeholderTextColor={C.muted} style={styles.input}/>
@@ -189,7 +189,7 @@ export default function App() {
       </>}
       {tab==="Profile" && <>
         <Card>
-          <Text style={styles.kicker}>NEXORA ACCOUNT</Text>
+          <Text style={styles.kicker}>ALPINOSS ACCOUNT</Text>
           {account ? <>
             <Text style={styles.hero}>You are signed in.</Text>
             <Text style={styles.muted}>{account.email}</Text>
@@ -197,8 +197,8 @@ export default function App() {
             <TouchableOpacity style={[styles.action,{marginTop:12,borderColor:C.red}]} onPress={deleteAccount}><Text style={{color:C.red,fontWeight:"800"}}>DELETE ACCOUNT AND DATA</Text></TouchableOpacity>
             <TouchableOpacity onPress={()=>Linking.openURL("https://bnexora7-eng.github.io/nexora-business/privacy/")}><Text style={styles.note}>Privacy policy</Text></TouchableOpacity>
           </> : <>
-            <Text style={styles.hero}>{authMode==="register"?"Create your NEXORA account.":"Welcome back."}</Text>
-            <Text style={styles.muted}>An account will give you a personal profile across NEXORA services.</Text>
+            <Text style={styles.hero}>{authMode==="register"?"Create your ALPINOSS account.":"Welcome back."}</Text>
+            <Text style={styles.muted}>An account will give you a personal profile across ALPINOSS services.</Text>
             <View style={{flexDirection:"row",gap:8,marginTop:16}}>
               <Pill label="Create account" active={authMode==="register"} onPress={()=>{setAuthMode("register");setAuthMessage("");}}/>
               <Pill label="Sign in" active={authMode==="login"} onPress={()=>{setAuthMode("login");setAuthMessage("");}}/>
@@ -212,7 +212,7 @@ export default function App() {
             {!!authMessage&&<Text style={[styles.note,{marginBottom:0}]}>{authMessage}</Text>}
             {!!pendingVerificationEmail&&<TouchableOpacity style={styles.action} onPress={async()=>{try{const response=await fetch(API_BASE+"/v1/auth/resend-verification",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:pendingVerificationEmail})});const data=await response.json();if(!response.ok)throw new Error(data.error||"Nie udało się wysłać wiadomości.");setAuthMessage("Jeśli konto oczekuje na potwierdzenie, wysłaliśmy nowy link na "+pendingVerificationEmail+".");}catch(error){setAuthMessage(error instanceof Error?error.message:"Błąd połączenia.");}}}><View style={{flex:1}}><Text style={styles.actionTitle}>Wyślij ponownie link aktywacyjny</Text><Text style={styles.muted}>{pendingVerificationEmail}</Text></View><Text style={styles.arrow}>›</Text></TouchableOpacity>}
             <TouchableOpacity onPress={()=>Linking.openURL("https://bnexora7-eng.github.io/nexora-business/account/forgot-password.html")}><Text style={styles.note}>Nie pamiętasz hasła? Odzyskaj konto</Text></TouchableOpacity>
-            <TouchableOpacity onPress={()=>Linking.openURL("https://bnexora7-eng.github.io/nexora-business/privacy/")}><Text style={styles.note}>Read NEXORA Privacy Policy</Text></TouchableOpacity>
+            <TouchableOpacity onPress={()=>Linking.openURL("https://bnexora7-eng.github.io/nexora-business/privacy/")}><Text style={styles.note}>Read ALPINOSS Privacy Policy</Text></TouchableOpacity>
             {!API_BASE&&<Text style={styles.note}>The account server must be deployed and connected before registration can work.</Text>}
           </>}
         </Card>
