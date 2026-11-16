@@ -81,8 +81,10 @@ ALTER TABLE own_payments DROP CONSTRAINT IF EXISTS own_payments_quote_id_fkey;
 ALTER TABLE own_payments
   ADD CONSTRAINT own_payments_quote_id_fkey
   FOREIGN KEY (quote_id) REFERENCES project_quotes(id) ON DELETE SET NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS own_payments_quote_id_unique_idx
-  ON own_payments (quote_id) WHERE quote_id IS NOT NULL;
+DROP INDEX IF EXISTS own_payments_quote_id_unique_idx;
+CREATE UNIQUE INDEX own_payments_quote_id_unique_idx
+  ON own_payments (quote_id)
+  WHERE quote_id IS NOT NULL AND status NOT IN ('canceled','expired','failed','creation_failed');
 CREATE INDEX IF NOT EXISTS project_quotes_user_status_idx
   ON project_quotes (user_id,status,created_at DESC);
 
