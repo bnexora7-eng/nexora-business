@@ -71,6 +71,11 @@ jobs:
           grep -q "Create your account" /tmp/nexora-account.html
           grep -q "/v1/auth/register" /tmp/nexora-account.html
           grep -q "OPEN NEXORA WORKSPACE" /tmp/nexora-account.html
+          curl --fail --silent --show-error --location "$URL/operator/quotes.html" -o /tmp/alpinoss-operator-quotes.html
+          grep -q "Operator token" /tmp/alpinoss-operator-quotes.html
+          grep -q "Create a quotation" /tmp/alpinoss-operator-quotes.html
+          grep -q "Approve quotation" /tmp/alpinoss-operator-quotes.html
+          echo "PASS: ALPINOSS operator quotation page is published."
           curl --fail --silent --show-error --location "$URL/app/" -o /tmp/nexora-app.html
           grep -q "NEXORA Workspace" /tmp/nexora-app.html
           grep -q "/v1/business/ai-plan" /tmp/nexora-app.html
