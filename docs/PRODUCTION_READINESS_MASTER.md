@@ -35,7 +35,7 @@ This file is the current release-gate summary. A green CI check validates only t
 ### B. Transactional email
 
 - Brevo HTTPS delivery is implemented; unit tests cover sender, recipient, message payload and provider failure handling. The Brevo account-validation email and API-key-creation alert were received on 14 November 2026.
-- Actual delivery is **not verified**: the newly created `ALPINOSS-RENDER` API key still must be entered directly into Render as `BREVO_API_KEY`, and a verified sender address must be configured as `BREVO_FROM`. Do not copy the key into GitHub, email, chat or source files. `ALPINOSS_ACCOUNT_URL` and `PUBLIC_API_URL` have been explicitly set in Render and redeployed.
+- Actual delivery is **not verified**: the newly created `ALPINOSS-RENDER` API key still must be entered directly into Render as `BREVO_API_KEY`, and a verified sender address must be configured as `BREVO_FROM`. Do not copy the key into GitHub, email, chat or source files. `NEXORA_ACCOUNT_URL` and `PUBLIC_API_URL` have been explicitly set in Render and redeployed.
 - Render Free blocks outbound SMTP ports 25, 465 and 587; use Brevo HTTPS rather than relying on SMTP.
 - Required: create a Brevo API key, verify the sender/domain, enter secrets directly into Render, then test registration, resend verification, password reset and delivery to real inboxes. Never send API keys in chat.
 
