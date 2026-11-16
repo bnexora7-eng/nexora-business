@@ -1,9 +1,9 @@
 openapi: 3.1.0
 info:
-  title: NEXORA API
+  title: ALPINOSS API
   version: 0.2.0
   description: >
-    Pre-production NEXORA account, free workspace and synthetic Payment Integrity API. One-time project checkout remains disabled until the production-readiness gates are complete.
+    Pre-production ALPINOSS account, free workspace and synthetic Payment Integrity API. One-time project checkout remains disabled until the production-readiness gates are complete.
 servers:
   - url: https://nexora-payment-integrity-api.onrender.com
     description: Render pre-production API
@@ -182,7 +182,7 @@ paths:
     post:
       summary: Disabled legacy subscription checkout
       description: >
-        Recurring memberships are not part of the current NEXORA product model.
+        Recurring memberships are not part of the current ALPINOSS product model.
         This endpoint always returns HTTP 410 subscription_disabled.
       security: [{ bearerAuth: [] }]
       responses:
