@@ -58,6 +58,7 @@ test("central ALPINOSS pricing page exposes all prices and milestone terms", asy
   assert.match(pricing, /50% upfront/);
   assert.match(pricing, /50% after/);
   assert.match(pricing, /30% upfront/);
-  assert.match(pricing, /PLANNED/);
-  assert.match(pricing, /checkout.*configured and tested/i);
+  assert.match(pricing, /one-time payments/i);
+  assert.match(pricing, /no monthly membership or recurring platform fee/i);
+  assert.doesNotMatch(pricing, /29\.99|monthly membership fee|subscription checkout/i);
 });
