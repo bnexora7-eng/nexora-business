@@ -44,9 +44,10 @@ ALPINOSS uses one-time project fees only. There are no monthly memberships, recu
 
 Quotation workflow:
 - `GET /v1/quotes` — authenticated customer view of approved and historical quotations; draft offers are hidden.
+- `GET /internal/quotes` — operator-only list of the latest 100 quotations, including customer email and status.
 - `POST /internal/quotes` — operator-only; creates a draft quotation for an existing `user_id`, with an amount, description and company-size tier.
 - `POST /internal/quotes/{quote_id}/approve` — operator-only; approves a draft quotation before the customer can pay.
-- Both operator routes require a server-side `QUOTE_ADMIN_TOKEN` environment secret (at least 40 characters) sent as a Bearer token. Never expose this token in browser code, the repository, or customer-facing pages.
+- Both operator routes require a server-side `QUOTE_ADMIN_TOKEN` environment secret (at least 40 characters) sent as a Bearer token. Never expose this token in browser code, the repository, or customer-facing pages. The static operator interface is published at `/operator/quotes.html`; it prompts for the token at runtime, keeps it in page memory only, and clears it when the page is closed.
 - Draft quotations expire after 30 days by default; the operator may set 1–90 days.
 - `POST /v1/payments` — requires an authenticated customer and an approved, unexpired `quote_id`. The server reads the amount, currency and description from PostgreSQL. Client-supplied amount/description values are not used. Row locking and a unique payment-to-quote index prevent duplicate checkout attempts for one quotation.
 - A successful Mollie webhook marks the quotation paid. A canceled, expired or failed provider payment closes the quotation. A new payment attempt requires a newly issued quotation, preventing late webhook events from causing a second charge.
