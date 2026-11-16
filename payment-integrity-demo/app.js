@@ -4,7 +4,7 @@
   const form = $("eventForm");
   const resultBox = $("result");
   const testBox = $("apiTestResults");
-  const apiBase = String(window.NEXORA_API_BASE_URL || "").replace(/\/+$/, "");
+  const apiBase = String(window.ALPINOSS_API_BASE_URL || "").replace(/\/+$/, "");
   const rows = [];
   let accepted = 0, flagged = 0;
 
@@ -79,7 +79,7 @@
     const submit = form.querySelector('button[type="submit"]');
     submit.disabled = true;
     submit.textContent = "Sending…";
-    resultBox.innerHTML = '<div class="muted">Sending event to the NEXORA API…</div>';
+    resultBox.innerHTML = '<div class="muted">Sending event to the ALPINOSS API…</div>';
     try {
       if (!apiBase) throw new Error("API URL is not configured.");
       const body = await apiRequest("/v1/demo/events", {
