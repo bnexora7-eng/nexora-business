@@ -1,11 +1,11 @@
-# NEXORA Business Studio — AI provider setup
+# ALPINOSS Business Studio — AI provider setup
 
 **Current state:** the Business Studio AI route is implemented, but live generation remains disabled until a server-side provider key is configured.
 
 ## Architecture
 
 - The browser sends business-planning fields to `POST /v1/business/ai-plan`.
-- The API requires a verified, signed-in account with active NEXORA All Access (or access remaining in an already-paid canceled period).
+- The API requires a verified, signed-in account with active ALPINOSS All Access (or access remaining in an already-paid canceled period).
 - The API sends the request to the OpenAI Chat Completions endpoint. The default model is `gpt-4.1-mini`.
 - The API key is read only from `OPENAI_API_KEY` in the Render service environment. It is never sent to the browser or stored in Git.
 - The endpoint has a 25-second timeout, PostgreSQL-backed authentication and per-account AI request limits, a global monthly token reservation limit, field-size limits and a hard 256 KiB cap on the provider's JSON response body.
@@ -13,7 +13,7 @@
 ## Required configuration — when the owner approves API spending
 
 1. Create or use an OpenAI API Platform account. ChatGPT subscriptions do not include API credits; API usage is billed separately.
-2. Create a restricted API key for the NEXORA server. Do not paste the key into GitHub, source files, this chat, or the mobile app.
+2. Create a restricted API key for the ALPINOSS server. Do not paste the key into GitHub, source files, this chat, or the mobile app.
 3. In Render, open the `nexora-payment-integrity-api` service and its Environment page.
 4. Add `OPENAI_API_KEY` as a secret value. Keep `OPENAI_MODEL` set to `gpt-4.1-mini`; `OPENAI_API_URL` can remain unset because the official endpoint is the default.
 5. Save and deploy the environment change. Do not enable live use until the deployment is healthy.
