@@ -11,9 +11,11 @@
 - **API health:** https://nexora-payment-integrity-api.onrender.com/health
 - **Source code:** https://github.com/bnexora7-eng/nexora-business
 
-## ALPINOSS concept
+## ALPINOSS and this repository
 
-ALPINOSS is a proposed digital ecosystem bringing four connected experiences into one place:
+ALPINOSS is the umbrella identity for an independent, multi-sector business initiative. This repository contains one current digital platform prototype and its associated workspace, community and marketplace concepts, plus the Payment Integrity sandbox. It is one part of the wider ALPINOSS portfolio, not the limit of the brand.
+
+The current platform prototype brings four connected experiences into one place:
 
 1. **Community** — member profiles, posts and conversations.
 2. **Rewards** — participation challenges and points.
