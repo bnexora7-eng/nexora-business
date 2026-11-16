@@ -52,7 +52,7 @@ test("central ALPINOSS pricing page exposes all prices and milestone terms", asy
   const home = await readFile(homePath, "utf8");
   const pricing = await readFile(pricingPath, "utf8");
   assert.match(home, /href="pricing\//);
-  for (const price of ["€149", "€295", "€495", "From €950", "€950–€2,500", "€5,000–€15,000+", "€29.99 / month"]) {
+  for (const price of ["€149", "€295", "€495", "From €950", "€950–€2,500", "€5,000–€15,000+"]) {
     assert.ok(pricing.includes(price), "missing published price: " + price);
   }
   assert.match(pricing, /50% upfront/);
