@@ -1,10 +1,10 @@
-const CACHE_NAME = "alpinoss-shell-v5";
+const CACHE_NAME = "alpinoss-shell-v6";
 const BASE_URL = new URL("./", self.location).href;
 const APP_FILES = [
   BASE_URL,
   BASE_URL + "index.html",
   BASE_URL + "manifest.webmanifest",
-  BASE_URL + "nexora-icon.svg"
+  BASE_URL + "alpinoss-icon.svg"
 ];
 
 self.addEventListener("install", event => {
