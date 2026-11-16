@@ -799,7 +799,7 @@ async function handleMollieWebhook(req, res) {
     );
     if (order.quote_id) {
       const quoteStatus = payment.status === "paid" ? "paid" : payment.status === "expired" ? "expired" : ["canceled","failed"].includes(payment.status) ? "cancelled" : "payment_pending";
-      await pool.query("UPDATE project_quotes SET status=$1,updated_at=NOW() WHERE id=$2 AND status='payment_pending'", [quoteStatus,order.quote_id]);
+      await pool.query("UPDATE project_quotes SET status=$1,updated_at=NOW() WHERE id=$2 AND (status='payment_pending' OR ($1='paid' AND status IN ('cancelled','expired')))", [quoteStatus,order.quote_id]);
     }
     if (order.description === "NEXORA All Access monthly subscription" && payment.status === "paid") {
       // Serialize first-payment activation with account deletion and checkout.
