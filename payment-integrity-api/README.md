@@ -1,6 +1,6 @@
 # NEXORA API — pre-production backend
 
-This service is the server-side API for NEXORA's account, subscription, Community, Marketplace, Business workspace and Payment Integrity prototype. It is deployed on Render in Frankfurt and uses PostgreSQL 18.
+This service is the server-side API for NEXORA's account, quotations, Community, Marketplace, Business workspace and Payment Integrity prototype. It is deployed on Render in Frankfurt and uses PostgreSQL 18.
 
 **Release status:** pre-production only. The API is not a regulated payment service or certified fraud-detection product. Do not process real customer payment or banking data until the release gates in `docs/PRODUCTION_READINESS_MASTER.md` have passed.
 
@@ -38,18 +38,24 @@ Passwords are stored as salted scrypt hashes. Session and email-action tokens ar
 
 Transactional email is sent through the Brevo HTTPS API when `BREVO_API_KEY` and a verified `BREVO_FROM` sender are configured. SMTP variables remain for environments that permit outbound SMTP; Render Free web services block outbound SMTP ports 25, 465 and 587.
 
-## Project fees and payment readiness
+## ALPINOSS one-time project quotations and payment readiness
 
-NEXORA has no monthly membership, recurring platform fee or mandatory subscription. Accounts are free. Customers first discuss a defined service, receive an agreed written scope and one-time project quotation, and only then may pay for that specific project.
+ALPINOSS uses one-time project fees only. There are no monthly memberships, recurring platform fees or subscriptions. Company-size pricing is recorded as either `small_company` or `large_company`. The two public price amounts are not yet confirmed and must not be invented or published. A project quotation records the amount and scope agreed for that customer.
 
-- `POST /v1/subscriptions/checkout` — permanently disabled for the current product model; returns HTTP 410.
-- `POST /v1/payments` — one-off Mollie checkout is fail-closed by default. It returns HTTP 503 with `one_off_payments_disabled` unless `ENABLE_ONE_OFF_PAYMENTS=true` is explicitly set after all business, legal, provider and operational release gates have passed.
-- `POST /v1/payments/mollie-webhook` and `GET /v1/payments/{order_id}` — legacy provider reconciliation/status routes; they do not enable checkout by themselves.
-- `GET /v1/subscriptions/me` and `POST /v1/subscriptions/cancel` — legacy compatibility routes only; no new subscription is sold or required.
+Quotation workflow:
+- `POST /internal/quotes` — operator-only; creates a draft quotation for an existing `user_id`, with an amount, description and company-size tier.
+- `POST /internal/quotes/{quote_id}/approve` — operator-only; approves a draft quotation before the customer can pay.
+- Both operator routes require a server-side `QUOTE_ADMIN_TOKEN` environment secret (at least 40 characters) sent as a Bearer token. Never expose this token in browser code, the repository, or customer-facing pages.
+- Draft quotations expire after 30 days by default; the operator may set 1–90 days.
+- `POST /v1/payments` — requires an authenticated customer and an approved, unexpired `quote_id`. The server reads the amount, currency and description from PostgreSQL. Client-supplied amount/description values are not used. Row locking and a unique payment-to-quote index prevent duplicate checkout attempts for one quotation.
+- A successful Mollie webhook marks the quotation paid. A canceled, expired or failed provider payment returns it to approved status.
+- If the provider outcome is uncertain during checkout creation, the quotation stays locked in `payment_pending` for reconciliation rather than risking a second charge.
 
-Do not set `ENABLE_ONE_OFF_PAYMENTS=true` as part of routine deployment. Live payment activation additionally requires provider merchant approval, a confirmed business bank account, approved customer terms, correct VAT/invoicing treatment, end-to-end sandbox tests, webhook reconciliation, refunds/disputes handling, backup/restore verification and an explicit owner decision. The Mollie API key must remain server-side in Render. PayPal is excluded.
+One-off checkout remains fail-closed by default. It returns HTTP 503 with `one_off_payments_disabled` unless `ENABLE_ONE_OFF_PAYMENTS=true` is explicitly set after all business, legal, provider and operational release gates have passed. Live payments additionally require `ENABLE_LIVE_PAYMENTS=true` and an approved live Mollie merchant setup. PayPal is excluded.
 
-The initial public price list is indicative, not an automatic charge: €149 business analysis; €295 AI assistant prototype; €495 business-specific AI prototype; system integration from €950; €950–€2,500 multi-step automation; €5,000–€15,000+ individually scoped enterprise work. Final price and deliverables require written agreement and feasibility review.
+Do not enable either payment flag as part of routine deployment. Before launch, complete merchant onboarding, business bank-account confirmation, approved customer terms, VAT/invoicing review, sandbox end-to-end tests, webhook reconciliation, refunds/disputes handling, backup/restore verification and an explicit owner decision. The Mollie API key and `QUOTE_ADMIN_TOKEN` must remain server-side in Render.
+
+Older example amounts in archived project notes are service/project estimates, not the confirmed two-tier ALPINOSS company price list. Do not present them as the small-company and large-company prices.
 
 ## Product routes
 
@@ -64,10 +70,6 @@ AI planning stays unavailable unless a provider key and monthly token budget are
 
 ## Product routes
 
-- `GET/POST /v1/community/posts` — public read preview; publishing requires active All Access
-- `GET/POST /v1/marketplace/listings` — public read preview; publishing requires active All Access; checkout/escrow is not implemented
-- `GET/PUT /v1/business/workspace` — authenticated All Access workspace
-- `POST /v1/business/ai-plan` — All Access gated; requires a server-side AI provider key and explicit budget controls
 - `POST /v1/events` — signed provider event screening with HMAC-SHA256, timestamp checks and idempotency
 - `POST /v1/demo/events` — simulated browser-demo events only when the public demo is enabled and restricted to its configured origin
 
