@@ -1,4 +1,4 @@
-# Historical record — NEXORA All Access subscription plan
+# Historical record — ALPINOSS All Access subscription plan
 
 **Status: SUPERSEDED on 15 November 2026. Do not use this document as the current commercial or implementation specification.**
 
@@ -6,7 +6,7 @@ The earlier €29.99/month All Access subscription model was explicitly rejected
 
 ## Current commercial model
 
-- NEXORA accounts are free.
+- ALPINOSS accounts are free.
 - No monthly membership, recurring platform fee or mandatory subscription.
 - Customers pay once per individually agreed project, after scope, deliverables and price are confirmed in writing.
 - Indicative public offers: €149 business analysis; €295 AI assistant prototype; €495 business-specific AI prototype; system integration from €950; €950–€2,500 multi-step automation; €5,000–€15,000+ individually scoped enterprise work.

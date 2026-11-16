@@ -1,4 +1,4 @@
-# NEXORA BUSINESS — Interactive Concept Prototype
+# ALPINOSS BUSINESS — Interactive Concept Prototype
 
 **Current status:** Pre-production prototype. The Payment Integrity sandbox is publicly demonstrable, but it is not a production payment or fraud-detection service.
 
@@ -11,9 +11,11 @@
 - **API health:** https://nexora-payment-integrity-api.onrender.com/health
 - **Source code:** https://github.com/bnexora7-eng/nexora-business
 
-## NEXORA concept
+## ALPINOSS and this repository
 
-NEXORA is a proposed digital ecosystem bringing four connected experiences into one place:
+ALPINOSS is the umbrella identity for an independent, multi-sector business initiative. This repository contains one current digital platform prototype and its associated workspace, community and marketplace concepts, plus the Payment Integrity sandbox. It is one part of the wider ALPINOSS portfolio, not the limit of the brand.
+
+The current platform prototype brings four connected experiences into one place:
 
 1. **Community** — member profiles, posts and conversations.
 2. **Rewards** — participation challenges and points.
@@ -43,7 +45,7 @@ The repository also contains a Node.js API backend scaffold with provider HMAC-S
 
 - Submit a synthetic payment event and inspect its decision.
 - Exercise ACCEPT, REVIEW, REJECT and duplicate-event scenarios.
-- Navigate the wider NEXORA concept areas.
+- Navigate the wider ALPINOSS concept areas.
 - Explore sample community, rewards, marketplace and business-workspace interactions.
 
 ## Proposed next development phase
@@ -60,6 +62,6 @@ The repository also contains a Node.js API backend scaffold with provider HMAC-S
 - GitHub Actions deploys the public site to GitHub Pages.
 - Payment Integrity demo API is hosted separately on Render.
 - The public browser demo and the account backend are separate systems; the demo is not a production payment service.
-- NEXORA's current commercial model is free accounts and one-time project fees after a written scope and quotation. There is no monthly membership or recurring platform fee. Checkout is disabled until Dutch business/tax status, payment-provider eligibility and all release gates are verified.
+- ALPINOSS's current commercial model is free accounts and one-time project fees after a written scope and quotation. There is no monthly membership or recurring platform fee. Checkout is disabled until Dutch business/tax status, payment-provider eligibility and all release gates are verified.
 
 For the current detailed handover, see [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md). For the external-facing overview, see [docs/PROJECT_BRIEF.md](docs/PROJECT_BRIEF.md).

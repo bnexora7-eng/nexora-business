@@ -1,4 +1,4 @@
-# NEXORA — Google Play release readiness
+# ALPINOSS — Google Play release readiness
 
 **Updated:** 14 November 2026  
 **Android package:** `com.nexora.business`  
@@ -34,7 +34,7 @@ Store listing copy is drafted in [GOOGLE_PLAY_STORE_LISTING_DRAFT.md](GOOGLE_PLA
 
 - [ ] Complete the Play Console app record and developer registration, including the one-time developer registration payment. The signed AAB is ready as a build artifact, but it has not been uploaded to Play Console.
 - [ ] Upload the signed AAB and verify Play App Signing configuration.
-- [ ] Provide the store listing: app name, short/full descriptions, support contact, app icon (512×512), feature graphic (1024×500) and phone screenshots. NEXORA-specific Play listing graphics are not yet present in the repository.
+- [ ] Provide the store listing: app name, short/full descriptions, support contact, app icon (512×512), feature graphic (1024×500) and phone screenshots. ALPINOSS-specific Play listing graphics are not yet present in the repository.
 - [ ] Publish the privacy policy URL above and account-deletion URL above; confirm both are publicly reachable after GitHub Pages deployment.
 - [ ] Before public release, replace the privacy-policy project-operator notice with the responsible legal person's/entity's full legal name and postal address; confirm processor agreements and any international-transfer safeguards for Render, Mollie and the AI provider.
 - [ ] Complete the Data safety form based on the actual production SDKs, server configuration and data flows; do not copy a generic declaration.
@@ -52,7 +52,7 @@ Store listing copy is drafted in [GOOGLE_PLAY_STORE_LISTING_DRAFT.md](GOOGLE_PLA
 
 ## Current product boundaries
 
-NEXORA is still a pre-production prototype. Payment Integrity is a deterministic demonstration, not certified fraud detection. Mollie payments are not live until merchant onboarding, server credentials and end-to-end tests are complete. AI planning depends on a server-side provider key and successful provider tests. No bank integration, payout service, production marketplace checkout, paid membership or financial return should be advertised as available unless separately implemented and verified.
+ALPINOSS is still a pre-production prototype. Payment Integrity is a deterministic demonstration, not certified fraud detection. Mollie payments are not live until merchant onboarding, server credentials and end-to-end tests are complete. AI planning depends on a server-side provider key and successful provider tests. No bank integration, payout service, production marketplace checkout, paid membership or financial return should be advertised as available unless separately implemented and verified.
 
 ## Release decision
 

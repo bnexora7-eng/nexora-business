@@ -31,12 +31,12 @@ test("verification and password-reset emails render correct account links in tes
     const { sendVerificationEmail, sendPasswordResetEmail } = await import("../src/email.js");
     const verification = await sendVerificationEmail("member@example.test", "verification-token-123");
     const verificationMessage = verification.message.toString("utf8").replace(/=\r?\n/g, "").replace(/=3D/g, "=");
-    assert.match(verificationMessage, /Confirm your NEXORA email address/);
+    assert.match(verificationMessage, /Confirm your ALPINOSS email address/);
     assert.match(verificationMessage, /https:\/\/example\.test\/account\/verify\.html\?token=verification-token-123/);
 
     const reset = await sendPasswordResetEmail("member@example.test", "reset-token-456");
     const resetMessage = reset.message.toString("utf8").replace(/=\r?\n/g, "").replace(/=3D/g, "=");
-    assert.match(resetMessage, /Reset your NEXORA password/);
+    assert.match(resetMessage, /Reset your ALPINOSS password/);
     assert.match(resetMessage, /https:\/\/example\.test\/account\/reset-password\.html\?token=reset-token-456/);
   } finally {
     if (previous.nodeEnv === undefined) delete process.env.NODE_ENV; else process.env.NODE_ENV = previous.nodeEnv;

@@ -30,8 +30,8 @@ test("member workspace page has valid JavaScript and all required product sectio
 
 test("account dashboard links to the member workspace", async () => {
   const html = await readFile(accountPath, "utf8");
-  assert.match(html, /href="\.\.\/app\/">OPEN NEXORA WORKSPACE/);
-  assert.doesNotMatch(html, /€29\.99|NEXORA All Access|subscribe-button/i, "account page must not advertise or expose subscription checkout");
+  assert.match(html, /href="\.\.\/app\/">OPEN ALPINOSS WORKSPACE/);
+  assert.doesNotMatch(html, /€29\.99|ALPINOSS All Access|subscribe-button/i, "account page must not advertise or expose subscription checkout");
 });
 
 test("project enquiry form prepares a local email without a third-party form processor", async () => {
@@ -41,7 +41,24 @@ test("project enquiry form prepares a local email without a third-party form pro
   assert.ok(script, "project enquiry page must include its form script");
   assert.doesNotThrow(() => new vm.Script(script), "project enquiry script must parse");
   assert.match(html, /Prepare email enquiry/);
-  assert.match(script, /mailto:bnexora7@gmail\.com/);
+  assert.match(script, /mailto:alpinoosalpinoos@gmail\.com/);
   assert.match(html, /privacy notice/);
   assert.doesNotMatch(html, /formsubmit\\.co|formsubmit/i, "enquiry data must not be sent to an unreviewed third-party form processor");
+});
+
+test("central ALPINOSS pricing page exposes all prices and milestone terms", async () => {
+  const homePath = new URL("../../index.html", import.meta.url);
+  const pricingPath = new URL("../../pricing/index.html", import.meta.url);
+  const home = await readFile(homePath, "utf8");
+  const pricing = await readFile(pricingPath, "utf8");
+  assert.match(home, /href="pricing\//);
+  for (const price of ["€149", "€295", "€495", "From €950", "€950–€2,500", "€5,000–€15,000+"]) {
+    assert.ok(pricing.includes(price), "missing published price: " + price);
+  }
+  assert.match(pricing, /50% upfront/);
+  assert.match(pricing, /50% after/);
+  assert.match(pricing, /30% upfront/);
+  assert.match(pricing, /one-time payments/i);
+  assert.match(pricing, /no monthly membership or recurring platform fee/i);
+  assert.doesNotMatch(pricing, /29\.99|monthly membership fee|subscription checkout/i);
 });

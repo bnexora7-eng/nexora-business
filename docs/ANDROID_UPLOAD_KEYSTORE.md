@@ -1,4 +1,4 @@
-# NEXORA Android upload key — owner instructions
+# ALPINOSS Android upload key — owner instructions
 
 The replacement upload keystore was generated and verified by the repository owner on 13 November 2026.
 
@@ -37,7 +37,7 @@ In GitHub, open the repository **Settings → Secrets and variables → Actions 
 
 ## 3. Build the Play upload bundle
 
-After the required secrets exist, open **Actions → NEXORA Android build (Play AAB when signing key is configured) → Run workflow** on the `main` branch.
+After the required secrets exist, open **Actions → ALPINOSS Android build (Play AAB when signing key is configured) → Run workflow** on the `main` branch.
 
 The workflow checks the secrets, decodes and verifies the keystore alias, configures release signing, builds `app-release.aab`, verifies the bundle signature, removes the temporary keystore from the runner, and uploads the AAB as a short-lived workflow artifact.
 

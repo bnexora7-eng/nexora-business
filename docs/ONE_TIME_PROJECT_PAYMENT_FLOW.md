@@ -1,15 +1,15 @@
-# NEXORA — One-time project payment flow
+# ALPINOSS — One-time project payment flow
 
 **Status:** architecture and release specification only. No live payment processing is approved.
 
 ## Commercial contract
 
-NEXORA accounts are free. Each paid engagement is a separate project with a defined scope and one-time fee. The public price list is indicative; it does not create an order or authorize a charge.
+ALPINOSS accounts are free. Each paid engagement is a separate project with a defined scope and one-time fee. The public price list is indicative; it does not create an order or authorize a charge.
 
 ## Customer lifecycle
 
 1. **Enquiry received** — customer selects a service and describes the business problem. This is non-binding.
-2. **Feasibility review** — NEXORA checks whether the promised result can actually be delivered, dependencies, data access, security and timeline.
+2. **Feasibility review** — ALPINOSS checks whether the promised result can actually be delivered, dependencies, data access, security and timeline.
 3. **Written quotation** — identify the legal supplier and customer; define deliverables, exclusions, acceptance criteria, timeline, one-time fee, VAT treatment, third-party costs, support and cancellation/refund terms.
 4. **Customer acceptance** — store the accepted quote version and timestamp. No payment request is created before acceptance.
 5. **Invoice/payment request** — issue a sequential, legally compliant invoice or advance-payment request using the confirmed VAT rules and correct operator details.
@@ -46,7 +46,7 @@ Every state transition must be validated server-side and recorded with timestamp
 - `ENABLE_ONE_OFF_PAYMENTS` defaults to `false`; the API returns HTTP 503 and creates no order while disabled.
 - `ENABLE_LIVE_PAYMENTS` remains `false` until a separate live-launch approval.
 - Provider credentials stay in Render secrets and never enter the website, mobile bundle, Git history, screenshots or chat.
-- Use a provider-hosted checkout; NEXORA must not collect or store card/bank credentials.
+- Use a provider-hosted checkout; ALPINOSS must not collect or store card/bank credentials.
 - Enforce exact order, amount and EUR currency matching on server-side reconciliation.
 - Handle open, paid, failed, canceled, expired, refunded and disputed provider states.
 - Add request idempotency for checkout creation and webhook processing.
@@ -69,7 +69,7 @@ Every state transition must be validated server-side and recorded with timestamp
 
 - **Mollie:** its support documentation says it is available only to registered businesses, not private individuals. It asks for business/legal representative information, identity documents, bank details and website/service information. Merchant onboarding is premature until the business operator and account are eligible.
 - **Stripe:** its support documentation says it verifies the business, website/product, bank account and risk profile. Account type and exact documentation depend on country and business structure; eligibility must be confirmed for the actual Dutch operator before selection.
-- **PayPal:** excluded from NEXORA by owner decision.
+- **PayPal:** excluded from ALPINOSS by owner decision.
 
 References:
 - KVK: https://www.kvk.nl/en/starting/do-you-need-to-register-your-business-with-kvk/

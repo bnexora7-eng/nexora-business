@@ -1,12 +1,12 @@
-# NEXORA BUSINESS — Master Project Status
+# ALPINOSS BUSINESS — Master Project Status
 
 **Last updated:** 15 November 2026  
-**Project owner:** NEXORA BUSINESS  
+**Project owner:** ALPINOSS BUSINESS  
 **Repository:** https://github.com/bnexora7-eng/nexora-business
 
 ## Canonical project links
 
-- Public NEXORA website: https://bnexora7-eng.github.io/nexora-business/
+- Public ALPINOSS website: https://bnexora7-eng.github.io/nexora-business/
 - Account: https://bnexora7-eng.github.io/nexora-business/account/
 - Member workspace: https://bnexora7-eng.github.io/nexora-business/app/
 - Payment Integrity demo: https://bnexora7-eng.github.io/nexora-business/payment-integrity-demo/demo.html
@@ -15,7 +15,7 @@
 
 ## Current commercial decision
 
-NEXORA accounts are free. There is no monthly membership, recurring platform fee or mandatory subscription. Revenue is intended to come from individually scoped services paid once per agreed project.
+ALPINOSS accounts are free. There is no monthly membership, recurring platform fee or mandatory subscription. Revenue is intended to come from individually scoped services paid once per agreed project.
 
 Each project quotation must define an individually agreed advance payment before work starts and a remaining balance after completion/acceptance; the split is project-specific, not automatically 50/50. The exact amounts and milestones must be written into the accepted quote.
 
@@ -45,12 +45,12 @@ The newest code changes are still subject to their own GitHub Actions run. Do no
 
 ## Payment readiness — not production-ready
 
-No payment provider is approved for live NEXORA transactions. The existing one-off checkout code is Mollie-specific, but no live merchant onboarding or end-to-end transaction has been verified. The one-off checkout feature flag must remain disabled.
+No payment provider is approved for live ALPINOSS transactions. The existing one-off checkout code is Mollie-specific, but no live merchant onboarding or end-to-end transaction has been verified. The one-off checkout feature flag must remain disabled.
 
 Intended process:
 1. Customer submits a non-binding enquiry.
-2. NEXORA reviews feasibility and requirements.
-3. NEXORA sends a written one-time quotation / statement of work.
+2. ALPINOSS reviews feasibility and requirements.
+3. ALPINOSS sends a written one-time quotation / statement of work.
 4. Customer accepts the scope and terms.
 5. A compliant invoice or payment request is issued under the confirmed VAT treatment.
 6. Provider-confirmed payment is reconciled server-side against the order, exact amount and currency.
@@ -60,7 +60,7 @@ Before paid trading, assess the KVK entrepreneur criteria and registration date,
 
 ## Product and technical status
 
-- Public NEXORA website and Payment Integrity demo are hosted on GitHub Pages.
+- Public ALPINOSS website and Payment Integrity demo are hosted on GitHub Pages.
 - API backend is hosted on Render and uses PostgreSQL.
 - Account registration, email verification, login, password reset and account deletion routes exist; real transactional email delivery still needs end-to-end verification.
 - Community and Marketplace have basic authenticated publishing/listing functionality. Marketplace checkout, escrow, payouts and disputes are not implemented.
@@ -88,4 +88,4 @@ Before paid trading, assess the KVK entrepreneur criteria and registration date,
 - [Project Services Terms — internal draft only](TERMS_AND_SUBSCRIPTION_DISCLOSURES_DRAFT.md)
 - [Historical All Access plan — superseded](ALL_ACCESS_SUBSCRIPTION_PLAN.md)
 
-Do not enable live payments, paid AI, or describe NEXORA as production-ready until the applicable gates have passed and the owner explicitly approves activation.
+Do not enable live payments, paid AI, or describe ALPINOSS as production-ready until the applicable gates have passed and the owner explicitly approves activation.

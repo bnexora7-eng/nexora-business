@@ -13,7 +13,7 @@ async function sendEmail(message) {
   // Local tests may render messages without contacting an external provider.
   if (process.env.NODE_ENV === "test" && process.env.SMTP_TEST_MODE === "true") {
     return await getTestTransport().sendMail({
-      from: "NEXORA <test@nexora.invalid>",
+      from: "ALPINOSS <test@nexora.invalid>",
       to: message.to,
       subject: message.subject,
       text: message.text,
@@ -38,7 +38,7 @@ async function sendEmail(message) {
       signal: controller.signal,
       headers: { "api-key": apiKey, "accept": "application/json", "content-type": "application/json" },
       body: JSON.stringify({
-        sender: { name: "NEXORA", email: sender },
+        sender: { name: "ALPINOSS", email: sender },
         to: [{ email: message.to }],
         subject: message.subject,
         textContent: message.text,
@@ -50,7 +50,7 @@ async function sendEmail(message) {
       console.error("Brevo email API rejected message:", response.status, result.message || result.code || "unknown error");
       throw Object.assign(new Error("Brevo email API rejected the message (HTTP " + response.status + ")."), { statusCode: 502 });
     }
-    console.log("NEXORA email accepted by Brevo:", result.messageId || "message ID unavailable");
+    console.log("ALPINOSS email accepted by Brevo:", result.messageId || "message ID unavailable");
     return { messageId: result.messageId };
   } finally {
     clearTimeout(timeout);
@@ -68,9 +68,9 @@ export async function sendVerificationEmail(email, token) {
   const url = getWebBase() + "/verify.html?token=" + encodeURIComponent(token);
   return await sendEmail({
     to: email,
-    subject: "Confirm your NEXORA email address",
-    text: "Welcome to NEXORA. Confirm your email address using this link (valid for 24 hours): " + url + "\n\nIf you did not create this account, you can ignore this message.",
-    html: '<div style="font-family:Arial,sans-serif;background:#07111f;color:#eff6ff;padding:32px"><div style="max-width:560px;margin:auto;background:#102238;border:1px solid #29435d;border-radius:16px;padding:28px"><h1 style="letter-spacing:4px">NEXORA</h1><h2>Confirm your email address</h2><p>One more step to activate your NEXORA account.</p><p><a href="' + url + '" style="display:inline-block;background:#62e6c5;color:#061923;padding:13px 20px;border-radius:8px;text-decoration:none;font-weight:bold">VERIFY EMAIL</a></p><p style="color:#a8b8ca;font-size:13px">This link expires in 24 hours. If you did not create this account, ignore this email.</p></div></div>'
+    subject: "Confirm your ALPINOSS email address",
+    text: "Welcome to ALPINOSS. Confirm your email address using this link (valid for 24 hours): " + url + "\n\nIf you did not create this account, you can ignore this message.",
+    html: '<div style="font-family:Arial,sans-serif;background:#07111f;color:#eff6ff;padding:32px"><div style="max-width:560px;margin:auto;background:#102238;border:1px solid #29435d;border-radius:16px;padding:28px"><h1 style="letter-spacing:4px">ALPINOSS</h1><h2>Confirm your email address</h2><p>One more step to activate your ALPINOSS account.</p><p><a href="' + url + '" style="display:inline-block;background:#4b8dff;color:#061923;padding:13px 20px;border-radius:8px;text-decoration:none;font-weight:bold">VERIFY EMAIL</a></p><p style="color:#a8b8ca;font-size:13px">This link expires in 24 hours. If you did not create this account, ignore this email.</p></div></div>'
   });
 }
 
@@ -78,8 +78,8 @@ export async function sendPasswordResetEmail(email, token) {
   const url = getWebBase() + "/reset-password.html?token=" + encodeURIComponent(token);
   return await sendEmail({
     to: email,
-    subject: "Reset your NEXORA password",
-    text: "Use this link to choose a new NEXORA password (valid for 1 hour): " + url + "\n\nIf you did not request this, ignore this message.",
-    html: '<div style="font-family:Arial,sans-serif;background:#07111f;color:#eff6ff;padding:32px"><div style="max-width:560px;margin:auto;background:#102238;border:1px solid #29435d;border-radius:16px;padding:28px"><h1 style="letter-spacing:4px">NEXORA</h1><h2>Password reset</h2><p>Choose a new password using the secure link below.</p><p><a href="' + url + '" style="display:inline-block;background:#62e6c5;color:#061923;padding:13px 20px;border-radius:8px;text-decoration:none;font-weight:bold">RESET PASSWORD</a></p><p style="color:#a8b8ca;font-size:13px">This link expires in 1 hour. If you did not request this, ignore this email.</p></div></div>'
+    subject: "Reset your ALPINOSS password",
+    text: "Use this link to choose a new ALPINOSS password (valid for 1 hour): " + url + "\n\nIf you did not request this, ignore this message.",
+    html: '<div style="font-family:Arial,sans-serif;background:#07111f;color:#eff6ff;padding:32px"><div style="max-width:560px;margin:auto;background:#102238;border:1px solid #29435d;border-radius:16px;padding:28px"><h1 style="letter-spacing:4px">ALPINOSS</h1><h2>Password reset</h2><p>Choose a new password using the secure link below.</p><p><a href="' + url + '" style="display:inline-block;background:#4b8dff;color:#061923;padding:13px 20px;border-radius:8px;text-decoration:none;font-weight:bold">RESET PASSWORD</a></p><p style="color:#a8b8ca;font-size:13px">This link expires in 1 hour. If you did not request this, ignore this email.</p></div></div>'
   });
 }
