@@ -63,6 +63,29 @@ ALTER TABLE own_payments
 
 CREATE INDEX IF NOT EXISTS own_payments_user_created_idx ON own_payments (user_id, created_at DESC);
 
+CREATE TABLE IF NOT EXISTS project_quotes (
+  id UUID PRIMARY KEY,
+  user_id BIGINT NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
+  amount NUMERIC(12,2) NOT NULL CHECK (amount >= 1 AND amount <= 5000),
+  currency CHAR(3) NOT NULL DEFAULT 'EUR' CHECK (currency = 'EUR'),
+  description VARCHAR(100) NOT NULL CHECK (length(trim(description)) >= 3),
+  company_size_tier TEXT NOT NULL CHECK (company_size_tier IN ('small_company','large_company')),
+  status TEXT NOT NULL CHECK (status IN ('draft','approved','payment_pending','paid','cancelled','expired')),
+  expires_at TIMESTAMPTZ NOT NULL,
+  approved_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+ALTER TABLE own_payments ADD COLUMN IF NOT EXISTS quote_id UUID;
+ALTER TABLE own_payments DROP CONSTRAINT IF EXISTS own_payments_quote_id_fkey;
+ALTER TABLE own_payments
+  ADD CONSTRAINT own_payments_quote_id_fkey
+  FOREIGN KEY (quote_id) REFERENCES project_quotes(id) ON DELETE SET NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS own_payments_quote_id_unique_idx
+  ON own_payments (quote_id) WHERE quote_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS project_quotes_user_status_idx
+  ON project_quotes (user_id,status,created_at DESC);
+
 
 CREATE TABLE IF NOT EXISTS community_posts (
   id BIGSERIAL PRIMARY KEY,
