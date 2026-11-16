@@ -1,4 +1,4 @@
-# NEXORA BUSINESS — ABN AMRO Funding & Innovation Support Proposal
+# ALPINOSS BUSINESS — ABN AMRO Funding & Innovation Support Proposal
 
 **Date:** 12 November 2026  
 **Funding sought:** €10,000 (indicative first-stage development budget)  
@@ -7,11 +7,11 @@
 
 ## 1. Executive summary
 
-NEXORA Payment Integrity is an early-stage software project exploring a way to screen payment-event notifications and flag events for acceptance, review or rejection. The current demonstration uses synthetic data and deterministic rules. It is intended to support early technical evaluation and discovery of a suitable pilot use case.
+ALPINOSS Payment Integrity is an early-stage software project exploring a way to screen payment-event notifications and flag events for acceptance, review or rejection. The current demonstration uses synthetic data and deterministic rules. It is intended to support early technical evaluation and discovery of a suitable pilot use case.
 
-NEXORA is seeking **€10,000 in early-stage development support**, preferably as innovation sponsorship, a pilot-development contribution, or another suitable startup-support arrangement. If direct financial support is not available, NEXORA would value a referral to the appropriate ABN AMRO innovation, startup or external funding programme.
+ALPINOSS is seeking **€10,000 in early-stage development support**, preferably as innovation sponsorship, a pilot-development contribution, or another suitable startup-support arrangement. If direct financial support is not available, ALPINOSS would value a referral to the appropriate ABN AMRO innovation, startup or external funding programme.
 
-This is an exploratory request for a discussion, not a representation that NEXORA currently qualifies for a standard business loan.
+This is an exploratory request for a discussion, not a representation that ALPINOSS currently qualifies for a standard business loan.
 
 ## 2. What exists today
 
@@ -51,7 +51,7 @@ The timeline and acceptance criteria would be agreed with the selected partner. 
 
 ## 5. Current limitations and risk controls
 
-NEXORA is **not a production banking system, payment processor or validated fraud-detection service**. It does not currently process real payments or connect to live bank/payment-provider systems. The public demo uses synthetic data and deterministic decision rules. The connected demonstration is not a production service: its public demo events are held in temporary memory, it does not use the persistent authenticated event-ingestion route, and no live bank or payment-provider integration has been completed.
+ALPINOSS is **not a production banking system, payment processor or validated fraud-detection service**. It does not currently process real payments or connect to live bank/payment-provider systems. The public demo uses synthetic data and deterministic decision rules. The connected demonstration is not a production service: its public demo events are held in temporary memory, it does not use the persistent authenticated event-ingestion route, and no live bank or payment-provider integration has been completed.
 
 No real personal, banking or payment data should be submitted to the public demonstration. Any future pilot involving real data would require appropriate technical integration, security testing, privacy review, legal/compliance assessment and partner approval.
 
@@ -62,7 +62,7 @@ We would welcome one of the following:
 1. Consideration of a €10,000 innovation sponsorship or pilot-development contribution;
 2. A conversation with the relevant innovation or startup team about a small, controlled technical pilot;
 3. Guidance or referral to an appropriate ABN AMRO, New10, RVO, Brainport or other early-stage funding route;
-4. Technical feedback on the use case and the requirements NEXORA would need to meet before a pilot could be considered.
+4. Technical feedback on the use case and the requirements ALPINOSS would need to meet before a pilot could be considered.
 
 We understand that a conventional business loan may require formal business registration, trading history, financial statements and other eligibility checks. We are therefore asking first for guidance on the most suitable route for a project at prototype stage.
 
@@ -77,5 +77,5 @@ We understand that a conventional business loan may require formal business regi
 
 We would appreciate a short online meeting or a written referral to the right team. We can provide a focused walkthrough of the current prototype and discuss a realistic, measurable first pilot.
 
-**NEXORA BUSINESS**  
-Project contact: bnexora7@gmail.com
+**ALPINOSS BUSINESS**  
+Project contact: alpinooslpinoos@gmail.com

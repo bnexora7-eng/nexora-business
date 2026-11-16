@@ -1,12 +1,12 @@
-# NEXORA monetization architecture
+# ALPINOSS monetization architecture
 
 **Current decision: 15 November 2026**
 
-NEXORA uses a free-account, one-time project-services model. There is no monthly membership, recurring platform fee or mandatory subscription.
+ALPINOSS uses a free-account, one-time project-services model. There is no monthly membership, recurring platform fee or mandatory subscription.
 
 ## Revenue model
 
-Customers can enquire about a defined service. NEXORA reviews feasibility and scope, provides a written quotation, and charges once for the agreed project after customer acceptance.
+Customers can enquire about a defined service. ALPINOSS reviews feasibility and scope, provides a written quotation, and charges once for the agreed project after customer acceptance.
 
 Indicative public prices:
 - Business analysis: €149
@@ -31,7 +31,7 @@ These are indicative offers, not automatic checkout prices or guarantees that ev
 ## Provider and activation controls
 
 - PayPal is excluded.
-- Mollie is not approved or activated for NEXORA at this stage. Its current documentation says it serves registered businesses, not private individuals.
+- Mollie is not approved or activated for ALPINOSS at this stage. Its current documentation says it serves registered businesses, not private individuals.
 - The existing generic one-off Mollie checkout endpoint is disabled by default using `ENABLE_ONE_OFF_PAYMENTS`. Keep the flag unset/false until merchant eligibility, legal identity, tax treatment, business bank account, provider approval, customer terms, sandbox tests, webhook idempotency, refund/dispute handling and operational recovery are all verified.
 - No private bank account should be presented as a business account or used for business collection without confirming legal, tax and bank terms.
 - Existing recurring-subscription code and database columns are legacy only. They must not be reactivated or used to gate account access.

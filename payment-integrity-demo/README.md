@@ -1,4 +1,4 @@
-# NEXORA Payment Integrity — Interactive Sandbox
+# ALPINOSS Payment Integrity — Interactive Sandbox
 
 ## Purpose
 This folder contains a browser-only technical demonstrator for a proposed payment-event screening product.

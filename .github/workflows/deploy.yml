@@ -1,4 +1,4 @@
-name: Deploy NEXORA demo to GitHub Pages
+name: Deploy ALPINOSS demo to GitHub Pages
 "on":
   push:
     branches: [main]
@@ -65,34 +65,34 @@ jobs:
         run: |
           set -euo pipefail
           URL="https://bnexora7-eng.github.io/nexora-business/"
-          curl --fail --silent --show-error --location --retry 12 --retry-all-errors --retry-delay 5 "$URL" -o /tmp/nexora-site.html
-          grep -q "NEXORA" /tmp/nexora-site.html
-          curl --fail --silent --show-error --location "$URL/account/" -o /tmp/nexora-account.html
-          grep -q "Create your account" /tmp/nexora-account.html
-          grep -q "/v1/auth/register" /tmp/nexora-account.html
-          grep -q "OPEN NEXORA WORKSPACE" /tmp/nexora-account.html
+          curl --fail --silent --show-error --location --retry 12 --retry-all-errors --retry-delay 5 "$URL" -o /tmp/alpinoss-site.html
+          grep -q "ALPINOSS" /tmp/alpinoss-site.html
+          curl --fail --silent --show-error --location "$URL/account/" -o /tmp/alpinoss-account.html
+          grep -q "Create your account" /tmp/alpinoss-account.html
+          grep -q "/v1/auth/register" /tmp/alpinoss-account.html
+          grep -q "OPEN ALPINOSS WORKSPACE" /tmp/alpinoss-account.html
           curl --fail --silent --show-error --location "$URL/operator/quotes.html" -o /tmp/alpinoss-operator-quotes.html
           grep -q "Operator token" /tmp/alpinoss-operator-quotes.html
           grep -q "Create a quotation" /tmp/alpinoss-operator-quotes.html
           grep -q "Approve quotation" /tmp/alpinoss-operator-quotes.html
           echo "PASS: ALPINOSS operator quotation page is published."
-          curl --fail --silent --show-error --location "$URL/app/" -o /tmp/nexora-app.html
-          grep -q "NEXORA Workspace" /tmp/nexora-app.html
-          grep -q "/v1/business/ai-plan" /tmp/nexora-app.html
-          curl --fail --silent --show-error --location "$URL/order.html" -o /tmp/nexora-order.html
-          grep -q "Project enquiry" /tmp/nexora-order.html
-          grep -q "Prepare email enquiry" /tmp/nexora-order.html
-          echo "Public NEXORA website and project enquiry page are reachable on GitHub Pages."
+          curl --fail --silent --show-error --location "$URL/app/" -o /tmp/alpinoss-app.html
+          grep -q "ALPINOSS Workspace" /tmp/alpinoss-app.html
+          grep -q "/v1/business/ai-plan" /tmp/alpinoss-app.html
+          curl --fail --silent --show-error --location "$URL/order.html" -o /tmp/alpinoss-order.html
+          grep -q "Project enquiry" /tmp/alpinoss-order.html
+          grep -q "Prepare email enquiry" /tmp/alpinoss-order.html
+          echo "Public ALPINOSS website and project enquiry page are reachable on GitHub Pages."
       - name: Verify public privacy and account-deletion pages
         shell: bash
         run: |
           set -euo pipefail
           BASE="https://bnexora7-eng.github.io/nexora-business"
-          curl --fail --silent --show-error --location "$BASE/privacy/" -o /tmp/nexora-privacy.html
-          grep -q "NEXORA Privacy Policy" /tmp/nexora-privacy.html
-          curl --fail --silent --show-error --location "$BASE/account-deletion/" -o /tmp/nexora-delete.html
-          grep -q "Delete your NEXORA account" /tmp/nexora-delete.html
-          grep -q "/v1/auth/delete-request" /tmp/nexora-delete.html
+          curl --fail --silent --show-error --location "$BASE/privacy/" -o /tmp/alpinoss-privacy.html
+          grep -q "ALPINOSS Privacy Policy" /tmp/alpinoss-privacy.html
+          curl --fail --silent --show-error --location "$BASE/account-deletion/" -o /tmp/alpinoss-delete.html
+          grep -q "Delete your ALPINOSS account" /tmp/alpinoss-delete.html
+          grep -q "/v1/auth/delete-request" /tmp/alpinoss-delete.html
           echo "PASS: public privacy policy and account-deletion pages are deployed."
       - name: Verify Render API health and demo decisions
         shell: bash
@@ -102,14 +102,14 @@ jobs:
         run: |
           set -euo pipefail
           for attempt in $(seq 1 18); do
-            status="$(curl --silent --show-error --output /tmp/nexora-health.json --write-out '%{http_code}' --max-time 20 "$API_BASE_URL/health" || true)"
-            if [ "$status" = "200" ] && grep -q '"status":"ok"' /tmp/nexora-health.json; then
-              cat /tmp/nexora-health.json
+            status="$(curl --silent --show-error --output /tmp/alpinoss-health.json --write-out '%{http_code}' --max-time 20 "$API_BASE_URL/health" || true)"
+            if [ "$status" = "200" ] && grep -q '"status":"ok"' /tmp/alpinoss-health.json; then
+              cat /tmp/alpinoss-health.json
               break
             fi
             if [ "$attempt" = "18" ]; then
               echo "FAIL: Render API health check did not return HTTP 200."
-              cat /tmp/nexora-health.json 2>/dev/null || true
+              cat /tmp/alpinoss-health.json 2>/dev/null || true
               exit 1
             fi
             sleep 20
@@ -117,10 +117,10 @@ jobs:
           # Render auto-deploys the same commit independently of this Pages workflow.
           # Give its rolling restart time to finish before testing the in-memory demo dedupe cache.
           sleep 30
-          status="$(curl --silent --show-error --output /tmp/nexora-health-after-settle.json --write-out '%{http_code}' --max-time 20 "$API_BASE_URL/health" || true)"
-          if [ "$status" != "200" ] || ! grep -q '"status":"ok"' /tmp/nexora-health-after-settle.json; then
+          status="$(curl --silent --show-error --output /tmp/alpinoss-health-after-settle.json --write-out '%{http_code}' --max-time 20 "$API_BASE_URL/health" || true)"
+          if [ "$status" != "200" ] || ! grep -q '"status":"ok"' /tmp/alpinoss-health-after-settle.json; then
             echo "FAIL: Render API did not remain healthy after deployment settling."
-            cat /tmp/nexora-health-after-settle.json 2>/dev/null || true
+            cat /tmp/alpinoss-health-after-settle.json 2>/dev/null || true
             exit 1
           fi
           node --input-type=module <<'NODE'

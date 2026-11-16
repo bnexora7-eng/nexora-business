@@ -1,4 +1,4 @@
-# NEXORA — Google for Startups application narrative (working draft)
+# ALPINOSS — Google for Startups application narrative (working draft)
 
 **Status:** Internal preparation draft — not submitted  
 **Updated:** 11 November 2026  
@@ -7,7 +7,7 @@
 
 ## Project summary
 
-NEXORA is an early-stage technology project exploring practical tools for digital businesses. Its first technical workstream, **Payment Integrity**, is a provider-neutral prototype for screening payment-event notifications and returning explainable ACCEPT, REVIEW or REJECT decisions.
+ALPINOSS is an early-stage technology project exploring practical tools for digital businesses. Its first technical workstream, **Payment Integrity**, is a provider-neutral prototype for screening payment-event notifications and returning explainable ACCEPT, REVIEW or REJECT decisions.
 
 The prototype is designed to demonstrate a simple control layer between incoming payment-event data and downstream business workflows. It applies deterministic validation rules to synthetic event data, checks required identifiers and event status, and detects repeated provider/event identifiers.
 
@@ -15,7 +15,7 @@ The prototype is designed to demonstrate a simple control layer between incoming
 
 Digital businesses can receive payment notifications from multiple systems in different formats and need reliable ways to validate event data, identify duplicate notifications and route uncertain events for review.
 
-This is a problem hypothesis, not yet a validated market finding. NEXORA has not yet established customer demand, quantified losses, or confirmed willingness to pay. Customer discovery is a required next milestone.
+This is a problem hypothesis, not yet a validated market finding. ALPINOSS has not yet established customer demand, quantified losses, or confirmed willingness to pay. Customer discovery is a required next milestone.
 
 ## What has been built and tested
 

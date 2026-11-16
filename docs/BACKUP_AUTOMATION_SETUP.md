@@ -1,4 +1,4 @@
-# NEXORA backup automation — deployment checklist
+# ALPINOSS backup automation — deployment checklist
 
 **State: backup code and GitHub Actions workflow are present on `main`. A first encrypted backup release was found in the private destination repository on 15 November 2026; its encrypted dump and manifest assets are present. The upload script is designed to read both assets back and verify SHA-256. A restore test has not yet been confirmed, so recoverability is not yet proven.**
 

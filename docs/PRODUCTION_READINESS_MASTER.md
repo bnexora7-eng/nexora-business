@@ -1,4 +1,4 @@
-# NEXORA — Production Readiness Master Checklist
+# ALPINOSS — Production Readiness Master Checklist
 
 **Last reviewed:** 15 November 2026  
 **Release status:** **PRE-PRODUCTION — NOT CLEARED FOR PUBLIC PAID LAUNCH**  
@@ -35,13 +35,13 @@ This file is the current release-gate summary. A green CI check validates only t
 ### B. Transactional email
 
 - Brevo HTTPS delivery is implemented; unit tests cover sender, recipient, message payload and provider failure handling. The Brevo account-validation email and API-key-creation alert were received on 14 November 2026.
-- Actual delivery is **not verified**: the newly created `NEXORA-RENDER` API key still must be entered directly into Render as `BREVO_API_KEY`, and a verified sender address must be configured as `BREVO_FROM`. Do not copy the key into GitHub, email, chat or source files. `NEXORA_ACCOUNT_URL` and `PUBLIC_API_URL` have been explicitly set in Render and redeployed.
+- Actual delivery is **not verified**: the newly created `ALPINOSS-RENDER` API key still must be entered directly into Render as `BREVO_API_KEY`, and a verified sender address must be configured as `BREVO_FROM`. Do not copy the key into GitHub, email, chat or source files. `NEXORA_ACCOUNT_URL` and `PUBLIC_API_URL` have been explicitly set in Render and redeployed.
 - Render Free blocks outbound SMTP ports 25, 465 and 587; use Brevo HTTPS rather than relying on SMTP.
 - Required: create a Brevo API key, verify the sender/domain, enter secrets directly into Render, then test registration, resend verification, password reset and delivery to real inboxes. Never send API keys in chat.
 
 ### C. One-time project payments and merchant readiness
 
-- **Current commercial decision (15 November 2026):** NEXORA accounts are free. There is no monthly membership or recurring platform fee. Work is sold only as a separately scoped, one-time project with written customer approval.
+- **Current commercial decision (15 November 2026):** ALPINOSS accounts are free. There is no monthly membership or recurring platform fee. Work is sold only as a separately scoped, one-time project with written customer approval.
 
 Each project quotation must specify a project-specific advance before work starts and the remaining balance after completion/acceptance. No fixed 50/50 split is assumed; exact amounts and any intermediate milestones are written into the accepted quotation.
 - The public price list is indicative: €149 business analysis; €295 AI assistant prototype; €495 business-specific AI prototype; system integration from €950; €950–€2,500 multi-step automation; €5,000–€15,000+ individually scoped enterprise work. No automatic checkout is offered from these prices.

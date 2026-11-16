@@ -9,7 +9,7 @@ on:
       - ".github/workflows/android-apk.yml"
       - "scripts/**"
   push:
-    branches: [main, nexora-mobile-app, fix/mobile-api-config]
+    branches: [main, nexora-mobile-app, fix/mobile-api-config, alpinoss-rebrand]
     paths:
       - "mobile/**"
       - ".github/workflows/android-apk.yml"

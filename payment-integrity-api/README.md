@@ -1,6 +1,6 @@
 # ALPINOSS API — pre-production backend
 
-This service is the server-side API for NEXORA's account, quotations, Community, Marketplace, Business workspace and Payment Integrity prototype. It is deployed on Render in Frankfurt and uses PostgreSQL 18.
+This service is the server-side API for ALPINOSS's account, quotations, Community, Marketplace, Business workspace and Payment Integrity prototype. It is deployed on Render in Frankfurt and uses PostgreSQL 18.
 
 **Release status:** pre-production only. The API is not a regulated payment service or certified fraud-detection product. Do not process real customer payment or banking data until the release gates in `docs/PRODUCTION_READINESS_MASTER.md` have passed.
 

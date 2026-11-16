@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 760" role="img" aria-labelledby="title desc">
+<title id="title">ALPINOSS — biomechanical world identity</title><desc id="desc">A blue biomechanical guardian form above a luminous Earth, connected by symmetrical mechanical tendrils.</desc>
+<defs>
+ <radialGradient id="space"><stop stop-color="#173b68"/><stop offset=".58" stop-color="#08172b"/><stop offset="1" stop-color="#030914"/></radialGradient>
+ <linearGradient id="metal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#e5f5ff"/><stop offset=".24" stop-color="#73baff"/><stop offset=".55" stop-color="#1764b5"/><stop offset=".8" stop-color="#a7d7ff"/><stop offset="1" stop-color="#174b8b"/></linearGradient>
+ <linearGradient id="wire" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#153d70"/><stop offset=".5" stop-color="#5ab5ff"/><stop offset="1" stop-color="#102e5a"/></linearGradient>
+ <radialGradient id="earth"><stop stop-color="#4ec8ff"/><stop offset=".65" stop-color="#1260a8"/><stop offset="1" stop-color="#061a39"/></radialGradient>
+ <filter id="glow"><feGaussianBlur stdDeviation="13" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+</defs>
+<rect width="1200" height="760" rx="34" fill="url(#space)"/>
+<g opacity=".55" fill="#9fd8ff"><circle cx="120" cy="145" r="2"/><circle cx="1035" cy="118" r="2"/><circle cx="970" cy="315" r="1.8"/><circle cx="220" cy="330" r="1.5"/><circle cx="840" cy="80" r="1.4"/><circle cx="360" cy="90" r="1.5"/></g>
+<g fill="none" stroke="url(#wire)" stroke-width="15" stroke-linecap="round" filter="url(#glow)">
+ <path d="M470 330 C360 290 340 220 265 205 C210 194 190 235 225 270 C270 310 345 275 380 350 C405 405 340 430 285 400"/>
+ <path d="M730 330 C840 290 860 220 935 205 C990 194 1010 235 975 270 C930 310 855 275 820 350 C795 405 860 430 915 400"/>
+ <path d="M445 405 C340 440 330 520 240 520 C185 520 170 475 215 450"/>
+ <path d="M755 405 C860 440 870 520 960 520 C1015 520 1030 475 985 450"/>
+</g>
+<g stroke="url(#metal)" stroke-width="8" fill="#0b2443">
+ <path d="M600 94 C520 125 480 195 485 270 L510 365 L600 415 L690 365 L715 270 C720 195 680 125 600 94Z"/>
+ <path d="M510 205 L450 260 L485 315 L535 285 M690 205 L750 260 L715 315 L665 285" fill="none" stroke-width="13"/>
+ <path d="M535 250 L580 270 L565 300 L535 292Z" fill="#72c6ff"/><path d="M665 250 L620 270 L635 300 L665 292Z" fill="#72c6ff"/>
+ <path d="M570 340 L600 365 L630 340 L615 390 L585 390Z" fill="#0c315d"/>
+ <path d="M600 115 L600 220 M555 150 L535 205 M645 150 L665 205" fill="none" stroke="#b7e4ff" stroke-width="5"/>
+</g>
+<g fill="none" stroke="#66baff" stroke-width="5" opacity=".9">
+ <path d="M475 300 C430 330 430 380 470 405 L500 430"/><path d="M725 300 C770 330 770 380 730 405 L700 430"/>
+ <path d="M490 180 C430 150 405 185 420 220 M710 180 C770 150 795 185 780 220"/>
+</g>
+<g filter="url(#glow)">
+ <circle cx="600" cy="550" r="125" fill="url(#earth)" stroke="#79cfff" stroke-width="5"/>
+ <path d="M505 510 L545 485 L570 495 L585 530 L565 550 L535 540 L520 575 L490 565Z M620 475 L660 490 L680 520 L655 535 L650 570 L620 555 L600 520Z M690 565 L720 550 L735 580 L710 610 L680 600Z" fill="#69caff" opacity=".7"/>
+ <ellipse cx="600" cy="550" rx="160" ry="48" fill="none" stroke="#5dbaff" stroke-width="4" opacity=".65" transform="rotate(-12 600 550)"/>
+</g>
+<path d="M460 675 Q600 710 740 675" fill="none" stroke="#3b9cff" stroke-width="3" opacity=".8"/>
+<text x="600" y="730" text-anchor="middle" fill="#eaf6ff" font-family="Arial,sans-serif" font-size="43" font-weight="800" letter-spacing="13">ALPINOSS</text>
+</svg>

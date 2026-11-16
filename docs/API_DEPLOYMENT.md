@@ -1,4 +1,4 @@
-# NEXORA Payment Integrity API — sandbox deployment
+# ALPINOSS Payment Integrity API — sandbox deployment
 
 This deployment is for a non-production technical demonstration only.
 
@@ -32,12 +32,12 @@ Expected responses:
 
 If `/health` reports `"mode":"demo-only"`, the API is running but the database is not configured. If `/ready` returns HTTP 503, account registration and persistent provider-event processing are not ready. Do not treat an HTTP 200 from `/health` alone as proof that PostgreSQL is connected.
 
-Then set `window.NEXORA_API_BASE_URL` in `payment-integrity-demo/config.js` to the Render service origin (no trailing slash), commit the change, and wait for GitHub Pages to deploy.
+Then set `window.ALPINOSS_API_BASE_URL` in `payment-integrity-demo/config.js` to the Render service origin (no trailing slash), commit the change, and wait for GitHub Pages to deploy.
 
 ## 3. Connect the Android account module
 1. In GitHub, open repository Settings → Secrets and variables → Actions → Variables.
-2. Add a repository variable named `EXPO_PUBLIC_NEXORA_API_URL` with the Render service origin, for example `https://your-service.onrender.com` (no trailing slash). This URL is public configuration, not a secret.
-3. Run the `NEXORA Android release` workflow again. The build embeds this URL so the app can reach `/v1/auth/register`, `/v1/auth/login`, `/v1/auth/me` and `/v1/auth/logout`.
+2. Add a repository variable named `EXPO_PUBLIC_ALPINOSS_API_URL` with the Render service origin, for example `https://your-service.onrender.com` (no trailing slash). This URL is public configuration, not a secret.
+3. Run the `ALPINOSS Android release` workflow again. The build embeds this URL so the app can reach `/v1/auth/register`, `/v1/auth/login`, `/v1/auth/me` and `/v1/auth/logout`.
 4. Keep database credentials and all provider secrets exclusively in Render environment variables. Never place them in the Android app or GitHub source.
 
 ## Free-tier limitations
