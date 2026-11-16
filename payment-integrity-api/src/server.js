@@ -429,59 +429,122 @@ async function mollieRequest(path, options = {}) {
   }
   return data;
 }
+function quoteAdminAuthorized(req) {
+  const configured = process.env.QUOTE_ADMIN_TOKEN || "";
+  const supplied = bearerToken(req);
+  if (configured.length < 40 || !supplied) return false;
+  const expected = Buffer.from(configured, "utf8");
+  const actual = Buffer.from(supplied, "utf8");
+  return expected.length === actual.length && crypto.timingSafeEqual(expected, actual);
+}
+async function handleCreateQuote(req, res) {
+  if (!pool) return send(res, 503, { error: "Quote service requires the database" });
+  if (!quoteAdminAuthorized(req)) return send(res, 401, { error: "Operator authentication required" });
+  const rawBody = await readBody(req);
+  let input;
+  try { input = JSON.parse(rawBody.toString("utf8")); } catch { return send(res, 400, { error: "Invalid JSON" }); }
+  const userId = Number(input?.user_id);
+  const amountText = String(input?.amount ?? "").trim().replace(",", ".");
+  const description = typeof input?.description === "string" ? input.description.trim().replace(/[<>]/g, "") : "";
+  const tier = input?.company_size_tier;
+  const expiryDays = input?.expiry_days === undefined ? 30 : Number(input.expiry_days);
+  if (!Number.isSafeInteger(userId) || userId < 1) return send(res, 422, { error: "A valid user_id is required" });
+  if (!/^\d{1,5}(?:\.\d{1,2})?$/.test(amountText) || !Number.isFinite(Number(amountText)) || Number(amountText) < 1 || Number(amountText) > 5000) return send(res, 422, { error: "Quote amount must be between €1.00 and €5,000.00" });
+  if (description.length < 3 || description.length > 100) return send(res, 422, { error: "Description must contain 3 to 100 characters" });
+  if (tier !== "small_company" && tier !== "large_company") return send(res, 422, { error: "company_size_tier must be small_company or large_company" });
+  if (!Number.isInteger(expiryDays) || expiryDays < 1 || expiryDays > 90) return send(res, 422, { error: "expiry_days must be between 1 and 90" });
+  const quoteId = crypto.randomUUID();
+  const result = await pool.query(
+    `INSERT INTO project_quotes (id,user_id,amount,currency,description,company_size_tier,status,expires_at)
+     SELECT $1,id,$3,'EUR',$4,$5,'draft',NOW()+($6 * INTERVAL '1 day')
+     FROM app_users WHERE id=$2
+     RETURNING id,user_id,amount,currency,description,company_size_tier,status,expires_at`,
+    [quoteId,userId,Number(amountText).toFixed(2),description,tier,expiryDays]
+  );
+  if (!result.rowCount) return send(res, 404, { error: "Customer account not found" });
+  return send(res, 201, { quote: result.rows[0] });
+}
+async function handleApproveQuote(req, res, quoteId) {
+  if (!pool) return send(res, 503, { error: "Quote service requires the database" });
+  if (!quoteAdminAuthorized(req)) return send(res, 401, { error: "Operator authentication required" });
+  const result = await pool.query(
+    `UPDATE project_quotes SET status='approved',approved_at=NOW(),updated_at=NOW()
+     WHERE id=$1 AND status='draft' AND expires_at>NOW()
+     RETURNING id,user_id,amount,currency,description,company_size_tier,status,expires_at,approved_at`,
+    [quoteId]
+  );
+  if (!result.rowCount) return send(res, 409, { error: "Quote is missing, expired or no longer in draft status" });
+  return send(res, 200, { quote: result.rows[0] });
+}
 async function handleCreatePayment(req, res) {
   if (!pool) return send(res, 503, { error: "Payment service requires the database" });
   const user = await getAuthenticatedUser(req);
   if (!user) return send(res, 401, { error: "Sign in to create a payment" });
   if (process.env.ENABLE_ONE_OFF_PAYMENTS !== "true") {
-    return send(res, 503, { error: "One-off checkout is disabled until NEXORA business and payment-provider readiness is confirmed", code: "one_off_payments_disabled" });
+    return send(res, 503, { error: "One-off checkout is disabled until ALPINOSS business and payment-provider readiness is confirmed", code: "one_off_payments_disabled" });
   }
   if (!process.env.MOLLIE_API_KEY) return send(res, 503, { error: "Payment provider is not configured yet" });
   if (!process.env.MOLLIE_API_KEY.startsWith("test_") && !(process.env.MOLLIE_API_KEY.startsWith("live_") && process.env.ENABLE_LIVE_PAYMENTS === "true")) return send(res, 503, { error: "Live payments are disabled until explicitly approved; configure a Mollie test key first" });
   const rawBody = await readBody(req);
   let input;
   try { input = JSON.parse(rawBody.toString("utf8")); } catch { return send(res, 400, { error: "Invalid JSON" }); }
-  const amountText = String(input?.amount ?? "").trim().replace(",", ".");
-  if (!/^\d{1,5}(?:\.\d{1,2})?$/.test(amountText)) return send(res, 422, { error: "Enter an amount in EUR, for example 19.90" });
-  const amountNumber = Number(amountText);
-  if (!Number.isFinite(amountNumber) || amountNumber < 1 || amountNumber > 5000) return send(res, 422, { error: "Payment amount must be between €1.00 and €5,000.00" });
-  const description = typeof input?.description === "string" ? input.description.trim().replace(/[<>]/g, "") : "";
-  if (description.length < 3 || description.length > 100) return send(res, 422, { error: "Description must contain 3 to 100 characters" });
+  const quoteId = typeof input?.quote_id === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(input.quote_id) ? input.quote_id : null;
+  if (!quoteId) return send(res, 422, { error: "A valid approved quote_id is required" });
+  const client = await pool.connect();
+  let quote;
   const orderId = crypto.randomUUID();
-  const amount = amountNumber.toFixed(2);
-  await pool.query(
-    `INSERT INTO own_payments (order_id,user_id,amount,currency,description,status)
-     VALUES ($1,$2,$3,'EUR',$4,'creating')`,
-    [orderId, user.id, amount, description]
-  );
+  try {
+    await client.query("BEGIN");
+    const found = await client.query("SELECT id,user_id,amount,currency,description,status,expires_at FROM project_quotes WHERE id=$1 FOR UPDATE", [quoteId]);
+    if (!found.rowCount || String(found.rows[0].user_id) !== String(user.id)) {
+      await client.query("ROLLBACK");
+      return send(res, 404, { error: "Approved quote not found" });
+    }
+    quote = found.rows[0];
+    if (quote.status === "approved" && new Date(quote.expires_at).getTime() <= Date.now()) {
+      await client.query("UPDATE project_quotes SET status='expired',updated_at=NOW() WHERE id=$1 AND status='approved'", [quoteId]);
+      await client.query("COMMIT");
+      return send(res, 410, { error: "This quote has expired" });
+    }
+    if (quote.status !== "approved") {
+      await client.query("ROLLBACK");
+      return send(res, 409, { error: "This quote is not available for payment", code: "quote_not_payable" });
+    }
+    await client.query(
+      `INSERT INTO own_payments (order_id,user_id,quote_id,amount,currency,description,status)
+       VALUES ($1,$2,$3,$4,$5,$6,'creating')`,
+      [orderId,user.id,quote.id,quote.amount,quote.currency,quote.description]
+    );
+    await client.query("UPDATE project_quotes SET status='payment_pending',updated_at=NOW() WHERE id=$1", [quoteId]);
+    await client.query("COMMIT");
+  } catch (error) {
+    try { await client.query("ROLLBACK"); } catch {}
+    throw error;
+  } finally { client.release(); }
+  const amount = Number(quote.amount).toFixed(2);
   try {
     const payment = await mollieRequest("/payments", {
       method: "POST",
+      headers: { "Idempotency-Key": "alpinoss-quote-" + orderId },
       body: JSON.stringify({
-        amount: { currency: "EUR", value: amount },
-        description: "NEXORA " + description,
+        amount: { currency: quote.currency, value: amount },
+        description: "ALPINOSS " + quote.description,
         redirectUrl: PAYMENT_RETURN_URL + "?payment_id=" + encodeURIComponent(orderId),
         webhookUrl: PUBLIC_API_URL + "/v1/payments/mollie-webhook",
-        metadata: { order_id: orderId, user_id: String(user.id) }
+        metadata: { order_id: orderId, user_id: String(user.id), quote_id: quote.id }
       })
     });
     const checkoutUrl = payment?._links?.checkout?.href;
     if (!payment?.id || !checkoutUrl) throw new Error("Payment provider returned an incomplete checkout response");
-    await pool.query(
-      `UPDATE own_payments SET mollie_payment_id=$1,status=$2,checkout_url=$3,updated_at=NOW()
-       WHERE order_id=$4`,
-      [payment.id, payment.status || "open", checkoutUrl, orderId]
-    );
-    return send(res, 201, {
-      order_id: orderId,
-      payment_id: payment.id,
-      status: payment.status || "open",
-      amount: { currency: "EUR", value: amount },
-      checkout_url: checkoutUrl,
-      mode: payment.mode || "unknown"
-    });
+    await pool.query("UPDATE own_payments SET mollie_payment_id=$1,status=$2,checkout_url=$3,updated_at=NOW() WHERE order_id=$4",
+      [payment.id,payment.status || "open",checkoutUrl,orderId]);
+    return send(res, 201, { order_id: orderId, quote_id: quote.id, payment_id: payment.id,
+      status: payment.status || "open", amount: { currency: quote.currency, value: amount },
+      checkout_url: checkoutUrl, mode: payment.mode || "unknown" });
   } catch (error) {
-    await pool.query("UPDATE own_payments SET status='creation_failed',updated_at=NOW() WHERE order_id=$1", [orderId]);
+    // Keep the quote locked in payment_pending if provider outcome is uncertain.
+    // This prevents a second checkout from charging the same approved quotation.
+    await pool.query("UPDATE own_payments SET status='creation_unknown',updated_at=NOW() WHERE order_id=$1 AND status='creating'", [orderId]);
     throw error;
   }
 }
@@ -716,7 +779,7 @@ async function handleMollieWebhook(req, res) {
   const orderId = payment?.metadata?.order_id;
   if (typeof orderId === "string") {
     const existing = await pool.query(
-      "SELECT order_id,user_id,amount,currency,description,mollie_payment_id FROM own_payments WHERE order_id=$1",
+      "SELECT order_id,user_id,quote_id,amount,currency,description,mollie_payment_id FROM own_payments WHERE order_id=$1",
       [orderId]
     );
     if (!existing.rowCount || existing.rows[0].mollie_payment_id !== molliePaymentId) return send(res, 404, { error: "Payment order not found" });
@@ -734,6 +797,10 @@ async function handleMollieWebhook(req, res) {
          AND (status NOT IN ('canceled','expired','failed') OR $1='paid')`,
       [payment.status,orderId]
     );
+    if (order.quote_id) {
+      const quoteStatus = payment.status === "paid" ? "paid" : ["canceled","expired","failed"].includes(payment.status) ? "approved" : "payment_pending";
+      await pool.query("UPDATE project_quotes SET status=$1,updated_at=NOW() WHERE id=$2 AND status='payment_pending'", [quoteStatus,order.quote_id]);
+    }
     if (order.description === "NEXORA All Access monthly subscription" && payment.status === "paid") {
       // Serialize first-payment activation with account deletion and checkout.
       // If deletion owns the row lock first, this sees no account after it commits
@@ -1450,6 +1517,9 @@ const server = createServer(async (req, res) => {
     if (pathname === "/v1/marketplace/listings") return await handleMarketplace(req,res);
     if (pathname === "/v1/business/workspace") return await handleBusinessWorkspace(req,res);
     if (pathname === "/v1/business/ai-plan") return await handleBusinessAIPlan(req,res);
+    if (req.method === "POST" && pathname === "/internal/quotes") return await handleCreateQuote(req,res);
+    const approveQuoteMatch = new RegExp("^/internal/quotes/([0-9a-f-]{36})/approve$").exec(pathname);
+    if (req.method === "POST" && approveQuoteMatch) return await handleApproveQuote(req,res,approveQuoteMatch[1]);
     if (req.method === "POST" && pathname === "/v1/payments") return await handleCreatePayment(req, res);
     // ALPINOSS uses one-time project fees only. Retire every legacy subscription
     // endpoint so old clients cannot read or mutate recurring-membership state.
