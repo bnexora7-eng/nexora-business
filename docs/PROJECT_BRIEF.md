@@ -9,7 +9,7 @@
 
 ## Overview
 
-ALPINOSS is a founder-led digital product project. Its first focused technical workstream, **ALPINOSS Payment Integrity**, explores screening simulated payment-event notifications and returning explainable ACCEPT, REVIEW or REJECT decisions while identifying duplicate event identifiers.
+ALPINOSS is the umbrella identity for an independent, multi-sector business initiative. This repository documents one current product-development workstream within that wider portfolio: **ALPINOSS Payment Integrity**, a prototype exploring screening simulated payment-event notifications and returning explainable ACCEPT, REVIEW or REJECT decisions while identifying duplicate event identifiers.
 
 The current public sandbox uses synthetic data and deterministic rules. It is intended for technical discussion and early customer discovery, not live financial operations.
 
