@@ -239,6 +239,16 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   });
   assert.equal(approvedQuoteResponse.status, 200);
   assert.equal((await approvedQuoteResponse.json()).quote.status, "approved");
+
+  const quoteReadUnauthenticated = await fetch(`http://127.0.0.1:${port}/v1/quotes`);
+  assert.equal(quoteReadUnauthenticated.status, 401, "customer quotations must require authentication");
+  const quoteRead = await fetch(`http://127.0.0.1:${port}/v1/quotes`, {
+    headers: { authorization: "Bearer " + loggedIn.token }
+  });
+  assert.equal(quoteRead.status, 200);
+  const visibleQuotes = await quoteRead.json();
+  assert.ok(visibleQuotes.quotes.some(item => item.id === createdQuote.id && item.status === "approved"));
+
   const approvedQuoteStored = await pool.query("SELECT amount,status,company_size_tier FROM project_quotes WHERE id=$1", [createdQuote.id]);
   assert.equal(Number(approvedQuoteStored.rows[0].amount), 375);
   assert.equal(approvedQuoteStored.rows[0].status, "approved");
