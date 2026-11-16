@@ -30,6 +30,7 @@ export default function App() {
   const [pendingVerificationEmail,setPendingVerificationEmail] = useState("");
   const [account,setAccount] = useState<Account|null>(null);
   const [decision,setDecision] = useState<Decision|null>(null);
+  const [expandedArea,setExpandedArea] = useState<string|null>(null);
 
 
   useEffect(() => {
@@ -135,7 +136,17 @@ export default function App() {
     return "ACCEPT";
   },[amount,reference]);
 
-  const go = (next:Tab) => { setTab(next); setDecision(null); };
+  const go = (next:Tab) => { setTab(next); setDecision(null); setExpandedArea(null); };
+  const areaCard = (area:string, index:string, description:string, actions:{title:string;subtitle:string;target:Tab}[]) => (
+    <View style={styles.areaCard}>
+      <TouchableOpacity accessibilityRole="button" accessibilityState={{expanded:expandedArea===area}} onPress={()=>setExpandedArea(expandedArea===area?null:area)} style={styles.areaHead}>
+        <View style={styles.areaIndex}><Text style={styles.areaIndexText}>{index}</Text></View>
+        <View style={{flex:1}}><Text style={styles.areaTitle}>{area.toUpperCase()}</Text><Text style={styles.areaDescription}>{description}</Text></View>
+        <Text style={styles.areaChevron}>{expandedArea===area?"−":"＋"}</Text>
+      </TouchableOpacity>
+      {expandedArea===area&&<View style={styles.areaActions}>{actions.map(a=><Action key={a.title} title={a.title} subtitle={a.subtitle} onPress={()=>go(a.target)}/>)}</View>}
+    </View>
+  );
 
   useEffect(() => {
     const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
@@ -156,24 +167,35 @@ export default function App() {
   return <SafeAreaView style={styles.safe}>
     <StatusBar barStyle="light-content" backgroundColor={C.bg}/>
     <View style={styles.header}>
-      <View style={{flexDirection:"row",alignItems:"center",gap:10}}><View style={styles.brandMark}><Text style={styles.brandMarkText}>A</Text><View style={styles.brandChip}/></View><View><Text style={styles.brand}>ALPINOSS<Text style={{color:C.cyan}}>.</Text></Text><Text style={styles.tag}>A PLACE TO MOVE FORWARD</Text></View></View>
-      <View style={styles.status}><View style={styles.dot}/><Text style={styles.statusText}>PROTOTYPE</Text></View>
+      <View style={{flexDirection:"row",alignItems:"center",gap:10}}><View style={styles.brandMark}><Text style={styles.brandMarkText}>A</Text><View style={styles.brandChip}/></View><View><Text style={styles.brand}>ALPINOSS</Text><Text style={styles.tag}>MANY POSSIBILITIES</Text></View></View>
+      <TouchableOpacity onPress={()=>go("Profile")} style={styles.accountButton}><Text style={styles.accountButtonText}>ACCOUNT ↗</Text></TouchableOpacity>
     </View>
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      <Text style={styles.eyebrow}>{tab.toUpperCase()}</Text>
-      <Text style={styles.heading}>{heading[tab]}</Text>
-      {tab==="Home" && <>
-        <Card>
-          <Text style={styles.kicker}>WELCOME TO ALPINOSS</Text>
-          <Text style={styles.hero}>One simple place to make your next move.</Text>
-          <Text style={styles.muted}>Build something, find your next opportunity, meet people or get help moving an idea forward. Choose a starting point below.</Text>
-        </Card>
-        <Text style={styles.section}>Choose what you need</Text>
-        <Action title="Start a business" subtitle="Turn an idea into a clear first plan" onPress={()=>go("Business")}/>
-        <Action title="Find opportunities" subtitle="Explore services, offers and ways to work together" onPress={()=>go("Marketplace")}/>
-        <Action title="Meet people" subtitle="Connect, share ideas and discover the community" onPress={()=>go("Community")}/>
-        <Action title="Get things done" subtitle="Open your tools and work on your next step" onPress={()=>go("Business")}/>
-        <Text style={styles.note}>Start with one simple step. You can explore the other areas whenever you need them.</Text>
+      {tab!=="Home"&&<TouchableOpacity onPress={()=>go("Home")} style={styles.backLink}><Text style={styles.backLinkText}>‹  GLOBAL PLATFORM</Text></TouchableOpacity>}
+      {tab==="Home"?<>
+        <Text style={styles.globalLabel}>GLOBAL PLATFORM</Text>
+        <Text style={styles.heading}>Many Possibilities.</Text>
+        <Text style={styles.homeIntro}>One connected space to build, explore, create and connect.</Text>
+        <View style={styles.areaGrid}>
+          {areaCard("Platform","01","Tools, plans and your personal workspace",[
+            {title:"Business workspace",subtitle:"Build and manage your projects",target:"Business"},
+            {title:"Account & profile",subtitle:"Sign in and manage your account",target:"Profile"}
+          ])}
+          {areaCard("Technology","02","AI, systems and digital infrastructure",[
+            {title:"Payment Integrity",subtitle:"Open the payment screening demo",target:"Integrity"},
+            {title:"Business tools",subtitle:"Explore your project workspace",target:"Business"}
+          ])}
+          {areaCard("Marketplace","03","Discover offers, products and services",[
+            {title:"Explore marketplace",subtitle:"Browse and publish offers",target:"Marketplace"}
+          ])}
+          {areaCard("Community","04","People, ideas and shared opportunities",[
+            {title:"Open community",subtitle:"Connect and share updates",target:"Community"}
+          ])}
+        </View>
+        <Text style={styles.homeFoot}>ALPINOSS  •  MANY POSSIBILITIES</Text>
+      </>:<>
+        <Text style={styles.eyebrow}>{tab.toUpperCase()}</Text>
+        <Text style={styles.heading}>{heading[tab]}</Text>
       </>}
       {(tab==="Community"||tab==="Marketplace"||tab==="Business")&&<AlpinossModules screen={tab} signedIn={!!account} onNavigate={go}/>}
       {tab==="Integrity" && <>
@@ -218,12 +240,11 @@ export default function App() {
         </Card>
       </>}
     </ScrollView>
-    <View style={styles.nav}>{(["Home","Community","Marketplace","Business","Integrity","Profile"] as Tab[]).map(t=><TouchableOpacity key={t} onPress={()=>go(t)} style={styles.navItem}><View style={[styles.navMark,tab===t&&styles.navMarkActive]}/><Text numberOfLines={1} style={[styles.navText,tab===t&&{color:C.cyan}]}>{t==="Marketplace"?"Market":t==="Community"?"Social":t==="Integrity"?"Check" :t}</Text></TouchableOpacity>)}</View>
   </SafeAreaView>;
 }
 
 const styles = StyleSheet.create({
- safe:{flex:1,backgroundColor:C.bg},header:{paddingHorizontal:20,paddingTop:12,paddingBottom:14,borderBottomWidth:1,borderColor:C.line,flexDirection:"row",alignItems:"center",justifyContent:"space-between"},
+ safe:{flex:1,backgroundColor:C.bg},header:{paddingHorizontal:20,paddingTop:12,paddingBottom:14,borderBottomWidth:1,borderColor:C.line,flexDirection:"row",alignItems:"center",justifyContent:"space-between"},accountButton:{borderWidth:1,borderColor:C.cyan,borderRadius:8,paddingHorizontal:11,paddingVertical:9},accountButtonText:{fontSize:9,fontWeight:"900",letterSpacing:1,color:C.cyan},backLink:{marginBottom:16,alignSelf:"flex-start",paddingVertical:7},backLinkText:{fontSize:10,fontWeight:"900",letterSpacing:1.5,color:C.cyan},globalLabel:{fontSize:10,fontWeight:"900",letterSpacing:3,color:C.red,marginBottom:10},homeIntro:{fontSize:14,lineHeight:22,color:C.muted,marginTop:-8,marginBottom:22},areaGrid:{flexDirection:"row",flexWrap:"wrap",justifyContent:"space-between",gap:12},areaCard:{width:"48%",minHeight:150,backgroundColor:C.panel,borderWidth:1,borderColor:C.line,borderRadius:15,overflow:"hidden",marginBottom:2},areaHead:{minHeight:148,padding:13,justifyContent:"space-between"},areaIndex:{width:28,height:24,borderWidth:1,borderColor:C.cyan,alignItems:"center",justifyContent:"center",borderRadius:5},areaIndexText:{fontSize:9,fontWeight:"900",color:C.cyan,letterSpacing:1},areaTitle:{fontSize:15,fontWeight:"900",letterSpacing:1,color:C.text,marginTop:14},areaDescription:{fontSize:11,lineHeight:16,color:C.muted,marginTop:5},areaChevron:{position:"absolute",right:12,top:12,fontSize:18,color:C.cyan,fontWeight:"700"},areaActions:{paddingHorizontal:9,paddingBottom:9,borderTopWidth:1,borderColor:C.line},homeFoot:{fontSize:9,fontWeight:"800",letterSpacing:2,color:C.muted,textAlign:"center",marginTop:22},
  brandMark:{width:42,height:42,borderRadius:11,borderWidth:1,borderColor:C.cyan,backgroundColor:"#0D2035",alignItems:"center",justifyContent:"center",position:"relative",shadowColor:C.cyan,shadowOpacity:0.28,shadowRadius:10},brandMarkText:{fontSize:25,fontWeight:"900",color:C.text,letterSpacing:-2},brandChip:{position:"absolute",width:9,height:9,right:-3,bottom:-3,borderRadius:2,backgroundColor:C.cyan,borderWidth:2,borderColor:C.bg},brand:{fontSize:25,fontWeight:"900",letterSpacing:2,color:C.text},tag:{fontSize:9,letterSpacing:2,color:C.muted,marginTop:2},status:{flexDirection:"row",alignItems:"center",gap:7,borderWidth:1,borderColor:C.line,borderRadius:20,paddingHorizontal:10,paddingVertical:7},dot:{width:7,height:7,borderRadius:5,backgroundColor:C.amber},statusText:{fontSize:9,fontWeight:"800",color:C.amber,letterSpacing:1},
  content:{padding:20,paddingBottom:30},eyebrow:{fontSize:10,fontWeight:"800",letterSpacing:2,color:C.cyan,marginBottom:8},heading:{fontSize:27,lineHeight:33,fontWeight:"800",color:C.text,marginBottom:18},card:{backgroundColor:C.panel,borderWidth:1,borderColor:C.line,borderRadius:18,padding:18,marginBottom:18},kicker:{fontSize:10,fontWeight:"800",letterSpacing:1.7,color:C.cyan,marginBottom:12},hero:{fontSize:23,lineHeight:29,fontWeight:"800",color:C.text,marginBottom:10},muted:{fontSize:13,lineHeight:20,color:C.muted},tagRow:{flexDirection:"row",gap:7,flexWrap:"wrap",marginTop:17},tagChip:{overflow:"hidden",fontSize:9,color:C.cyan,borderWidth:1,borderColor:C.line,borderRadius:20,paddingHorizontal:9,paddingVertical:6,letterSpacing:1,fontWeight:"800"},
  section:{fontSize:17,fontWeight:"800",color:C.text,marginTop:4,marginBottom:10},action:{backgroundColor:C.panel,borderWidth:1,borderColor:C.line,borderRadius:14,padding:15,marginBottom:9,flexDirection:"row",alignItems:"center"},actionTitle:{fontSize:15,fontWeight:"800",color:C.text,marginBottom:4},arrow:{fontSize:26,color:C.cyan,paddingLeft:10},note:{fontSize:12,lineHeight:19,color:C.muted,marginTop:12,marginBottom:14},label:{fontSize:10,fontWeight:"800",letterSpacing:1.5,color:C.muted,marginTop:14,marginBottom:7},input:{backgroundColor:C.bg,borderWidth:1,borderColor:C.line,borderRadius:10,paddingHorizontal:13,paddingVertical:12,color:C.text,fontSize:15},
