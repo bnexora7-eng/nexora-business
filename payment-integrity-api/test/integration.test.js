@@ -223,6 +223,10 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
     method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(quotePayload)
   });
   assert.equal(quoteWithoutOperator.status, 401, "quote creation must require the operator secret");
+
+  const operatorListWithoutToken = await fetch(`http://127.0.0.1:${port}/internal/quotes`);
+  assert.equal(operatorListWithoutToken.status, 401, "operator quotation list must require the operator secret");
+
   const createdQuoteResponse = await fetch(`http://127.0.0.1:${port}/internal/quotes`, {
     method: "POST", headers: { "content-type": "application/json", authorization: "Bearer integration-quote-admin-token-for-tests-only" },
     body: JSON.stringify(quotePayload)
@@ -232,6 +236,14 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   assert.equal(createdQuote.status, "draft");
   assert.equal(Number(createdQuote.amount), 375);
   assert.equal(createdQuote.company_size_tier, "small_company");
+
+  const operatorList = await fetch(`http://127.0.0.1:${port}/internal/quotes`, {
+    headers: { authorization: "Bearer integration-quote-admin-token-for-tests-only" }
+  });
+  assert.equal(operatorList.status, 200);
+  const operatorQuotes = await operatorList.json();
+  assert.ok(operatorQuotes.quotes.some(item => item.id === createdQuote.id && item.email === accountEmail));
+
   const approveWithoutOperator = await fetch(`http://127.0.0.1:${port}/internal/quotes/${createdQuote.id}/approve`, { method: "POST" });
   assert.equal(approveWithoutOperator.status, 401, "quote approval must require the operator secret");
   const approvedQuoteResponse = await fetch(`http://127.0.0.1:${port}/internal/quotes/${createdQuote.id}/approve`, {
