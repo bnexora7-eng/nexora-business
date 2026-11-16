@@ -34,7 +34,7 @@ The committed `package-lock.json` pins the API dependency tree. Keep it synchron
 - `DELETE /v1/auth/account` — deletes the authenticated account and associated content
 - `POST /v1/auth/delete-request` — web account deletion using account email and password
 
-Passwords are stored as salted scrypt hashes. Session and email-action tokens are stored as SHA-256 hashes. Authentication routes use a PostgreSQL-backed rate limiter. Account deletion fails closed when Mollie payments or subscriptions cannot be safely reconciled and canceled.
+Passwords are stored as salted scrypt hashes. Session and email-action tokens are stored as SHA-256 hashes. Authentication routes use a PostgreSQL-backed rate limiter. Account deletion fails closed when provider payments cannot be safely reconciled.
 
 Transactional email is sent through the Brevo HTTPS API when `BREVO_API_KEY` and a verified `BREVO_FROM` sender are configured. SMTP variables remain for environments that permit outbound SMTP; Render Free web services block outbound SMTP ports 25, 465 and 587.
 
@@ -68,19 +68,12 @@ Older example amounts in archived project notes are service/project estimates, n
 
 AI planning stays unavailable unless a provider key and monthly token budget are configured. The deterministic Payment Integrity rules are a prototype, not machine learning or certified fraud detection.
 
-## Product routes
-
-- `POST /v1/events` — signed provider event screening with HMAC-SHA256, timestamp checks and idempotency
-- `POST /v1/demo/events` — simulated browser-demo events only when the public demo is enabled and restricted to its configured origin
-
-AI planning stays unavailable unless a provider key and monthly token budget are configured. The deterministic Payment Integrity rules are a prototype, not machine learning or certified fraud detection.
-
 ## Security and data boundaries
 
 - HTTPS is required for public use.
 - Request bodies and identifiers are bounded; provider events require HMAC-SHA256 authentication and a five-minute timestamp window.
 - Provider event IDs are idempotent in PostgreSQL.
-- Authenticated writes and paid feature routes enforce server-side identity and All Access entitlement.
+- Authenticated writes enforce server-side account identity; customer checkout requires a matching approved project quotation.
 - Mollie webhook state is re-fetched from the provider; amounts/currency are checked before entitlement changes.
 - Secrets, database URLs, customer records, payment credentials and backup encryption keys must never be committed or written to public logs.
 - Database migrations must be reviewed and backed up before deployment.
@@ -92,7 +85,7 @@ Render service: `nexora-payment-integrity-api` (Frankfurt). Health check: `/read
 See:
 - `docs/ACCOUNT_EMAIL_SETUP.md`
 - `docs/POSTGRESQL_BACKUP_AND_MIGRATION.md`
-- `docs/ALL_ACCESS_SUBSCRIPTION_PLAN.md`
+- `docs/ALPINOSS_PACKAGE_SYSTEM.md`
 - `docs/TERMS_AND_SUBSCRIPTION_DISCLOSURES_DRAFT.md` (internal draft only)
 - `docs/PRODUCTION_READINESS_MASTER.md`
 
