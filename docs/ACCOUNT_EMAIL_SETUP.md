@@ -1,10 +1,10 @@
-# NEXORA account email delivery
+# ALPINOSS account email delivery
 
 Account registration requires email verification. Verification links are single-use and expire after 24 hours. Password-reset links are single-use and expire after one hour; a password reset revokes every active session for that account.
 
 ## Recommended provider for the current Render deployment: Brevo API
 
-The NEXORA API currently runs as a **Free Render web service**. Render blocks outbound SMTP traffic on ports 465 and 587 for Free web services, so Gmail SMTP on port 465 will not work from this deployment. The API already supports Brevo's HTTPS API, which uses outbound HTTPS rather than SMTP.
+The ALPINOSS API currently runs as a **Free Render web service**. Render blocks outbound SMTP traffic on ports 465 and 587 for Free web services, so Gmail SMTP on port 465 will not work from this deployment. The API already supports Brevo's HTTPS API, which uses outbound HTTPS rather than SMTP.
 
 Before enabling live account registration:
 
@@ -16,10 +16,10 @@ Before enabling live account registration:
 |---|---|
 | `BREVO_API_KEY` | The private Brevo API key |
 | `BREVO_FROM` | The verified sender email address in Brevo |
-| `NEXORA_ACCOUNT_URL` | `https://bnexora7-eng.github.io/nexora-business/account` |
+| `ALPINOSS_ACCOUNT_URL` | `https://bnexora7-eng.github.io/nexora-business/account` |
 
 4. Save and redeploy the API. Do not paste the API key into chat, GitHub, website JavaScript, mobile app, or screenshots.
-5. Verify delivery by registering with an email address you control, then confirm the message arrives and the link opens the NEXORA verification page. Also test password reset.
+5. Verify delivery by registering with an email address you control, then confirm the message arrives and the link opens the ALPINOSS verification page. Also test password reset.
 
 The code gives Brevo precedence when `BREVO_API_KEY` is configured. Gmail SMTP variables remain available for a future paid host or another environment that permits SMTP; they are not the recommended transport for the current Free Render service.
 
@@ -32,7 +32,7 @@ For a future host that permits outbound SMTP, the API supports Gmail SMTP with a
 | `SMTP_HOST` | `smtp.gmail.com` |
 | `SMTP_PORT` | `465` |
 | `SMTP_SECURE` | `true` |
-| `SMTP_USER` | NEXORA mailbox address |
+| `SMTP_USER` | ALPINOSS mailbox address |
 | `SMTP_APP_PASSWORD` | Google App Password, never the normal Gmail password |
 | `SMTP_FROM` | Verified sender identity |
 
@@ -40,7 +40,7 @@ Never weaken Google account security if App Passwords are unavailable.
 
 ## Database and deployment
 
-The API startup executes `src/schema.sql` and logs `NEXORA database schema is ready` when database initialization succeeds. Database migrations must be reviewed and backed up before deployment. The current Free Render Postgres instance has no backups and expires on 12 December 2026; follow `docs/POSTGRESQL_BACKUP_AND_MIGRATION.md` before relying on it for production data.
+The API startup executes `src/schema.sql` and logs `ALPINOSS database schema is ready` when database initialization succeeds. Database migrations must be reviewed and backed up before deployment. The current Free Render Postgres instance has no backups and expires on 12 December 2026; follow `docs/POSTGRESQL_BACKUP_AND_MIGRATION.md` before relying on it for production data.
 
 ## Endpoints
 
