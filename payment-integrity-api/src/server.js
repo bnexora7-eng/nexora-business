@@ -798,7 +798,7 @@ async function handleMollieWebhook(req, res) {
       [payment.status,orderId]
     );
     if (order.quote_id) {
-      const quoteStatus = payment.status === "paid" ? "paid" : ["canceled","expired","failed"].includes(payment.status) ? "approved" : "payment_pending";
+      const quoteStatus = payment.status === "paid" ? "paid" : payment.status === "expired" ? "expired" : ["canceled","failed"].includes(payment.status) ? "cancelled" : "payment_pending";
       await pool.query("UPDATE project_quotes SET status=$1,updated_at=NOW() WHERE id=$2 AND status='payment_pending'", [quoteStatus,order.quote_id]);
     }
     if (order.description === "NEXORA All Access monthly subscription" && payment.status === "paid") {
