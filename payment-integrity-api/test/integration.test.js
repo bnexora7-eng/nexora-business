@@ -420,6 +420,21 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   assert.equal(disabledCheckout.status, 410);
   const disabledCheckoutBody = await disabledCheckout.json();
   assert.equal(disabledCheckoutBody.code, "subscription_disabled");
+
+  // All legacy subscription routes must stay retired, including status and cancellation.
+  const disabledSubscriptionStatus = await fetch(`http://127.0.0.1:${port}/v1/subscriptions/me`, {
+    headers: { authorization: "Bearer " + loggedIn.token }
+  });
+  assert.equal(disabledSubscriptionStatus.status, 410);
+  assert.equal((await disabledSubscriptionStatus.json()).code, "subscription_disabled");
+
+  const disabledSubscriptionCancel = await fetch(`http://127.0.0.1:${port}/v1/subscriptions/cancel`, {
+    method: "POST", headers: { authorization: "Bearer " + loggedIn.token, "content-type": "application/json" },
+    body: JSON.stringify({})
+  });
+  assert.equal(disabledSubscriptionCancel.status, 410);
+  assert.equal((await disabledSubscriptionCancel.json()).code, "subscription_disabled");
+
   const noSubscriptionOrders = await pool.query(
     "SELECT COUNT(*)::int AS count FROM own_payments WHERE user_id=$1 AND description='NEXORA All Access monthly subscription'",
     [accountId]
