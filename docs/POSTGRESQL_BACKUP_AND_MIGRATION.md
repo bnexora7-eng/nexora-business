@@ -1,4 +1,4 @@
-# NEXORA PostgreSQL Backup and Migration Runbook
+# ALPINOSS PostgreSQL Backup and Migration Runbook
 
 **Priority: Critical — complete before 12 December 2026.**
 
@@ -31,7 +31,7 @@ No database contents have been exported or independently verified yet. Do not cl
 5. Run a custom-format dump. Keep the connection URL in a temporary environment variable, not in command history:
 
    ```bash
-   pg_dump --format=custom --no-owner --no-acl --dbname="$NEXORA_EXTERNAL_DATABASE_URL" --file="nexora-business-2026-11-14.dump"
+   pg_dump --format=custom --no-owner --no-acl --dbname="$ALPINOSS_EXTERNAL_DATABASE_URL" --file="nexora-business-2026-11-14.dump"
    ```
 
    Prefer the connection URL's TLS option (Render external connections require TLS). Do not include credentials in command-line arguments or logs.
