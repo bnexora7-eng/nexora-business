@@ -1,9 +1,9 @@
 openapi: 3.1.0
 info:
-  title: NEXORA API
+  title: ALPINOSS API
   version: 0.2.0
   description: >
-    Pre-production NEXORA account, free workspace and synthetic Payment Integrity API. One-time project checkout remains disabled until the production-readiness gates are complete.
+    Pre-production ALPINOSS account, project quotation, free workspace and synthetic Payment Integrity API. One-time checkout requires an approved quotation and remains disabled until production-readiness gates are complete.
 servers:
   - url: https://nexora-payment-integrity-api.onrender.com
     description: Render pre-production API
@@ -14,6 +14,10 @@ components:
     bearerAuth:
       type: http
       scheme: bearer
+    quoteAdminAuth:
+      type: http
+      scheme: bearer
+      description: Server-side operator token stored as QUOTE_ADMIN_TOKEN; never expose to customers.
   schemas:
     Error:
       type: object
@@ -181,39 +185,78 @@ paths:
   /v1/subscriptions/checkout:
     post:
       summary: Disabled legacy subscription checkout
-      description: >
-        Recurring memberships are not part of the current NEXORA product model.
-        This endpoint always returns HTTP 410 subscription_disabled.
+      description: Recurring memberships are not part of ALPINOSS; always returns HTTP 410.
       security: [{ bearerAuth: [] }]
       responses:
-        "410": { description: Subscription checkout permanently disabled for the current product model }
+        "410": { description: Subscription checkout disabled }
   /v1/subscriptions/me:
     get:
-      summary: Read legacy subscription state (not used for account access)
+      summary: Disabled legacy subscription status route
       security: [{ bearerAuth: [] }]
       responses:
-        "200":
-          description: Legacy subscription fields; no membership is sold or required
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Subscription"
-        "401": { description: Authentication required }
+        "410": { description: Subscription functionality is retired }
   /v1/subscriptions/cancel:
     post:
-      summary: Legacy subscription cancellation compatibility endpoint
+      summary: Disabled legacy subscription cancellation route
       security: [{ bearerAuth: [] }]
       responses:
-        "200": { description: Legacy provider subscription canceled if one exists; does not affect free account access }
-        "401": { description: Authentication required }
-        "409": { description: Provider status could not be safely reconciled }
+        "410": { description: Subscription functionality is retired }
+  /internal/quotes:
+    post:
+      summary: Create a draft project quotation (operator only)
+      security: [{ quoteAdminAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_id, amount, description, company_size_tier]
+              properties:
+                user_id: { type: integer, minimum: 1 }
+                amount: { type: string, pattern: "^\\d{1,5}(\\.\\d{1,2})?$", example: "375.00" }
+                description: { type: string, minLength: 3, maxLength: 100 }
+                company_size_tier: { type: string, enum: [small_company, large_company] }
+                expiry_days: { type: integer, minimum: 1, maximum: 90, default: 30 }
+      responses:
+        "201": { description: Draft quotation created }
+        "401": { description: Operator authentication required }
+        "404": { description: Customer account not found }
+        "422": { description: Invalid quotation details }
+  /internal/quotes/{quote_id}/approve:
+    post:
+      summary: Approve a draft project quotation (operator only)
+      security: [{ quoteAdminAuth: [] }]
+      parameters:
+        - in: path
+          name: quote_id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200": { description: Quotation approved and eligible for customer checkout }
+        "401": { description: Operator authentication required }
+        "409": { description: Quote is missing, expired or not in draft status }
   /v1/payments:
     post:
-      summary: Create a one-off project payment (disabled by default)
+      summary: Create a one-off payment for the authenticated customer's approved quotation
+      description: The amount, currency and description are read from the approved PostgreSQL quotation. Client-supplied amount and description are ignored. Checkout is disabled unless ENABLE_ONE_OFF_PAYMENTS=true.
       security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [quote_id]
+              properties:
+                quote_id: { type: string, format: uuid }
       responses:
-        "201": { description: Payment order created only when ENABLE_ONE_OFF_PAYMENTS=true and provider checks pass }
+        "201": { description: Mollie checkout created from the approved quotation }
         "401": { description: Authentication required }
+        "404": { description: Approved quotation not found for this customer }
+        "409": { description: Quotation is not payable or already has a checkout attempt }
+        "410": { description: Quotation expired }
+        "422": { description: Valid quote_id required }
         "503": { description: One-off checkout disabled by default or provider is not configured }
   /v1/payments/{order_id}:
     get:
