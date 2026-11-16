@@ -1,6 +1,6 @@
-# NEXORA API — pre-production backend
+# ALPINOSS API — pre-production backend
 
-This service is the server-side API for NEXORA's account, subscription, Community, Marketplace, Business workspace and Payment Integrity prototype. It is deployed on Render in Frankfurt and uses PostgreSQL 18.
+This service is the server-side API for ALPINOSS's account, subscription, Community, Marketplace, Business workspace and Payment Integrity prototype. It is deployed on Render in Frankfurt and uses PostgreSQL 18.
 
 **Release status:** pre-production only. The API is not a regulated payment service or certified fraud-detection product. Do not process real customer payment or banking data until the release gates in `docs/PRODUCTION_READINESS_MASTER.md` have passed.
 
@@ -40,7 +40,7 @@ Transactional email is sent through the Brevo HTTPS API when `BREVO_API_KEY` and
 
 ## Project fees and payment readiness
 
-NEXORA has no monthly membership, recurring platform fee or mandatory subscription. Accounts are free. Customers first discuss a defined service, receive an agreed written scope and one-time project quotation, and only then may pay for that specific project.
+ALPINOSS has no monthly membership, recurring platform fee or mandatory subscription. Accounts are free. Customers first discuss a defined service, receive an agreed written scope and one-time project quotation, and only then may pay for that specific project.
 
 - `POST /v1/subscriptions/checkout` — permanently disabled for the current product model; returns HTTP 410.
 - `POST /v1/payments` — one-off Mollie checkout is fail-closed by default. It returns HTTP 503 with `one_off_payments_disabled` unless `ENABLE_ONE_OFF_PAYMENTS=true` is explicitly set after all business, legal, provider and operational release gates have passed.
