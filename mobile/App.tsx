@@ -156,7 +156,7 @@ export default function App() {
   return <SafeAreaView style={styles.safe}>
     <StatusBar barStyle="light-content" backgroundColor={C.bg}/>
     <View style={styles.header}>
-      <View style={{flexDirection:"row",alignItems:"center",gap:10}}><View style={styles.brandMark}><Text style={styles.brandMarkText}>N</Text><View style={styles.brandChip}/></View><View><Text style={styles.brand}>ALPINOSS<Text style={{color:C.cyan}}>.</Text></Text><Text style={styles.tag}>A PLACE TO MOVE FORWARD</Text></View></View>
+      <View style={{flexDirection:"row",alignItems:"center",gap:10}}><View style={styles.brandMark}><Text style={styles.brandMarkText}>A</Text><View style={styles.brandChip}/></View><View><Text style={styles.brand}>ALPINOSS<Text style={{color:C.cyan}}>.</Text></Text><Text style={styles.tag}>A PLACE TO MOVE FORWARD</Text></View></View>
       <View style={styles.status}><View style={styles.dot}/><Text style={styles.statusText}>PROTOTYPE</Text></View>
     </View>
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
