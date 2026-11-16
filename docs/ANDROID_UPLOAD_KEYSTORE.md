@@ -22,8 +22,8 @@ The current `.github/workflows/android-play-aab.yml` workflow requires two **rep
 | Secret name | Value |
 |---|---|
 | `ANDROID_KEYSTORE_BASE64` | Base64 encoding of `$HOME/nexora-upload-2026.jks`, without line breaks |
-| `ALPINOSS_UPLOAD_STORE_PASSWORD` | The new keystore password |
-| `ALPINOSS_UPLOAD_KEY_PASSWORD` | Optional key password; if omitted, the workflow uses `ALPINOSS_UPLOAD_STORE_PASSWORD` |
+| `NEXORA_UPLOAD_STORE_PASSWORD` | The new keystore password |
+| `NEXORA_UPLOAD_KEY_PASSWORD` | Optional key password; if omitted, the workflow uses `NEXORA_UPLOAD_STORE_PASSWORD` |
 
 On Termux, if `termux-clipboard-set` is available, copy the Base64 directly to the Android clipboard without displaying it in the terminal:
 
