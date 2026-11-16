@@ -1,0 +1,42 @@
+/* ALPINOSS visual background reference — preserve these values when extending the brand.
+   Palette and layered treatment are based on the approved dark navy / electric-blue visual system. */
+:root {
+  --alpinoss-bg: #050914;
+  --alpinoss-panel: #0b1424;
+  --alpinoss-line: #253650;
+  --alpinoss-blue: #258dff;
+  --alpinoss-red: #ed3155;
+  --alpinoss-cyan: #68d4ff;
+}
+body.alpinoss-theme {
+  background:
+    radial-gradient(ellipse at 15% 4%, #142b49 0, transparent 36%),
+    radial-gradient(ellipse at 90% 22%, #351426 0, transparent 32%),
+    var(--alpinoss-bg);
+  color: #f4f7ff;
+}
+.alpinoss-hero-background {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border: 1px solid #40516c;
+  border-radius: 20px;
+  background:
+    radial-gradient(ellipse at 16% 50%, #174d85aa 0, transparent 42%),
+    radial-gradient(ellipse at 86% 35%, #9b1e3b77 0, transparent 43%),
+    linear-gradient(115deg, #070d19, #111a2d 52%, #180d1a);
+  box-shadow: 0 24px 80px #0008, inset 0 0 60px #07172b;
+}
+.alpinoss-hero-background::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  opacity: .45;
+  background-image:
+    linear-gradient(#7da8d522 1px, transparent 1px),
+    linear-gradient(90deg, #7da8d522 1px, transparent 1px),
+    repeating-linear-gradient(135deg, transparent 0 34px, #258dff22 35px 36px, transparent 37px 70px);
+  background-size: 34px 34px, 34px 34px, auto;
+  mask-image: linear-gradient(90deg, #000, transparent 78%);
+}
