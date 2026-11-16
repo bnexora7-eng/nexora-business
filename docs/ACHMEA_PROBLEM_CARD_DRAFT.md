@@ -1,4 +1,4 @@
-# NEXORA — Achmea Impact Ventures Problem Card (working draft)
+# ALPINOSS — Achmea Impact Ventures Problem Card (working draft)
 
 **Status:** Founder-review draft — not an application and not submitted  
 **Prepared:** 12 November 2026  
@@ -10,7 +10,7 @@
 
 Digital businesses increasingly rely on payment providers and software integrations to tell them whether a payment-related event has occurred. The initial problem hypothesis is that smaller online merchants and digital platforms can lack a simple, consistent way to validate incoming payment-status notifications, detect duplicate or replayed events, and retain a clear record of how uncertain events were handled.
 
-When event handling is inconsistent, a business may face operational confusion: an order could be treated as paid more than once, a valid event could be missed, or staff may have to investigate unclear payment-status changes manually. The scale, frequency and financial impact of these problems for a specific Dutch customer segment have **not yet been measured or validated by NEXORA**.
+When event handling is inconsistent, a business may face operational confusion: an order could be treated as paid more than once, a valid event could be missed, or staff may have to investigate unclear payment-status changes manually. The scale, frequency and financial impact of these problems for a specific Dutch customer segment have **not yet been measured or validated by ALPINOSS**.
 
 ## 2. Who may experience the problem?
 
@@ -18,11 +18,11 @@ When event handling is inconsistent, a business may face operational confusion: 
 
 **Potential buyer / decision-maker:** founder, head of operations, finance lead or technical lead responsible for payment operations and integrations.
 
-This segment is provisional. NEXORA has not yet completed structured customer interviews and has not confirmed which buyer experiences the most urgent pain or controls the budget.
+This segment is provisional. ALPINOSS has not yet completed structured customer interviews and has not confirmed which buyer experiences the most urgent pain or controls the budget.
 
 ## 3. Proposed solution
 
-NEXORA Payment Integrity is an early, provider-neutral validation layer for incoming payment-event notifications.
+ALPINOSS Payment Integrity is an early, provider-neutral validation layer for incoming payment-event notifications.
 
 The intended product would:
 - validate the authenticity and basic integrity of incoming event messages;
@@ -49,7 +49,7 @@ A separate Node.js/PostgreSQL backend scaffold explores HMAC-SHA256 request auth
 
 If validated, a lightweight and explainable event-validation layer could reduce avoidable manual investigation and improve operational clarity for businesses that depend on payment notifications.
 
-These are **intended outcomes, not measured results**. NEXORA currently has no customer evidence demonstrating reduced losses, fewer errors, faster reconciliation or improved fraud prevention.
+These are **intended outcomes, not measured results**. ALPINOSS currently has no customer evidence demonstrating reduced losses, fewer errors, faster reconciliation or improved fraud prevention.
 
 ## 6. Business model hypothesis
 
@@ -72,7 +72,7 @@ The initial go/no-go question is whether a clearly defined Dutch customer segmen
 
 ## 8. Why approach Achmea Impact Ventures?
 
-NEXORA may be relevant to the **healthy finances (outside insurance)** focus area if customer discovery confirms that payment-event integrity is a meaningful financial-operations problem for a defined customer group.
+ALPINOSS may be relevant to the **healthy finances (outside insurance)** focus area if customer discovery confirms that payment-event integrity is a meaningful financial-operations problem for a defined customer group.
 
 That fit is not assumed. We are asking Achmea Impact Ventures to assess whether the problem is within its investment scope and whether its research, product, engineering and commercial expertise could help validate the opportunity and build a focused venture.
 
@@ -80,7 +80,7 @@ The ambition is to build an independent, scalable business with customers beyond
 
 ## 9. Founder and commitment
 
-NEXORA is currently being developed by Sebastian Moczygemba as an independent, solo-founder project in the Netherlands. The founder initiated the project recently and has taken the first steps to define the proposition, build a demonstrator and publish project materials.
+ALPINOSS is currently being developed by Sebastian Moczygemba as an independent, solo-founder project in the Netherlands. The founder initiated the project recently and has taken the first steps to define the proposition, build a demonstrator and publish project materials.
 
 A complete professional CV and a fuller account of relevant domain experience should be supplied separately; this draft does not claim prior fintech-company leadership, a previous startup exit or a shipped production product.
 
