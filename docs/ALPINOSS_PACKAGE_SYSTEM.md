@@ -1,44 +1,32 @@
-# ALPINOSS — Company pricing and single-fee access
+# ALPINOSS — Company-size pricing
 
-Status: corrected pricing model specification. This document is not a live checkout or a public legal offer.
+Status: pricing model specification; not a live checkout or public legal offer.
 
-## Confirmed pricing model
+## Confirmed model
 
-- **No €29.99/month plan. No subscription. No recurring membership fee.**
-- ALPINOSS uses **one fee**, charged once.
-- The one-time fee is differentiated by the customer's company size:
-  - **Small companies:** one fixed one-time price.
-  - **Larger companies:** one fixed one-time price.
-- All prices and payment information belong together in one **Prices & Payments** section/menu.
-- The fee is paid in two parts: **50% before work/access begins and 50% after delivery and acceptance**.
-- Do not use PayPal.
+- One fee, charged once. No subscription, no monthly membership and no recurring fee.
+- Pricing is differentiated by company size: one price for smaller companies and one price for larger companies.
+- Both prices belong in one central Prices & Payments section.
+- PayPal is excluded.
+- Exact company-size amounts must be confirmed by the owner; do not invent or publish unconfirmed figures.
 
-## Price amounts
+## Payment terms
 
-The exact euro amounts for the small-company and larger-company fee have not been verified in the available agreed project notes. Do not invent amounts, publish placeholders as prices, or activate checkout until the owner supplies/confirms those two figures.
+Each project quotation must specify its own advance and remaining balance after completion/acceptance. No universal 50/50 split is assumed. The exact payment schedule belongs in the accepted quotation.
 
-## Platform and implementation rules
+## Existing platform scope
 
-- Do not create monthly subscriptions, recurring billing, an All Access membership, or a €29.99 plan.
-- Do not create multiple feature tiers such as Basic/Pro/Business unless separately approved.
-- The pricing page must show the two company-size prices in the same Prices & Payments section and explain the 50%/50% payment schedule.
-- Account creation remains separate from payment. Do not label an unpaid account as paid.
-- Any paid-access or project-start state must be verified server-side; never trust a price or payment status supplied by the browser.
-- Keep live checkout disabled until merchant onboarding, legal/tax setup, database backup/restore, webhook/refund/dispute tests and end-to-end payment verification are complete.
-
-## Existing platform capabilities found in the repository
-
-- Account registration, login, email verification, password reset and sessions.
-- Business workspace profile.
-- AI business-plan endpoint; provider key and a monthly token budget are required, and AI is currently disabled when the budget is zero.
+- Account registration, sign-in, email verification, password reset and session controls.
+- Business Studio workspace and AI business-plan endpoint (live AI currently disabled until provider key and budget are configured).
 - Community posts.
 - Marketplace listings.
-- Subscription-related legacy code exists in the backend, but it must not be used to introduce recurring membership billing.
+- Payment Integrity prototype and backend payment-event screening infrastructure.
+- One-time payment backend exists but is disabled by default. Subscription checkout is disabled and must remain disabled.
 
-## Implementation order
+## Implementation requirements
 
-1. Confirm the two one-time euro prices: small companies and larger companies.
-2. Implement the single-fee model and the two company-size price categories.
-3. Display both prices and the 50%/50% payment schedule in one Prices & Payments menu section.
-4. Connect payment verification and access/project status to the backend.
-5. Enable live payments only after all production-readiness checks pass.
+1. Confirm the two one-time prices for smaller and larger companies.
+2. Display both in the single Prices & Payments section.
+3. Apply company-size pricing to the appropriate offer/quotation flow.
+4. Keep payment and access state verified server-side.
+5. Do not enable live payments until merchant onboarding, legal/tax setup, database backup/restore and end-to-end payment tests are complete.
