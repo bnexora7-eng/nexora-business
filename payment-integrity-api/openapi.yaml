@@ -201,6 +201,13 @@ paths:
       security: [{ bearerAuth: [] }]
       responses:
         "410": { description: Subscription functionality is retired }
+  /v1/quotes:
+    get:
+      summary: List approved and historical project quotations for the authenticated customer
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200": { description: Customer quotations; draft operator quotations are excluded }
+        "401": { description: Authentication required }
   /internal/quotes:
     post:
       summary: Create a draft project quotation (operator only)
