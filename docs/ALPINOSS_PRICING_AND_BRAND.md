@@ -24,10 +24,8 @@ A different split, such as 30% upfront and 70% after delivery, may be agreed in 
 
 Subscriptions and ready-made products follow their own displayed purchase terms. The pricing page is informational and does not itself collect payment.
 
-## Brand assets
+## Brand artwork status
 
-- Primary logo: `alpinoss-brand.svg` (preserve artwork and proportions).
-- App icon: `alpinoss-icon.svg`.
-- Background reference: `brand/alpinoss-background.css`.
+The SVG files currently in the repository are provisional vector concepts, not verified copies of the exact original logo/profile artwork. The CSS background is a visual reference approximation, not a backup of the original background image.
 
-Keep the approved blue biomechanical/cosmic artwork and dark navy / electric-blue background system consistent. Do not replace them with unrelated generated artwork.
+The exact original artwork must be supplied as image files before it can be archived faithfully. See `brand/README.md` for the preservation procedure. Do not represent the provisional SVGs as the owner's final approved logo.
