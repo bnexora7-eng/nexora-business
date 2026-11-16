@@ -2,7 +2,7 @@ import nodemailer from "nodemailer";
 import crypto from "node:crypto";
 
 function getWebBase() {
-  return (process.env.ALPINOSS_ACCOUNT_URL || "https://bnexora7-eng.github.io/nexora-business/account/").replace(/\/$/, "");
+  return (process.env.NEXORA_ACCOUNT_URL || "https://bnexora7-eng.github.io/nexora-business/account/").replace(/\/$/, "");
 }
 
 function getTestTransport() {
