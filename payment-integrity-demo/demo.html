@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#07111f">
-<title>NEXORA Payment Integrity — Demo</title>
+<title>ALPINOSS Payment Integrity — Demo</title>
 <style>
-:root{color-scheme:dark;--bg:#07111f;--panel:#102238;--line:#29435d;--text:#eff6ff;--muted:#9db0c5;--mint:#62e6c5;--blue:#78aaff;--gold:#ffd27a;--red:#ff9c9c}
+:root{color-scheme:dark;--bg:#07111f;--panel:#102238;--line:#29435d;--text:#eff6ff;--muted:#9db0c5;--mint:#4b8dff;--blue:#78aaff;--gold:#ffd27a;--red:#ff9c9c}
 *{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 80% 0,#173b52 0,transparent 38%),var(--bg);color:var(--text);font:15px/1.5 Inter,system-ui,sans-serif}
 main{max-width:1050px;margin:auto;padding:24px}.top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:26px}.brand{font-weight:900;letter-spacing:.16em}.brand small{display:block;color:var(--muted);font-size:10px;letter-spacing:.12em}.tag{border:1px solid #44635d;color:var(--mint);border-radius:30px;padding:6px 10px;font-size:10px;letter-spacing:.12em}
 h1{font-size:clamp(30px,5vw,48px);line-height:1.05;margin:8px 0}.intro{color:var(--muted);max-width:720px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:22px}.card{background:rgba(16,34,56,.96);border:1px solid var(--line);border-radius:16px;padding:20px}.card h2{font-size:18px;margin:0 0 14px}.field{display:grid;gap:6px;margin:12px 0}.field label{font-size:12px;color:var(--muted)}input,select{width:100%;background:#081625;border:1px solid var(--line);border-radius:9px;padding:11px;color:var(--text);font:inherit}input:focus,select:focus{outline:1px solid var(--mint)}
@@ -17,10 +17,10 @@ button{border:0;border-radius:9px;background:var(--mint);color:#061923;font-weig
 </head>
 <body>
 <main>
-<header class="top"><div class="brand">NEXORA<small>PAYMENT INTEGRITY</small></div><span class="tag">INTERACTIVE TECHNICAL DEMO</span></header>
+<header class="top"><div class="brand">ALPINOSS<small>PAYMENT INTEGRITY</small></div><span class="tag">INTERACTIVE TECHNICAL DEMO</span></header>
 <div class="muted">RISK DECISION WORKFLOW / SANDBOX</div>
 <h1>Make every payment event accountable.</h1>
-<p class="intro">A browser-based demonstrator for screening simulated payment-event data, flagging duplicate identifiers and recording explainable decisions. The GitHub Pages demo sends simulated payment events to the NEXORA demo API for server-side screening. It does not connect to banks, payment providers or live money.</p>
+<p class="intro">A browser-based demonstrator for screening simulated payment-event data, flagging duplicate identifiers and recording explainable decisions. The GitHub Pages demo sends simulated payment events to the ALPINOSS demo API for server-side screening. It does not connect to banks, payment providers or live money.</p>
 <div class="grid">
 <section class="card">
 <h2>Evaluate a payment event</h2><p id="appStatus" class="muted" aria-live="polite">Loading demo controls…</p>
@@ -55,7 +55,7 @@ button{border:0;border-radius:9px;background:var(--mint);color:#061923;font-weig
 <div class="tablewrap"><table><thead><tr><th>Time</th><th>Provider</th><th>Event</th><th>Amount</th><th>Decision</th><th>Reason</th></tr></thead><tbody id="log"><tr><td colspan="6" class="muted">No events evaluated yet.</td></tr></tbody></table></div>
 </section>
 <div class="notice"><b>Sandbox limitation:</b> simulated events are sent to the demo API. API records are stored temporarily in server memory and may be lost when the function restarts. The demo does not connect to banks or payment providers, execute payments, or provide production fraud detection or regulatory certification. The browser audit log is session-only.</div>
-<div class="footer">NEXORA BUSINESS · Product concept and technical sandbox · Not a live financial service</div>
+<div class="footer">ALPINOSS BUSINESS · Product concept and technical sandbox · Not a live financial service</div>
 </main>
 <script src="./config.js"></script>
 <script src="./app.js?v=20261114-1331" defer></script>
