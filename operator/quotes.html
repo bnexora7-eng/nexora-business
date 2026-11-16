@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#07111f">
+<title>ALPINOSS — Operator quotations</title>
+<style>
+:root{color-scheme:dark;--bg:#07111f;--panel:#102238;--line:#29435d;--text:#eff6ff;--muted:#a8b8ca;--mint:#62e6c5;--red:#ff9b9b}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 80% 0,#173b52 0,transparent 38%),var(--bg);color:var(--text);font:15px/1.5 system-ui,sans-serif}.wrap{width:min(920px,calc(100% - 28px));margin:32px auto}.brand{font-weight:900;letter-spacing:.18em;color:var(--mint);font-size:19px}.sub{color:var(--muted);margin:5px 0 24px}.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin:16px 0}.warning{border-color:#806b3e;color:#f0dba8;font-size:13px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}label{display:grid;gap:6px;color:var(--muted);font-size:12px}input,select{width:100%;padding:12px;border:1px solid var(--line);border-radius:8px;background:#091827;color:var(--text);font:inherit}button{border:0;border-radius:8px;padding:11px 16px;background:var(--mint);color:#061923;font-weight:800;cursor:pointer}button.secondary{background:transparent;border:1px solid var(--line);color:var(--text)}button:disabled{opacity:.5;cursor:wait}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}.status{min-height:22px;color:var(--muted);font-size:13px;margin-top:10px}.error{color:var(--red)}.quote{background:#091827;border:1px solid var(--line);border-radius:10px;padding:14px;margin-top:10px}.quotehead{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}.price{color:var(--mint);font-weight:900}.meta{color:var(--muted);font-size:12px;margin:5px 0}.small{font-size:12px;color:var(--muted)}h1{font-size:24px;margin:8px 0}h2{font-size:17px;margin:0 0 12px}@media(max-width:600px){.grid{grid-template-columns:1fr}.wrap{margin:18px auto}.panel{padding:14px}}
+</style>
+</head>
+<body>
+<main class="wrap">
+ <div class="brand">ALPINOSS</div>
+ <h1>Operator — project quotations</h1>
+ <p class="sub">Private quotation management · one-time project fees only</p>
+ <section class="panel warning">This page does not contain the operator secret. Use it only over HTTPS on a trusted device. The secret stays in this page's memory and is cleared when the page is closed. Never share it with customers.</section>
+ <section class="panel" id="access">
+  <h2>Operator access</h2>
+  <label>Operator token
+   <input id="token" type="password" autocomplete="off" spellcheck="false" placeholder="Enter QUOTE_ADMIN_TOKEN">
+  </label>
+  <div class="actions"><button id="connect">Connect securely</button></div>
+  <div class="status" id="access-status" role="status"></div>
+ </section>
+ <section class="panel" id="create-panel" hidden>
+  <h2>Create a quotation</h2>
+  <form id="quote-form">
+   <div class="grid">
+    <label>Customer account ID
+     <input id="user-id" type="number" min="1" step="1" required placeholder="Account ID">
+    </label>
+    <label>One-time price (EUR)
+     <input id="amount" inputmode="decimal" pattern="[0-9]+([.][0-9]{1,2})?" min="1" max="5000" required placeholder="Amount agreed with customer">
+    </label>
+    <label>Company size
+     <select id="tier" required><option value="small_company">Smaller company</option><option value="large_company">Larger company</option></select>
+    </label>
+    <label>Valid for
+     <select id="expiry"><option value="14">14 days</option><option value="30" selected>30 days</option><option value="60">60 days</option><option value="90">90 days</option></select>
+    </label>
+   </div>
+   <label style="margin-top:12px">Project scope / description
+    <input id="description" minlength="3" maxlength="100" required placeholder="Short agreed project description">
+   </label>
+   <div class="actions"><button id="create" type="submit">Create draft quotation</button><button class="secondary" id="refresh" type="button">Refresh quotations</button><button class="secondary" id="disconnect" type="button">Disconnect</button></div>
+  </form>
+  <div class="status" id="form-status" role="status"></div>
+ </section>
+ <section class="panel" id="list-panel" hidden>
+  <h2>Recent quotations</h2>
+  <div id="quotes"><p class="small">Connect to load quotations.</p></div>
+ </section>
+ <p class="small">Checkout remains disabled. Approving a quotation only makes it visible to the customer; it does not collect money.</p>
+</main>
+<script>
+"use strict";
+const API="https://nexora-payment-integrity-api.onrender.com";
+let operatorToken="";
+const byId=id=>document.getElementById(id);
+function status(id,message,error=false){const el=byId(id);el.textContent=message;el.className="status"+(error?" error":"");}
+async function api(path,options={}){
+ const response=await fetch(API+path,{...options,headers:{"content-type":"application/json","authorization":"Bearer "+operatorToken,...(options.headers||{})}});
+ const body=await response.json().catch(()=>({}));
+ if(!response.ok)throw new Error(body.error||"Request failed ("+response.status+")");
+ return body;
+}
+function money(value,currency){return new Intl.NumberFormat("en-IE",{style:"currency",currency:currency||"EUR"}).format(Number(value));}
+function makeQuoteCard(q){
+ const card=document.createElement("article");card.className="quote";
+ const head=document.createElement("div");head.className="quotehead";
+ const title=document.createElement("strong");title.textContent=q.description+" · "+q.email;
+ const price=document.createElement("span");price.className="price";price.textContent=money(q.amount,q.currency);
+ head.append(title,price);
+ const meta=document.createElement("div");meta.className="meta";
+ meta.textContent="Account #"+q.user_id+" · "+(q.company_size_tier==="small_company"?"Smaller company":"Larger company")+" · "+q.status+" · expires "+new Date(q.expires_at).toLocaleDateString();
+ card.append(head,meta);
+ if(q.status==="draft"){
+  const button=document.createElement("button");button.textContent="Approve quotation";
+  button.addEventListener("click",async()=>{
+   button.disabled=true;
+   try{await api("/internal/quotes/"+encodeURIComponent(q.id)+"/approve",{method:"POST",body:"{}"});status("form-status","Quotation approved.");await loadQuotes();}
+   catch(e){status("form-status",e.message,true);button.disabled=false;}
+  });
+  card.append(button);
+ }
+ const id=document.createElement("div");id.className="small";id.textContent="Quote ID: "+q.id;card.append(id);
+ return card;
+}
+async function loadQuotes(){
+ const container=byId("quotes");container.textContent="Loading…";
+ try{
+  const data=await api("/internal/quotes");
+  container.replaceChildren();
+  if(!data.quotes.length){const empty=document.createElement("p");empty.className="small";empty.textContent="No quotations yet.";container.append(empty);return;}
+  for(const q of data.quotes)container.append(makeQuoteCard(q));
+ }catch(e){container.textContent=e.message;status("form-status",e.message,true);}
+}
+byId("connect").addEventListener("click",async()=>{
+ const candidate=byId("token").value.trim();
+ if(candidate.length<40){status("access-status","The operator token must contain at least 40 characters.",true);return;}
+ operatorToken=candidate;byId("connect").disabled=true;
+ try{
+  await api("/internal/quotes");
+  byId("access").hidden=true;byId("create-panel").hidden=false;byId("list-panel").hidden=false;
+  await loadQuotes();
+ }catch(e){operatorToken="";status("access-status",e.message,true);}
+ finally{byId("connect").disabled=false;}
+});
+byId("quote-form").addEventListener("submit",async event=>{
+ event.preventDefault();const button=byId("create");button.disabled=true;
+ const amount=byId("amount").value.trim();
+ try{
+  await api("/internal/quotes",{method:"POST",body:JSON.stringify({
+   user_id:Number(byId("user-id").value),amount,description:byId("description").value.trim(),
+   company_size_tier:byId("tier").value,expiry_days:Number(byId("expiry").value)
+  })});
+  status("form-status","Draft quotation created. Review it below, then approve it when the offer is confirmed.");
+  byId("quote-form").reset();byId("expiry").value="30";await loadQuotes();
+ }catch(e){status("form-status",e.message,true);}
+ finally{button.disabled=false;}
+});
+byId("refresh").addEventListener("click",loadQuotes);
+byId("disconnect").addEventListener("click",()=>{
+ operatorToken="";byId("token").value="";byId("create-panel").hidden=true;byId("list-panel").hidden=true;byId("access").hidden=false;
+ status("access-status","Disconnected. Operator token cleared.");
+});
+window.addEventListener("pagehide",()=>{operatorToken="";byId("token").value="";});
+</script>
+</body>
+</html>
