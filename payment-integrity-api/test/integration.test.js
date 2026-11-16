@@ -87,7 +87,7 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   const providerId = "integration-provider";
   const child = spawn(process.execPath, ["src/server.js"], {
     cwd: process.cwd(),
-    env: { ...process.env, NODE_ENV: "test", SMTP_TEST_MODE: "true", BACKUP_TRIGGER_TOKEN: "integration-backup-trigger-token-for-tests-only", MOLLIE_API_KEY: "test_nexora_integration_key", MOLLIE_API_BASE: "http://127.0.0.1:8082/v2", OPENAI_API_KEY: "test_nexora_ai_key", OPENAI_MODEL: "gpt-4.1-mini", OPENAI_API_URL: "http://127.0.0.1:8083/v1/chat/completions", AI_MONTHLY_TOKEN_LIMIT: "100000", PORT: String(port), PROVIDER_SECRETS: JSON.stringify({ [providerId]: secret }), ENABLE_PUBLIC_DEMO: "true", DEMO_ORIGIN: "https://bnexora7-eng.github.io" },
+    env: { ...process.env, NODE_ENV: "test", SMTP_TEST_MODE: "true", BACKUP_TRIGGER_TOKEN: "integration-backup-trigger-token-for-tests-only", QUOTE_ADMIN_TOKEN: "integration-quote-admin-token-for-tests-only", MOLLIE_API_KEY: "test_nexora_integration_key", MOLLIE_API_BASE: "http://127.0.0.1:8082/v2", OPENAI_API_KEY: "test_nexora_ai_key", OPENAI_MODEL: "gpt-4.1-mini", OPENAI_API_URL: "http://127.0.0.1:8083/v1/chat/completions", AI_MONTHLY_TOKEN_LIMIT: "100000", PORT: String(port), PROVIDER_SECRETS: JSON.stringify({ [providerId]: secret }), ENABLE_PUBLIC_DEMO: "true", DEMO_ORIGIN: "https://bnexora7-eng.github.io" },
     stdio: "ignore"
   });
   t.after(async () => {
@@ -216,6 +216,37 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   });
   assert.equal(profile.status, 200);
   assert.equal((await profile.json()).user.email, accountEmail);
+
+  // Project quotations can only be created and approved by the operator token.
+  const quotePayload = { user_id: Number(accountId), amount: "375.00", description: "ALPINOSS small-company project", company_size_tier: "small_company", expiry_days: 14 };
+  const quoteWithoutOperator = await fetch(`http://127.0.0.1:${port}/internal/quotes`, {
+    method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(quotePayload)
+  });
+  assert.equal(quoteWithoutOperator.status, 401, "quote creation must require the operator secret");
+  const createdQuoteResponse = await fetch(`http://127.0.0.1:${port}/internal/quotes`, {
+    method: "POST", headers: { "content-type": "application/json", authorization: "Bearer integration-quote-admin-token-for-tests-only" },
+    body: JSON.stringify(quotePayload)
+  });
+  assert.equal(createdQuoteResponse.status, 201);
+  const createdQuote = (await createdQuoteResponse.json()).quote;
+  assert.equal(createdQuote.status, "draft");
+  assert.equal(Number(createdQuote.amount), 375);
+  assert.equal(createdQuote.company_size_tier, "small_company");
+  const approveWithoutOperator = await fetch(`http://127.0.0.1:${port}/internal/quotes/${createdQuote.id}/approve`, { method: "POST" });
+  assert.equal(approveWithoutOperator.status, 401, "quote approval must require the operator secret");
+  const approvedQuoteResponse = await fetch(`http://127.0.0.1:${port}/internal/quotes/${createdQuote.id}/approve`, {
+    method: "POST", headers: { authorization: "Bearer integration-quote-admin-token-for-tests-only" }
+  });
+  assert.equal(approvedQuoteResponse.status, 200);
+  assert.equal((await approvedQuoteResponse.json()).quote.status, "approved");
+  const approvedQuoteStored = await pool.query("SELECT amount,status,company_size_tier FROM project_quotes WHERE id=$1", [createdQuote.id]);
+  assert.equal(Number(approvedQuoteStored.rows[0].amount), 375);
+  assert.equal(approvedQuoteStored.rows[0].status, "approved");
+  const repeatedApproval = await fetch(`http://127.0.0.1:${port}/internal/quotes/${createdQuote.id}/approve`, {
+    method: "POST", headers: { authorization: "Bearer integration-quote-admin-token-for-tests-only" }
+  });
+  assert.equal(repeatedApproval.status, 409, "an approved quote cannot be approved a second time");
+
 
   // Password-reset tokens are single-use, expire, and revoke existing sessions.
   const resetToken = createActionToken();
