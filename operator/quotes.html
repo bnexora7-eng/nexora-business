@@ -30,8 +30,8 @@
   <h2>Create a quotation</h2>
   <form id="quote-form">
    <div class="grid">
-    <label>Customer account ID
-     <input id="user-id" type="number" min="1" step="1" required placeholder="Account ID">
+    <label>Customer account email
+     <input id="customer-email" type="email" maxlength="254" required placeholder="customer@example.com">
     </label>
     <label>One-time price (EUR)
      <input id="amount" inputmode="decimal" pattern="[0-9]+([.][0-9]{1,2})?" min="1" max="5000" required placeholder="Amount agreed with customer">
@@ -115,7 +115,7 @@ byId("quote-form").addEventListener("submit",async event=>{
  const amount=byId("amount").value.trim();
  try{
   await api("/internal/quotes",{method:"POST",body:JSON.stringify({
-   user_id:Number(byId("user-id").value),amount,description:byId("description").value.trim(),
+   customer_email:byId("customer-email").value.trim().toLowerCase(),amount,description:byId("description").value.trim(),
    company_size_tier:byId("tier").value,expiry_days:Number(byId("expiry").value)
   })});
   status("form-status","Draft quotation created. Review it below, then approve it when the offer is confirmed.");
