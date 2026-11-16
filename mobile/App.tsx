@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import * as SecureStore from "expo-secure-store";
-import AlpinossModules from "./AlpinossModules";
+import AlpinossModules from "./NexoraModules";
 import { API_BASE } from "./api";
 import { Alert, BackHandler, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View, Linking } from "react-native";
 
