@@ -12,13 +12,13 @@
   "prefer_related_applications": false,
   "icons": [
     {
-      "src": "./nexora-icon.svg",
+      "src": "./alpinoss-icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
     },
     {
-      "src": "./nexora-icon.svg",
+      "src": "./alpinoss-icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "maskable"
