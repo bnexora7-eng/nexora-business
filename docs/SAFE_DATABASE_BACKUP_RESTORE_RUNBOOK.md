@@ -1,4 +1,4 @@
-# NEXORA — Safe PostgreSQL Backup and Restore Runbook
+# ALPINOSS — Safe PostgreSQL Backup and Restore Runbook
 
 **Status:** procedure and manual test workflow prepared; no real backup restore has run yet.  
 **Production database:** Render PostgreSQL 18, `nexora-business-db`, Frankfurt.  
@@ -45,7 +45,7 @@ In the **nexora-business** repository, configure:
 
 Do not create a new encryption key for restore testing; it must match the key used when the backup was encrypted. Do not paste either secret into chat. The workflow uses GitHub's ephemeral `GITHUB_TOKEN` only as the disposable test database password.
 
-After a real backup release exists, run **Actions → NEXORA isolated PostgreSQL restore test → Run workflow**, entering the timestamp from its release tag, for example the timestamp portion of `nexora-backup-YYYYMMDDTHHMMSSZ`.
+After a real backup release exists, run **Actions → ALPINOSS isolated PostgreSQL restore test → Run workflow**, entering the timestamp from its release tag, for example the timestamp portion of `nexora-backup-YYYYMMDDTHHMMSSZ`.
 
 ## 4. Backup creation gate
 
