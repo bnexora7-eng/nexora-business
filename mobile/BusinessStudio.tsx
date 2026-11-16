@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Text, TextInput, TouchableOpacity, View } from "react-native";
 import * as SecureStore from "expo-secure-store";
-import { API_BASE as API } from "./api";
+import { apiRequest } from "./api";
 const C={bg:"#08111F",panel:"#111E30",line:"#263A53",text:"#F3F7FC",muted:"#91A4BA",cyan:"#4b8dff"};
 const s={card:{backgroundColor:C.panel,borderWidth:1,borderColor:C.line,borderRadius:16,padding:16,marginBottom:14},title:{fontSize:20,fontWeight:"800" as const,color:C.text,marginBottom:8},text:{fontSize:13,lineHeight:20,color:C.muted},label:{fontSize:10,fontWeight:"800" as const,color:C.muted,marginTop:12,marginBottom:6},input:{backgroundColor:C.bg,borderWidth:1,borderColor:C.line,borderRadius:9,padding:12,color:C.text},button:{backgroundColor:C.cyan,borderRadius:10,padding:14,alignItems:"center" as const,marginTop:12},buttonText:{fontSize:12,fontWeight:"900" as const,color:C.bg},note:{fontSize:12,color:C.cyan,marginTop:10,lineHeight:18}};
 export default function BusinessStudio({signedIn}:{signedIn:boolean}){
@@ -25,7 +25,7 @@ export default function BusinessStudio({signedIn}:{signedIn:boolean}){
  const [busy,setBusy]=useState(false);
  const [aiBusy,setAiBusy]=useState(false);
  const [aiPlan,setAiPlan]=useState("");
- useEffect(()=>{if(!signedIn)return;let active=true;(async()=>{try{const token=await SecureStore.getItemAsync("nexora_session");const r=await fetch(API+"/v1/business/workspace",{headers:{Authorization:"Bearer "+token}});const d=await r.json();if(!r.ok)throw new Error(d.error||"Could not load workspace");if(!active)return;setName(d.workspace.business_name||"ALPINOSS");setTagline(d.workspace.tagline||"");setNotes(d.workspace.goals||"");}catch(e){if(active)setMessage(e instanceof Error?e.message:"Could not load saved workspace.");}})();return()=>{active=false;};},[signedIn]);
+ useEffect(()=>{if(!signedIn)return;let active=true;(async()=>{try{const token=await SecureStore.getItemAsync("nexora_session");if(!token)throw new Error("Your session has expired. Sign in again.");const {ok,data:d}=await apiRequest("/v1/business/workspace",{headers:{Authorization:"Bearer "+token}});if(!ok)throw new Error(d.error||"Could not load workspace");if(!active)return;setName(d.workspace.business_name||"ALPINOSS");setTagline(d.workspace.tagline||"");setNotes(d.workspace.goals||"");}catch(e){if(active)setMessage(e instanceof Error?e.message:"Could not load saved workspace.");}})();return()=>{active=false;};},[signedIn]);
  const field=(label:string,value:string,set:(v:string)=>void,placeholder:string,multiline=false)=><><Text style={s.label}>{label}</Text><TextInput value={value} onChangeText={set} placeholder={placeholder} placeholderTextColor={C.muted} multiline={multiline} style={[s.input,multiline?{minHeight:82,textAlignVertical:"top" as const}:{}]}/></>;
  const makePlan=()=>{
   const d=Math.max(7,Math.min(365,Number(days)||30));
@@ -39,8 +39,9 @@ export default function BusinessStudio({signedIn}:{signedIn:boolean}){
   setAiBusy(true);setMessage("");
   try{
    const token=await SecureStore.getItemAsync("nexora_session");
-   const r=await fetch(API+"/v1/business/ai-plan",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},body:JSON.stringify({business_name:name,industry,customer,problem,offer,budget,duration_days:days})});
-   const d=await r.json();if(!r.ok)throw new Error(d.error||"AI planning failed");
+   if(!token)throw new Error("Your session has expired. Sign in again.");
+   const {ok,data:d}=await apiRequest("/v1/business/ai-plan",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},body:JSON.stringify({business_name:name,industry,customer,problem,offer,budget,duration_days:days})});
+   if(!ok)throw new Error(d.error||"AI planning failed");
    setAiPlan(d.plan);setPlan(d.plan);setNotes(d.plan);setMessage("AI business plan generated. Review it and save it to your workspace.");
   }catch(e){setMessage(e instanceof Error?e.message:"AI planning is temporarily unavailable.");}
   finally{setAiBusy(false);}
@@ -48,7 +49,7 @@ export default function BusinessStudio({signedIn}:{signedIn:boolean}){
  const save=async()=>{
   if(!signedIn){setMessage("Sign in in Profile before saving.");return;}
   setBusy(true);
-  try{const token=await SecureStore.getItemAsync("nexora_session");const r=await fetch(API+"/v1/business/workspace",{method:"PUT",headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},body:JSON.stringify({business_name:name,tagline,goals:notes||plan})});const d=await r.json();if(!r.ok)throw new Error(d.error||"Save failed");setMessage("Workspace saved to your ALPINOSS account.");}
+  try{const token=await SecureStore.getItemAsync("nexora_session");if(!token)throw new Error("Your session has expired. Sign in again.");const {ok,data:d}=await apiRequest("/v1/business/workspace",{method:"PUT",headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},body:JSON.stringify({business_name:name,tagline,goals:notes||plan})});if(!ok)throw new Error(d.error||"Save failed");setMessage("Workspace saved to your ALPINOSS account.");}
   catch(e){setMessage(e instanceof Error?e.message:"Could not save workspace.");}
   finally{setBusy(false);}
  };

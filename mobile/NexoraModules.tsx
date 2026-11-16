@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Text, TextInput, TouchableOpacity, View } from "react-native";
 import * as SecureStore from "expo-secure-store";
 import BusinessStudio from "./BusinessStudio";
-import { API_BASE as API } from "./api";
+import { apiRequest } from "./api";
 
 const C = { bg:"#08111F", panel:"#111E30", line:"#263A53", text:"#F3F7FC", muted:"#91A4BA", cyan:"#4b8dff" };
 const styles = {
@@ -25,22 +25,16 @@ export default function AlpinossModules({screen,signedIn,onNavigate}:{screen:"Co
   const [description,setDescription]=useState("");
   const [price,setPrice]=useState("0");
   const [category,setCategory]=useState("service");
-  const [businessName,setBusinessName]=useState("");
-  const [tagline,setTagline]=useState("");
-  const [goals,setGoals]=useState("");
   const [busy,setBusy]=useState(false);
   const [loading,setLoading]=useState(false);
 
   const token=async()=>await SecureStore.getItemAsync("nexora_session");
-  const loadPosts=async()=>{setLoading(true);try{const r=await fetch(API+"/v1/community/posts");const d=await r.json();if(!r.ok)throw new Error(d.error);setPosts(d.posts||[]);setMessage("");}catch(e){setMessage(e instanceof Error?e.message:"Community unavailable.");}finally{setLoading(false);}};
-  const loadOffers=async()=>{setLoading(true);try{const r=await fetch(API+"/v1/marketplace/listings");const d=await r.json();if(!r.ok)throw new Error(d.error);setOffers(d.listings||[]);setMessage("");}catch(e){setMessage(e instanceof Error?e.message:"Marketplace unavailable.");}finally{setLoading(false);}};
-  const loadWorkspace=async()=>{try{const t=await token();const r=await fetch(API+"/v1/business/workspace",{headers:{Authorization:"Bearer "+t}});const d=await r.json();if(!r.ok)throw new Error(d.error);setBusinessName(d.workspace.business_name||"");setTagline(d.workspace.tagline||"");setGoals(d.workspace.goals||"");}catch(e){setMessage(e instanceof Error?e.message:"Workspace unavailable.");}};
-  useEffect(()=>{if(screen==="Community")loadPosts();if(screen==="Marketplace")loadOffers();if(screen==="Business"&&signedIn)loadWorkspace();},[screen,signedIn]);
+  const loadPosts=async()=>{setLoading(true);try{const {ok,data}=await apiRequest("/v1/community/posts");if(!ok)throw new Error(data.error||"Community is unavailable.");setPosts(data.posts||[]);setMessage("");}catch(e){setMessage(e instanceof Error?e.message:"Community unavailable.");}finally{setLoading(false);}};
+  const loadOffers=async()=>{setLoading(true);try{const {ok,data}=await apiRequest("/v1/marketplace/listings");if(!ok)throw new Error(data.error||"Marketplace is unavailable.");setOffers(data.listings||[]);setMessage("");}catch(e){setMessage(e instanceof Error?e.message:"Marketplace unavailable.");}finally{setLoading(false);}};
+  useEffect(()=>{if(screen==="Community")loadPosts();if(screen==="Marketplace")loadOffers();},[screen]);
 
-  const publishPost=async()=>{if(!signedIn){onNavigate("Profile");return;}if(!post.trim()){setMessage("Write a post first.");return;}setBusy(true);try{const t=await token();const r=await fetch(API+"/v1/community/posts",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+t},body:JSON.stringify({body:post})});const d=await r.json();if(!r.ok)throw new Error(d.error);setPosts(p=>[d.post,...p]);setPost("");setMessage("Post published.");}catch(e){setMessage(e instanceof Error?e.message:"Could not publish.");}finally{setBusy(false);}};
-  const publishOffer=async()=>{if(!signedIn){setMessage("Sign in in Profile to publish an offer.");return;}if(!title.trim()||!description.trim()){setMessage("Add an offer title and description before publishing.");return;}const numericPrice=Number(price.replace(",","."));if(!Number.isFinite(numericPrice)||numericPrice<0){setMessage("Enter a valid price of €0 or more.");return;}setBusy(true);try{const t=await token();const r=await fetch(API+"/v1/marketplace/listings",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+t},body:JSON.stringify({title:title.trim(),description:description.trim(),price:numericPrice.toFixed(2),category})});const d=await r.json();if(!r.ok)throw new Error(d.error);setOffers(p=>[d.listing,...p]);setTitle("");setDescription("");setPrice("0");setMessage("Offer published. Checkout is not enabled yet.");}catch(e){setMessage(e instanceof Error?e.message:"Could not publish offer.");}finally{setBusy(false);}};
-  const saveWorkspace=async()=>{if(!signedIn){setMessage("Sign in in Profile to save your workspace.");return;}setBusy(true);try{const t=await token();const r=await fetch(API+"/v1/business/workspace",{method:"PUT",headers:{"Content-Type":"application/json",Authorization:"Bearer "+t},body:JSON.stringify({business_name:businessName,tagline,goals})});const d=await r.json();if(!r.ok)throw new Error(d.error);setMessage("Workspace saved to your account.");}catch(e){setMessage(e instanceof Error?e.message:"Could not save workspace.");}finally{setBusy(false);}};
-
+  const publishPost=async()=>{if(!signedIn){onNavigate("Profile");return;}if(!post.trim()){setMessage("Write a post first.");return;}setBusy(true);try{const t=await token();if(!t){onNavigate("Profile");throw new Error("Your session has expired. Sign in again.");}const {ok,data}=await apiRequest("/v1/community/posts",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+t},body:JSON.stringify({body:post})});if(!ok)throw new Error(data.error||"Could not publish the update.");setPosts(p=>[data.post,...p]);setPost("");setMessage("Post published.");}catch(e){setMessage(e instanceof Error?e.message:"Could not publish.");}finally{setBusy(false);}};
+  const publishOffer=async()=>{if(!signedIn){setMessage("Sign in in Profile to publish an offer.");return;}if(!title.trim()||!description.trim()){setMessage("Add an offer title and description before publishing.");return;}const numericPrice=Number(price.replace(",","."));if(!Number.isFinite(numericPrice)||numericPrice<0){setMessage("Enter a valid price of €0 or more.");return;}setBusy(true);try{const t=await token();if(!t){onNavigate("Profile");throw new Error("Your session has expired. Sign in again.");}const {ok,data}=await apiRequest("/v1/marketplace/listings",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+t},body:JSON.stringify({title:title.trim(),description:description.trim(),price:numericPrice.toFixed(2),category})});if(!ok)throw new Error(data.error||"Could not publish the offer.");setOffers(p=>[data.listing,...p]);setTitle("");setDescription("");setPrice("0");setMessage("Offer published. Checkout is not enabled yet.");}catch(e){setMessage(e instanceof Error?e.message:"Could not publish offer.");}finally{setBusy(false);}};
   const field=(label:string,value:string,onChange:(v:string)=>void,placeholder:string,multiline=false)=><><Text style={styles.label}>{label}</Text><TextInput value={value} onChangeText={onChange} placeholder={placeholder} placeholderTextColor={C.muted} multiline={multiline} style={[styles.input,multiline?{minHeight:90,textAlignVertical:"top" as const}:{}]}/></>;
   const button=(label:string,onPress:()=>void)=><TouchableOpacity disabled={busy} style={styles.button} onPress={onPress}><Text style={styles.buttonText}>{busy?"PLEASE WAIT":label}</Text></TouchableOpacity>;
 

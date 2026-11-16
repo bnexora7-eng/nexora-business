@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import * as SecureStore from "expo-secure-store";
 import AlpinossModules from "./NexoraModules";
-import { API_BASE } from "./api";
+import { API_BASE, apiRequest } from "./api";
 import { Alert, BackHandler, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View, Linking } from "react-native";
 
 type Tab = "Home" | "Community" | "Marketplace" | "Business" | "Integrity" | "Profile";
@@ -40,9 +40,15 @@ export default function App() {
       try {
         const token = await SecureStore.getItemAsync("nexora_session");
         if (!token) return;
-        const response = await fetch(API_BASE + "/v1/auth/me", { headers: { Authorization: "Bearer " + token } });
-        if (!response.ok) { await SecureStore.deleteItemAsync("nexora_session"); return; }
-        const data = await response.json();
+        const { ok, status, data } = await apiRequest("/v1/auth/me", { headers: { Authorization: "Bearer " + token } });
+        if (!ok) {
+          if (status === 401 || status === 403) {
+            await SecureStore.deleteItemAsync("nexora_session");
+          } else if (active) {
+            setAuthMessage(data.error || "Nie udało się teraz sprawdzić sesji. Spróbuj ponownie.");
+          }
+          return;
+        }
         if (active) setAccount(data.user);
       } catch {
         if (active) setAuthMessage("Nie można połączyć się z serwerem konta.");
@@ -57,13 +63,12 @@ export default function App() {
     if (!email.trim() || !password) { setAuthMessage("Wpisz adres e-mail i hasło."); return; }
     setAuthBusy(true);
     try {
-      const response = await fetch(API_BASE + (authMode === "register" ? "/v1/auth/register" : "/v1/auth/login"), {
+      const { ok, data } = await apiRequest(authMode === "register" ? "/v1/auth/register" : "/v1/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim(), password })
       });
-      const data = await response.json();
-      if (!response.ok) {
+      if (!ok) {
         if (data.code === "email_not_verified") setPendingVerificationEmail(email.trim());
         throw new Error(data.error || "Nie udało się zalogować.");
       }
@@ -89,7 +94,7 @@ export default function App() {
   const signOut = async () => {
     try {
       const token = await SecureStore.getItemAsync("nexora_session");
-      if (token && API_BASE) await fetch(API_BASE + "/v1/auth/logout", { method: "POST", headers: { Authorization: "Bearer " + token } });
+      if (token && API_BASE) await apiRequest("/v1/auth/logout", { method: "POST", headers: { Authorization: "Bearer " + token } }, 8000);
     } catch {}
     await SecureStore.deleteItemAsync("nexora_session");
     setAccount(null);
@@ -114,9 +119,8 @@ export default function App() {
               Alert.alert("Sign in required", "Your session is no longer available. Sign in again before deleting the account.");
               return;
             }
-            const response = await fetch(API_BASE + "/v1/auth/account", { method: "DELETE", headers: { Authorization: "Bearer " + token } });
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.error || "Account deletion failed.");
+            const { ok, data } = await apiRequest("/v1/auth/account", { method: "DELETE", headers: { Authorization: "Bearer " + token } });
+            if (!ok) throw new Error(data.error || "Account deletion failed.");
             await SecureStore.deleteItemAsync("nexora_session");
             setAccount(null); setPassword(""); setAuthMessage("Your ALPINOSS account and associated content have been deleted.");
             setTab("Home");
@@ -245,7 +249,7 @@ export default function App() {
             {authMode==="register"&&<Text style={styles.note}>Use at least 12 characters. Your password is stored as a salted secure hash, not as plain text.</Text>}
             <TouchableOpacity style={[styles.primary,authBusy&&{opacity:0.6}]} disabled={authBusy} onPress={submitAuth}><Text style={styles.primaryText}>{authBusy?"PLEASE WAIT":authMode==="register"?"CREATE ACCOUNT":"SIGN IN"}</Text></TouchableOpacity>
             {!!authMessage&&<Text style={[styles.note,{marginBottom:0}]}>{authMessage}</Text>}
-            {!!pendingVerificationEmail&&<TouchableOpacity style={styles.action} onPress={async()=>{try{const response=await fetch(API_BASE+"/v1/auth/resend-verification",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:pendingVerificationEmail})});const data=await response.json();if(!response.ok)throw new Error(data.error||"Nie udało się wysłać wiadomości.");setAuthMessage("Jeśli konto oczekuje na potwierdzenie, wysłaliśmy nowy link na "+pendingVerificationEmail+".");}catch(error){setAuthMessage(error instanceof Error?error.message:"Błąd połączenia.");}}}><View style={{flex:1}}><Text style={styles.actionTitle}>Wyślij ponownie link aktywacyjny</Text><Text style={styles.muted}>{pendingVerificationEmail}</Text></View><Text style={styles.arrow}>›</Text></TouchableOpacity>}
+            {!!pendingVerificationEmail&&<TouchableOpacity style={styles.action} onPress={async()=>{try{const {ok,data}=await apiRequest("/v1/auth/resend-verification",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:pendingVerificationEmail})});if(!ok)throw new Error(data.error||"Nie udało się wysłać wiadomości.");setAuthMessage("Jeśli konto oczekuje na potwierdzenie, wysłaliśmy nowy link na "+pendingVerificationEmail+".");}catch(error){setAuthMessage(error instanceof Error?error.message:"Błąd połączenia.");}}}><View style={{flex:1}}><Text style={styles.actionTitle}>Wyślij ponownie link aktywacyjny</Text><Text style={styles.muted}>{pendingVerificationEmail}</Text></View><Text style={styles.arrow}>›</Text></TouchableOpacity>}
             <TouchableOpacity onPress={()=>Linking.openURL("https://bnexora7-eng.github.io/nexora-business/account/forgot-password.html")}><Text style={styles.note}>Nie pamiętasz hasła? Odzyskaj konto</Text></TouchableOpacity>
             <TouchableOpacity onPress={()=>Linking.openURL("https://bnexora7-eng.github.io/nexora-business/privacy/")}><Text style={styles.note}>Read ALPINOSS Privacy Policy</Text></TouchableOpacity>
             {!API_BASE&&<Text style={styles.note}>The account server must be deployed and connected before registration can work.</Text>}
