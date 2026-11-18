@@ -9,13 +9,16 @@ on:
     branches:
       - main
   workflow_dispatch:
+  pull_request:
+    types:
+      - closed
 
 permissions:
   contents: read
 
 jobs:
   preflight:
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -90,3 +93,79 @@ jobs:
           fi
           jq -e '.write_access == true and (.cleanup == "deleted" or .cleanup == "not_present")' "$response" >/dev/null
           echo "PASS: temporary test secret was created and removed. Existing secrets were not changed."
+
+  permission-test:
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.merged == true &&
+      contains(github.event.pull_request.body, '<!-- alpinoss-one-time-github-secrets-write-test -->')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Validate trigger secret
+        env:
+          BACKUP_TOKEN: ${{ secrets.NEXORA_BACKUP_TRIGGER_TOKEN }}
+        run: |
+          if [ -z "$BACKUP_TOKEN" ]; then
+            echo "Missing GitHub Actions secret NEXORA_BACKUP_TRIGGER_TOKEN."
+            exit 1
+          fi
+
+      - name: Wait for the updated Render API to become live
+        shell: bash
+        env:
+          BACKUP_TOKEN: ${{ secrets.NEXORA_BACKUP_TRIGGER_TOKEN }}
+          API_URL: https://nexora-payment-integrity-api.onrender.com
+        run: |
+          set -euo pipefail
+          response="$(mktemp)"
+          trap 'rm -f "$response"' EXIT
+          status=""
+          ready="false"
+          for attempt in $(seq 1 20); do
+            status="$(curl --silent --show-error --output "$response" --write-out '%{http_code}' \
+              --connect-timeout 5 --max-time 15 \
+              -H "Authorization: Bearer $BACKUP_TOKEN" \
+              "$API_URL/internal/backup/preflight" || true)"
+            if [ "$status" = "401" ]; then
+              echo "Render rejected the preflight token."
+              exit 1
+            fi
+            if [ "$status" = "200" ] && jq -e '.github_actions_secrets_write_test_endpoint == "available"' "$response" >/dev/null 2>&1; then
+              ready="true"
+              break
+            fi
+            sleep 15
+          done
+          if [ "$ready" != "true" ]; then
+            echo "Updated Render API did not become ready; no secret write was attempted."
+            exit 1
+          fi
+          echo "PASS: updated Render API is live. Starting the one-time permission test."
+
+      - name: Create and immediately remove one random temporary Actions secret
+        shell: bash
+        env:
+          BACKUP_TOKEN: ${{ secrets.NEXORA_BACKUP_TRIGGER_TOKEN }}
+          API_URL: https://nexora-payment-integrity-api.onrender.com
+        run: |
+          set -euo pipefail
+          response="$(mktemp)"
+          trap 'rm -f "$response"' EXIT
+          status="$(curl --silent --show-error --output "$response" --write-out '%{http_code}' \
+            --request POST --connect-timeout 10 --max-time 60 \
+            -H "Authorization: Bearer $BACKUP_TOKEN" \
+            "$API_URL/internal/backup/github-actions-secrets-permission-test" || true)"
+          if [ "$status" != "200" ]; then
+            echo "Secret permission test endpoint failed (HTTP ${status:-none})."
+            cat "$response" 2>/dev/null || true
+            exit 1
+          fi
+          cat "$response"
+          result="$(jq -er '.status' "$response")"
+          if [ "$result" != "permission_test_passed" ]; then
+            echo "GitHub Actions secret write permission was not confirmed."
+            exit 1
+          fi
+          jq -e '.write_access == true and (.cleanup == "deleted" or .cleanup == "not_present")' "$response" >/dev/null
+          echo "PASS: one temporary secret was created and removed. Existing secrets were not changed."
