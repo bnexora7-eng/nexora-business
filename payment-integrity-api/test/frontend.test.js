@@ -41,7 +41,7 @@ test("project enquiry form prepares a local email without a third-party form pro
   assert.ok(script, "project enquiry page must include its form script");
   assert.doesNotThrow(() => new vm.Script(script), "project enquiry script must parse");
   assert.match(html, /Prepare email enquiry/);
-  assert.match(script, /mailto:alpinoosalpinoos@gmail\.com/);
+  assert.match(script, /mailto:alpinooslpinoos@gmail\.com/);
   assert.match(html, /privacy notice/);
   assert.doesNotMatch(html, /formsubmit\\.co|formsubmit|form-processing provider/i, "enquiry must not claim to use a third-party processor");
 });
@@ -57,8 +57,9 @@ test("central ALPINOSS pricing page exposes all prices and milestone terms", asy
   }
   assert.match(pricing, /Agreed advance/);
   assert.match(pricing, /Remaining balance/);
-  assert.match(pricing, /30% upfront/);
-  assert.match(pricing, /one-time payments/i);\n  assert.match(pricing, /No fixed percentage split is assumed/);\n  assert.doesNotMatch(pricing, /50% upfront|50% after|30% upfront/);
+  assert.match(pricing, /one-time payments/i); 
+  assert.match(pricing, /No fixed percentage split is assumed/);
+  assert.doesNotMatch(pricing, /50% upfront|50% after|30% upfront/);
   assert.match(pricing, /no monthly membership or recurring platform fee/i);
   assert.doesNotMatch(pricing, /29\.99|monthly membership fee|subscription checkout/i);
 });
