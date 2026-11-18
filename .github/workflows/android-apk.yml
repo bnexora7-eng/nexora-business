@@ -1,4 +1,4 @@
-name: NEXORA Android installable test APK
+name: ALPINOSS Android installable test APK
 
 on:
   workflow_dispatch:
@@ -43,15 +43,15 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: nexora-mobile-package-lock
+          name: alpinoss-mobile-package-lock
           path: mobile/package-lock.json
           if-no-files-found: ignore
           retention-days: 7
       - name: Audit production dependency tree
         working-directory: mobile
         run: |
-          npm audit --omit=dev --json > /tmp/nexora-mobile-audit.json || audit_status=$?
-          node ../scripts/check-mobile-audit.mjs /tmp/nexora-mobile-audit.json
+          npm audit --omit=dev --json > /tmp/alpinoss-mobile-audit.json || audit_status=$?
+          node ../scripts/check-mobile-audit.mjs /tmp/alpinoss-mobile-audit.json
       - name: Check TypeScript
         working-directory: mobile
         run: npm run typecheck
@@ -73,12 +73,12 @@ jobs:
           test -x "$APKSIGNER"
           test -x "$AAPT"
           "$APKSIGNER" verify --verbose "$APK"
-          "$AAPT" dump badging "$APK" | grep -F "package: name='com.nexora.business' versionCode='4' versionName='0.4.0'"
+          "$AAPT" dump badging "$APK" | grep -F "package: name='com.alpinoss.app' versionCode='5' versionName='0.5.0'"
           sha256sum "$APK"
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: nexora-android-test-apk
+          name: alpinoss-android-test-apk
           path: mobile/android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
           retention-days: 14
