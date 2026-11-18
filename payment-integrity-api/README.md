@@ -36,7 +36,7 @@ The committed `package-lock.json` pins the API dependency tree. Keep it synchron
 
 Passwords are stored as salted scrypt hashes. Session and email-action tokens are stored as SHA-256 hashes. Authentication routes use a PostgreSQL-backed rate limiter. Account deletion fails closed when provider payments cannot be safely reconciled.
 
-Transactional email is sent through the Brevo HTTPS API when `BREVO_API_KEY` and a verified `BREVO_FROM` sender are configured. SMTP variables remain for environments that permit outbound SMTP; Render Free web services block outbound SMTP ports 25, 465 and 587.
+Transactional account email prefers the Resend HTTPS API when `RESEND_API_KEY` is configured, using `RESEND_FROM` on a verified sending domain. Brevo HTTPS remains as a legacy fallback when no Resend key is configured. SMTP variables are retained only for environments that permit outbound SMTP; Render Free web services block outbound SMTP ports 25, 465 and 587. Live customer delivery requires a verified sending domain.
 
 ## ALPINOSS one-time project quotations and payment readiness
 
