@@ -20,6 +20,7 @@ The committed `package-lock.json` pins the API dependency tree. Keep it synchron
 
 - `GET /health` — process health
 - `GET /ready` — readiness check; returns ready only when PostgreSQL is connected
+- `GET /internal/backup/preflight` — authenticated, read-only operations diagnostic. In addition to backup preflight, reports only boolean/configuration modes for transactional email, AI budget and Mollie checkout; it never returns secret values. Requires the existing `BACKUP_TRIGGER_TOKEN` as a Bearer token and does not start a backup.
 
 ## Account endpoints
 
