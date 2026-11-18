@@ -17,9 +17,14 @@ The ALPINOSS API runs on Render Free. The application now prefers Resend over Br
 
 ### What is still required for real customer email
 
-The repository currently uses GitHub Pages at `bnexora7-eng.github.io`; the project records do not identify a separately owned ALPINOSS domain. Resend's `onboarding@resend.dev` sender is restricted to testing and cannot send verification/reset emails to arbitrary customers. To send to ALPINOSS users, a domain controlled by the owner must be added and verified in Resend, with the exact DNS records Resend provides.
+The repository currently uses GitHub Pages at `bnexora7-eng.github.io`; this is a GitHub Pages hostname, not evidence of a separately owned ALPINOSS sending domain. A review of the connected project mailbox on 18 November 2026 found no domain-purchase or successful registration confirmation. Earlier attempts concerned `nexora.net.eu.org` (NEXORA, not ALPINOSS): EU.org contact records were created, but the owner reported that contact activation failed and explicitly said no domain request had been submitted. Hostry confirmed its Free DNS product does not support names with more than two dots, so it cannot host `nexora.net.eu.org`. A later message about `alpinoss.net.eu.org` was sent to an invalid recipient and bounced. Therefore neither EU.org name is registered or verified based on the available evidence. Resend's `onboarding@resend.dev` sender is restricted to testing and cannot send verification/reset emails to arbitrary customers. To send through Resend to ALPINOSS users, an owner-controlled domain must first be registered, then added and verified in Resend using the exact DNS records Resend provides. The currently active provider reported by the live runtime diagnostic is Brevo, not Resend.
 
 Do not invent a domain or DNS records. Do not use the Gmail contact address as a sender domain.
+
+
+### Live runtime configuration check — 18 November 2026
+
+The authenticated, read-only diagnostic on the deployed Render API reported: active provider `brevo`; active API key configured; sender value configured; test transport disabled. This confirms that the Brevo environment variables are present, but **does not prove that the sender has been verified by Brevo or that an application verification/reset email reaches an inbox**. No end-to-end ALPINOSS registration or password-reset delivery test has yet been confirmed. Resend is not the active provider in this runtime.
 
 ### Render environment variables
 

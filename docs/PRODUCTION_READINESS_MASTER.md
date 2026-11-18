@@ -25,19 +25,21 @@ This file is the current release-gate summary. A green CI check validates only t
 
 ### A. Database durability — critical
 
-- Render PostgreSQL 18 database `nexora-business-db` is on the Free plan in Frankfurt.
-- Current expiry: **12 December 2026**. Free plan has no automated backups or point-in-time recovery.
-- No actual database export or restore test has been completed.
-- Encrypted backup runner and a separate `render-backup.yaml` Blueprint are prepared. Container and encryption checks passed. The separate Blueprint `exs-dbt262mc6qcc73ah50pg` was created, but Render's first planning attempt failed with `need_payment_info`; no Cron service was created and no database backup has run.
-- The private GitHub repository `bnexora7-eng/nexora-private-backups` and a fine-grained token scoped only to that repository have been created. The token is valid for 90 days. The Cron still requires Render to accept a payment method before the service can be planned and created. The user authorized a maximum of approximately **$1/month** for this backup service only.
-- After setup: plan and review the single Cron resource, deploy it, create the first encrypted backup, verify the private release assets and hashes, then restore into a separate PostgreSQL 18 recovery database. Do not overwrite production. Any additional paid recovery resource requires separate approval.
+- Render PostgreSQL 18 database `nexora-business-db` is on the Free plan in Frankfurt and is scheduled to expire **12 December 2026 at 14:31:31 UTC**. Free has no automated backups or point-in-time recovery.
+- Actual encrypted logical backups have been created successfully and uploaded to the private repository `bnexora7-eng/nexora-private-backups`. The latest verified backup is `nexora-20261118T040615Z.dump.enc`, 42,520 bytes, SHA-256 `2fe50f48da2edce91559ebee9a298b44dd35e5019b3bf70e9adee3319a2c66af`. Render backup job `583fb9f2-9fea-479b-8df5-696ad8240c2c` and GitHub Actions run `44234946355` completed successfully on 18 November 2026.
+- The backup procedure uses PostgreSQL 18 custom-format `pg_dump`, validates the archive with `pg_restore --list`, encrypts with AES-256-GCM, uploads only ciphertext to the private repository, and verifies the uploaded asset by reading it back and comparing SHA-256. This verifies the dump/archive and encrypted asset, **not a full restore**.
+- **Restore remains an open critical gate.** The isolated PostgreSQL 18 restore workflow is manual-only and must use backup stamp `20261118T040615Z`. An initial automated attempt (GitHub Actions run `44329422913`, 18 November 2026) safely stopped at its secret-presence check because repository Actions secrets `BACKUP_ENCRYPTION_KEY` and `BACKUP_READ_TOKEN` are missing. The disposable PostgreSQL container started and was removed; no backup was downloaded, decrypted or restored, and production was not accessed. Render's read-only preflight confirms its own backup key and GitHub token are configured, but those Render values are not automatically available to GitHub Actions. Add the exact corresponding secrets securely to the repository before dispatching the restore test; never put values in source control or chat. The workflow is intentionally manual-only until then.
+- The active backup scheduler uses the existing Render API and private backup repository. The separate Blueprint `exs-dbt262mc6qcc73ah50pg` is inactive, no Cron resource was created from it, and it is not required for the active backup path. Do not add paid resources without separate approval.
+- A secret-safe, authenticated, read-only runtime diagnostic was added in PR #19 and deployed to Render on 18 November 2026 (commit `a90b4dcb60d9797010a47d4a818d53b59fc07383`; deployment `dep-dburk2mi0phs73bf67r0`, status `live`). The endpoint reports backup configuration and sanitized email/AI/payment readiness. It does not start a backup or expose secret values. The authenticated read-only check completed successfully on 18 November 2026 at 14:53:38 UTC: database size 9,041,599 bytes (8.62 MiB), all three backup configuration checks true, and status `preflight_passed`. Runtime configuration reported Brevo active with API key and sender values present (test transport off); AI key absent, monthly budget not configured and AI disabled; Mollie key missing, one-off checkout disabled and live payments disabled. This confirms configuration presence/flags only, not actual email delivery or provider-side sender verification. No backup was started by this preflight.
 
 ### B. Transactional email
 
-- Brevo HTTPS delivery is implemented; unit tests cover sender, recipient, message payload and provider failure handling. The Brevo account-validation email and API-key-creation alert were received on 14 November 2026.
-- Actual delivery is **not verified**: the newly created `ALPINOSS-RENDER` API key still must be entered directly into Render as `BREVO_API_KEY`, and a verified sender address must be configured as `BREVO_FROM`. Do not copy the key into GitHub, email, chat or source files. `NEXORA_ACCOUNT_URL` and `PUBLIC_API_URL` have been explicitly set in Render and redeployed.
-- Render Free blocks outbound SMTP ports 25, 465 and 587; use Brevo HTTPS rather than relying on SMTP.
-- Required: create a Brevo API key, verify the sender/domain, enter secrets directly into Render, then test registration, resend verification, password reset and delivery to real inboxes. Never send API keys in chat.
+- The API has a Resend HTTPS integration and now prefers Resend when `RESEND_API_KEY` is present; Brevo remains a temporary fallback. Resend avoids the outbound SMTP ports blocked on Render Free.
+- **No owner-controlled ALPINOSS sending domain is confirmed.** The connected project mailbox was reviewed on 18 November 2026. It contains no domain-purchase or successful registration confirmation. The prior EU.org attempts concerned `nexora.net.eu.org` (NEXORA, not ALPINOSS): the EU.org contact activation was reported as failing, no domain request was submitted, and Hostry confirmed its Free DNS service rejects names with more than two dots. A later `alpinoss.net.eu.org` DNS-hosting enquiry bounced because the recipient domain did not exist. GitHub Pages hostname `bnexora7-eng.github.io` is not an owner-controlled sending domain.
+- Resend's `onboarding@resend.dev` is a test sender only; it is not suitable for arbitrary customer verification or password-reset messages. Real customer email requires registering an owner-controlled domain and verifying it in Resend.
+- After domain verification, enter `RESEND_API_KEY` and `RESEND_FROM` directly in Render. Keep `RESEND_ALLOW_TEST_SENDER` false/unset for production. Do not paste secrets into chat, GitHub, email, or screenshots.
+- The Resend code path and tests are present, but **end-to-end delivery to an owner-controlled inbox has not been verified**. Test registration verification, resend verification, and password reset before declaring email ready. Do not remove Brevo fallback variables until Resend delivery is confirmed.
+- Live runtime diagnostic (18 November 2026, 14:53:38 UTC): Brevo is the active provider; its API key and sender value are configured; test transport is off. This confirms environment presence only, not Brevo-side sender verification or successful transactional delivery. Resend is not active. The connected Gmail inbox contains Brevo account/API-key notifications, but no confirmed ALPINOSS registration-verification or password-reset test email.
 
 ### C. One-time project payments and merchant readiness
 
@@ -91,13 +93,14 @@ PostCSS is pinned to 8.5.33 to address the current PostCSS advisories. Full rati
 
 ## 4. Owner actions still required
 
-1. Add a payment method in Render for the approved backup Cron only. The private backup repository and narrowly scoped GitHub token already exist; after the Render service is created, add the token directly to its environment and verify the first backup.
-2. Create the Brevo API key and verify the sender/domain; enter secrets directly in Render.
-3. Assess KVK entrepreneur criteria and registration timing; confirm the appropriate Dutch business form, Tax Administration status and VAT treatment before paid trading.
-4. Confirm a suitable business bank account and payment-provider eligibility; choose a provider only after its onboarding requirements are met.
-5. Complete one-time quote, invoice/payment, webhook, refund and dispute tests in sandbox; keep checkout disabled until explicit approval.
-6. Decide separately when to pay the Google Play Console one-time developer registration fee and complete store declarations.
-7. Install the latest APK on a physical device and test registration, email verification, login, session persistence, Community/Marketplace, account deletion and error handling.
+1. Complete the isolated PostgreSQL 18 restore test for backup stamp `20261118T040615Z`; do not restore into production. Then plan database replacement before the Free database expires on 12 December 2026.
+2. If migrating from the currently active Brevo provider to Resend, register an owner-controlled ALPINOSS domain, configure DNS and verify it in Resend. No domain purchase or registration is confirmed; do not invent DNS records. If staying on Brevo, verify its configured sender in Brevo and complete an end-to-end delivery test first.
+3. Complete end-to-end registration verification, resend-verification and password-reset tests with an owner-controlled inbox using the currently active Brevo provider. If switching to Resend, first verify the owner-controlled domain, then enter `RESEND_API_KEY` and `RESEND_FROM` directly in Render.
+4. Assess KVK entrepreneur criteria and registration timing; confirm the appropriate Dutch business form, Tax Administration status and VAT treatment before paid trading.
+5. Confirm a suitable business bank account and payment-provider eligibility; choose a provider only after its onboarding requirements are met.
+6. Complete one-time quote, invoice/payment, webhook, refund and dispute tests in sandbox; keep checkout disabled until explicit approval.
+7. Decide separately when to pay the Google Play Console one-time developer registration fee and complete store declarations.
+8. Install the latest APK on a physical device and test registration, email verification, login, session persistence, Community/Marketplace, account deletion and error handling.
 
 ## 5. Release rule
 
