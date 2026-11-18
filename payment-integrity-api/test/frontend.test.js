@@ -46,7 +46,7 @@ test("project enquiry form prepares a local email without a third-party form pro
   assert.doesNotMatch(html, /formsubmit\\.co|formsubmit|form-processing provider/i, "enquiry must not claim to use a third-party processor");
 });
 
-test("central ALPINOSS pricing page exposes all prices and milestone terms", async () => {
+test("central ALPINOSS pricing page exposes indicative prices and individually agreed terms", async () => {
   const homePath = new URL("../../index.html", import.meta.url);
   const pricingPath = new URL("../../pricing/index.html", import.meta.url);
   const home = await readFile(homePath, "utf8");
@@ -55,8 +55,10 @@ test("central ALPINOSS pricing page exposes all prices and milestone terms", asy
   for (const price of ["€149", "€295", "€495", "From €950", "€950–€2,500", "€5,000–€15,000+"]) {
     assert.ok(pricing.includes(price), "missing published price: " + price);
   }
-  assert.match(pricing, /50% upfront/);
-  assert.match(pricing, /50% after delivery/);
+  assert.match(pricing, /prices above are indicative starting points/i);
+  assert.match(pricing, /final price, scope, deliverables and timeline are discussed and agreed/i);
+  assert.match(pricing, /payment method, schedule and any milestones are also agreed individually/i);
+  assert.doesNotMatch(pricing, /50% upfront|50% after delivery|30% upfront/i);
   assert.match(pricing, /one-time payments/i);
   assert.doesNotMatch(pricing, /29\.99|monthly membership fee|subscription checkout/i);
   assert.match(pricing, /no monthly membership or recurring platform fee/i);
