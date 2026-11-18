@@ -73,6 +73,31 @@ async function handleBackupStatus(req, res, id) {
   if (!result.rowCount) return send(res, 404, { error: "Backup job not found" });
   return send(res, 200, backupJobView(result.rows[0]));
 }
+async function checkGitHubActionsSecretsReadAccess() {
+  const token = String(process.env.GITHUB_TOKEN || "").trim();
+  if (!token) return { status: "not_configured" };
+  try {
+    const response = await fetch(
+      "https://api.github.com/repos/bnexora7-eng/nexora-private-backups/actions/secrets/public-key",
+      {
+        headers: {
+          Authorization: "Bearer " + token,
+          Accept: "application/vnd.github+json",
+          "X-GitHub-Api-Version": "2022-11-28",
+          "User-Agent": "ALPINOSS-backup-preflight"
+        },
+        signal: AbortSignal.timeout(8000)
+      }
+    );
+    if (response.status === 200) return { status: "available", permission: "secrets_read" };
+    if (response.status === 401) return { status: "unauthorized" };
+    if (response.status === 403) return { status: "forbidden_or_rate_limited" };
+    if (response.status === 404) return { status: "repository_not_found_or_not_accessible" };
+    return { status: "http_error", http_status: response.status };
+  } catch {
+    return { status: "request_failed" };
+  }
+}
 async function handleBackupPreflight(req, res) {
   if (!backupAuthorized(req)) return send(res, 401, { error: "Authentication required" });
   if (!pool || !DATABASE_URL) return send(res, 503, { error: "Database is not configured" });
@@ -90,6 +115,7 @@ async function handleBackupPreflight(req, res) {
     encryption_key_configured: Boolean(process.env.BACKUP_ENCRYPTION_KEY)
   };
   const configured = Object.values(configuration).every(Boolean);
+  const githubActionsSecretsReadAccess = await checkGitHubActionsSecretsReadAccess();
 
   // Report configuration presence only. Never include secret values, database URLs,
   // sender addresses, customer data, or provider credentials in diagnostics.
@@ -136,6 +162,7 @@ async function handleBackupPreflight(req, res) {
       below_90_mib_database_size_threshold: databaseSizeBytes <= maxUploadBytes
     },
     configuration,
+    github_actions_secrets_read_access: githubActionsSecretsReadAccess,
     runtime_configuration: runtimeConfiguration
   });
 }
