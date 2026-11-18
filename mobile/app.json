@@ -2,12 +2,12 @@
   "expo": {
     "name": "ALPINOSS",
     "slug": "alpinoss",
-    "version": "0.5.0",
+    "version": "0.5.1",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "android": {
       "package": "com.alpinoss.app",
-      "versionCode": 5,
+      "versionCode": 6,
       "permissions": []
     },
     "extra": {
