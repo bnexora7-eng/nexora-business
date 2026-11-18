@@ -35,7 +35,7 @@
 (function(){
 "use strict";
 const API="https://nexora-payment-integrity-api.onrender.com";
-const token=sessionStorage.getItem("nexora_web_token");
+const token=sessionStorage.getItem("alpinoss_web_token");
 const gate=document.getElementById("gate"),app=document.getElementById("workspace-app");
 const $=id=>document.getElementById(id);
 function status(id,message,type){const node=$(id);node.textContent=message;node.className="status "+(type||"");}
@@ -50,8 +50,8 @@ $("workspace-form").addEventListener("submit",async e=>{e.preventDefault();try{a
 $("ai-form").addEventListener("submit",async e=>{e.preventDefault();const button=$("ai-submit");button.disabled=true;status("ai-status","Generating your plan…");$("ai-output").classList.add("hidden");try{const data=await request("/v1/business/ai-plan",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({business_name:$("ai-name").value,industry:$("industry").value,customer:$("customer").value,budget:$("budget").value,duration_days:$("duration").value,offer:$("offer").value,problem:$("problem").value})});$("ai-output").textContent=data.plan;$("ai-output").classList.remove("hidden");status("ai-status","Business plan generated.","ok");}catch(err){status("ai-status",err.message,"error");}finally{button.disabled=false;}});
 $("post-form").addEventListener("submit",async e=>{e.preventDefault();try{await request("/v1/community/posts",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({body:$("post-body").value})});$("post-body").value="";status("post-status","Your post has been published.","ok");await loadPosts();}catch(err){status("post-status",err.message,"error");}});
 $("listing-form").addEventListener("submit",async e=>{e.preventDefault();try{await request("/v1/marketplace/listings",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({title:$("listing-title").value,description:$("listing-description").value,category:$("listing-category").value,price:$("listing-price").value})});$("listing-form").reset();status("listing-status","Your listing has been published.","ok");await loadListings();}catch(err){status("listing-status",err.message,"error");}});
-$("signout").addEventListener("click",async()=>{try{await request("/v1/auth/logout",{method:"POST"});}catch{}sessionStorage.removeItem("nexora_web_token");sessionStorage.removeItem("nexora_web_email");location.href="../account/";});
-(async()=>{if(!token){showGate("Sign in required","Sign in to your ALPINOSS account to continue.");return;}try{await request("/v1/auth/me");app.classList.remove("hidden");await Promise.all([loadWorkspace(),loadPosts(),loadListings()]);}catch(e){app.classList.add("hidden");if(e.status===401){sessionStorage.removeItem("nexora_web_token");showGate("Session expired","Please sign in again to continue.");}else{showGate("Workspace unavailable",e.message);}}})();
+$("signout").addEventListener("click",async()=>{try{await request("/v1/auth/logout",{method:"POST"});}catch{}sessionStorage.removeItem("alpinoss_web_token");sessionStorage.removeItem("alpinoss_web_email");location.href="../account/";});
+(async()=>{if(!token){showGate("Sign in required","Sign in to your ALPINOSS account to continue.");return;}try{await request("/v1/auth/me");app.classList.remove("hidden");await Promise.all([loadWorkspace(),loadPosts(),loadListings()]);}catch(e){app.classList.add("hidden");if(e.status===401){sessionStorage.removeItem("alpinoss_web_token");showGate("Session expired","Please sign in again to continue.");}else{showGate("Workspace unavailable",e.message);}}})();
 })();
 </script>
 </body>
