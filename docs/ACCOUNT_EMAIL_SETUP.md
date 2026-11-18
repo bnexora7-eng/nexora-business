@@ -2,47 +2,52 @@
 
 Account registration requires email verification. Verification links are single-use and expire after 24 hours. Password-reset links are single-use and expire after one hour; a password reset revokes every active session for that account.
 
-## Recommended provider for the current Render deployment: Brevo API
+## Preferred provider: Resend HTTPS API
 
-The ALPINOSS API currently runs as a **Free Render web service**. Render blocks outbound SMTP traffic on ports 465 and 587 for Free web services, so Gmail SMTP on port 465 will not work from this deployment. The API already supports Brevo's HTTPS API, which uses outbound HTTPS rather than SMTP.
+The ALPINOSS API runs on Render Free. The application now prefers Resend over Brevo whenever `RESEND_API_KEY` is present. Resend uses HTTPS and does not require outbound SMTP ports.
 
-Before enabling live account registration:
+### What is already implemented
 
-1. Create/verify a sender identity in Brevo. The sender address must be verified by Brevo; do not assume the Gmail mailbox can be used until Brevo confirms it.
-2. Create a Brevo API key. Keep it private.
-3. In Render Dashboard → `nexora-payment-integrity-api` → Environment, add these server-side variables:
+- Resend API integration at `POST https://api.resend.com/emails`.
+- Existing ALPINOSS verification and password-reset templates are reused.
+- API credentials remain server-side.
+- Provider errors are sanitized before they reach application callers.
+- Automated tests cover the Resend request and the safety guard for the test sender.
+- Brevo remains as a temporary fallback for rollback; it is not required when Resend is configured.
 
-| Variable | Value |
-|---|---|
-| `BREVO_API_KEY` | The private Brevo API key |
-| `BREVO_FROM` | The verified sender email address in Brevo |
-| `NEXORA_ACCOUNT_URL` | `https://bnexora7-eng.github.io/nexora-business/account` |
+### What is still required for real customer email
 
-4. Save and redeploy the API. Do not paste the API key into chat, GitHub, website JavaScript, mobile app, or screenshots.
-5. Verify delivery by registering with an email address you control, then confirm the message arrives and the link opens the ALPINOSS verification page. Also test password reset.
+The repository currently uses GitHub Pages at `bnexora7-eng.github.io`; the project records do not identify a separately owned ALPINOSS domain. Resend's `onboarding@resend.dev` sender is restricted to testing and cannot send verification/reset emails to arbitrary customers. To send to ALPINOSS users, a domain controlled by the owner must be added and verified in Resend, with the exact DNS records Resend provides.
 
-The code gives Brevo precedence when `BREVO_API_KEY` is configured. Gmail SMTP variables remain available for a future paid host or another environment that permits SMTP; they are not the recommended transport for the current Free Render service.
+Do not invent a domain or DNS records. Do not use the Gmail contact address as a sender domain.
 
-## Gmail SMTP (not usable on the current Free Render web service)
+### Render environment variables
 
-For a future host that permits outbound SMTP, the API supports Gmail SMTP with a Google App Password:
+In Render Dashboard → `nexora-payment-integrity-api` → Environment, add:
 
 | Variable | Value |
 |---|---|
-| `SMTP_HOST` | `smtp.gmail.com` |
-| `SMTP_PORT` | `465` |
-| `SMTP_SECURE` | `true` |
-| `SMTP_USER` | ALPINOSS mailbox address |
-| `SMTP_APP_PASSWORD` | Google App Password, never the normal Gmail password |
-| `SMTP_FROM` | Verified sender identity |
+| `RESEND_API_KEY` | Private Resend API key; enter directly in Render |
+| `RESEND_FROM` | Sender address on the verified domain, e.g. `ALPINOSS <no-reply@your-verified-domain>` |
 
-Never weaken Google account security if App Passwords are unavailable.
+Keep `RESEND_ALLOW_TEST_SENDER=false` (or unset) for production. Do not set `RESEND_FROM=onboarding@resend.dev` for public registration. The API deliberately fails closed if the test sender is selected without explicit test override.
 
-## Database and deployment
+The API will use Resend whenever `RESEND_API_KEY` exists. If it is absent, the legacy Brevo configuration may still be used. Remove the old Brevo variables only after Resend delivery has been verified; no secret should be copied into GitHub, chat, email, browser JavaScript or screenshots.
 
-The API startup executes `src/schema.sql` and logs `ALPINOSS database schema is ready` when database initialization succeeds. Database migrations must be reviewed and backed up before deployment. The current Free Render Postgres instance has no backups and expires on 12 December 2026; follow `docs/POSTGRESQL_BACKUP_AND_MIGRATION.md` before relying on it for production data.
+### Safe rollout and verification
 
-## Endpoints
+1. Create a Resend account and verify an owner-controlled sending domain.
+2. Create a sending-only API key.
+3. Enter `RESEND_API_KEY` and `RESEND_FROM` directly in Render.
+4. Save and wait for the automatic deployment.
+5. Register a test account using an email address controlled by the owner.
+6. Confirm the verification email arrives and its one-time link activates the account.
+7. Test password reset and confirm the one-time link works.
+8. Only after both live tests pass, remove legacy Brevo secrets from Render.
+
+Do not enable live payments or claim production readiness as part of this email-provider change.
+
+## Account endpoints
 
 - `POST /v1/auth/register` — creates a pending account and sends a 24-hour verification link; does not issue a session.
 - `POST /v1/auth/verify-email` — consumes the one-use verification token.
@@ -51,11 +56,3 @@ The API startup executes `src/schema.sql` and logs `ALPINOSS database schema is 
 - `POST /v1/auth/request-password-reset` — returns a non-enumerating response and sends a one-hour reset link when eligible.
 - `POST /v1/auth/reset-password` — changes the password and revokes active sessions.
 - `GET /v1/auth/me` and authenticated feature routes — require a verified account.
-
-The public account pages are `account/verify.html`, `account/forgot-password.html`, and `account/reset-password.html`.
-
-## Automated delivery test evidence — 14 November 2026
-
-- Brevo HTTPS delivery has unit coverage for the exact API endpoint, configured verified sender, recipient, verification/reset link payload, success response and sanitized provider failure. The API test workflow passed on commit `f0f1684843` (run 43618838900).
-- The PostgreSQL integration suite now exercises the actual one-time `POST /v1/auth/verify-email` endpoint and rejects reuse of the same token; password-reset tests also verify one-time use and session revocation. API suite passed on commit `68047c8b57` (run 43619057006).
-- These are automated tests with mocked provider responses and a test mail transport. They do **not** prove that Brevo has accepted the sender or that a real message reaches an inbox. Live delivery remains blocked on the owner configuring `BREVO_API_KEY` and `BREVO_FROM` directly in Render.
