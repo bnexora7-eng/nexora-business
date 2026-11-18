@@ -12,17 +12,13 @@ Published indicative one-time service offers:
 - Multi-step automation — €950–€2,500
 - Enterprise projects — €5,000–€15,000+
 
-All Access is listed at €29.99/month as planned; subscription checkout must remain unavailable until the plan, entitlement checks and payment provider are configured and verified.
+ALPINOSS uses one-time project/service engagements. Do not advertise a monthly membership or recurring platform fee.
 
-## Payment milestones
+## Individually agreed project pricing and payment terms
 
-Default terms for custom work:
-- 50% before work starts.
-- 50% after delivery and acceptance.
+The public price list contains indicative prices for defined service types and business sizes. The final project price is discussed and agreed individually after the scope, deliverables and timeline are understood.
 
-A different split, such as 30% upfront and 70% after delivery, may be agreed in writing for an individual project.
-
-Subscriptions and ready-made products follow their own displayed purchase terms. The pricing page is informational and does not itself collect payment.
+Payment method, schedule and any milestones are also agreed individually and confirmed in the written quotation. There is no default 50/50 split and no automatic payment commitment on the pricing page. The pricing page is informational and does not itself collect payment.
 
 ## Brand artwork status
 
