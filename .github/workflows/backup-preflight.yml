@@ -1,12 +1,13 @@
 name: NEXORA read-only backup preflight
 
 on:
-  push:
+  workflow_run:
+    workflows:
+      - "NEXORA Render backend smoke test"
+    types:
+      - completed
     branches:
       - main
-    paths:
-      - "payment-integrity-api/src/server.js"
-      - ".github/workflows/backup-preflight.yml"
   workflow_dispatch:
 
 permissions:
@@ -14,6 +15,7 @@ permissions:
 
 jobs:
   preflight:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
