@@ -55,11 +55,10 @@ test("central ALPINOSS pricing page exposes all prices and milestone terms", asy
   for (const price of ["€149", "€295", "€495", "From €950", "€950–€2,500", "€5,000–€15,000+"]) {
     assert.ok(pricing.includes(price), "missing published price: " + price);
   }
-  assert.match(pricing, /Agreed advance/);
-  assert.match(pricing, /Remaining balance/);
-  assert.match(pricing, /one-time payments/i); 
-  assert.match(pricing, /No fixed percentage split is assumed/);
-  assert.doesNotMatch(pricing, /50% upfront|50% after|30% upfront/);
+  assert.match(pricing, /50% upfront/);
+  assert.match(pricing, /50% after delivery/);
+  assert.match(pricing, /one-time payments/i);
+  assert.doesNotMatch(pricing, /29\.99|monthly membership fee|subscription checkout/i);
   assert.match(pricing, /no monthly membership or recurring platform fee/i);
   assert.doesNotMatch(pricing, /29\.99|monthly membership fee|subscription checkout/i);
 });
