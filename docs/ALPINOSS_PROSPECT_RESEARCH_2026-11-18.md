@@ -1,6 +1,6 @@
 # ALPINOSS — Dutch Prospect Research (18 November 2026)
 
-Internal research only. No prospects have been contacted. Public signals are evidence of process context, not proof that a company wants to buy from ALPINOSS.
+Internal research and outreach log. Public signals are evidence of process context, not proof that a company wants to buy from ALPINOSS.
 
 ## Commercial hypothesis
 
@@ -23,7 +23,7 @@ Offer a tightly scoped workflow-improvement pilot: map one repetitive finance/op
 - Public signal: current finance/process optimisation vacancy says the company wants to professionalise and automate administrative processes and explore AI; tasks include purchase/sales invoices, project administration, reporting and HR support.
 - Why relevant: project-based construction/fit-out work often involves handoffs between project information, purchasing, invoices and administration; this is a hypothesis to validate, not a confirmed pain.
 - Suggested discovery angle: one workflow linking project reference, purchase invoice, approval and project-cost reporting; exception alerts for missing project codes or mismatched amounts.
-- Contact: public website contact form; +31 40 213 5243. No direct finance email confirmed.
+- Contact: info@tenbackprojecten.nl (publicly listed business contact); +31 40 213 5243. Direct finance buyer email not confirmed.
 - Website: https://www.tenbackprojecten.nl/
 - Evidence: https://www.simplyhired.nl/job/NJLedm17e-5ZhKLoQARvSekhTwiA7Yh3anPxr8FWZkXg4DYjJEW67Q ; https://www.tenbackprojecten.nl/contact-tenback-projecten/
 - Qualification: High relevance; current role may mean they intend to solve this through an employee, so ask whether a bounded external pilot is useful.
@@ -77,5 +77,22 @@ Accounting platforms already offer invoice recognition, AI agents, bank matching
 4. What exceptions cause rework, delays or audit risk?
 5. Can they provide synthetic/anonymised sample data and a process owner for a short online discovery?
 
-## Outreach status
-No email, form, phone call, social message or proposal has been sent. Contact details above are public business contacts only. Obtain approval of the exact message before sending.
+## Outreach status — 18 November 2026
+
+Five individual first-contact emails were sent from the ALPINOSS business mailbox (alpinoossalpinoos@gmail.com). These are exploratory business enquiries, not claims of an existing client relationship or production deployment.
+
+| Prospect | Recipient | Topic | Status |
+|---|---|---|---|
+| Florion Advies | hallo@florionadvies.nl | Administrative workflow controls, missing data and invoice exceptions | Sent |
+| High Tech NL | office@hightechnl.nl | Project documentation, finance records and exception control | Sent |
+| Tenback Projecten B.V. | info@tenbackprojecten.nl | Finance workflow optimisation and project/order/invoice data consistency | Sent |
+| VHE Industrial Automation | info@vhe.nl | Exact, project administration, orders, invoices and time-entry workflow control | Sent |
+| ERAC | info@erac.nl | Project documentation completeness and finance/project-control workflows | Sent |
+
+No reply had been received at the time this log was updated. No follow-up should be sent until a reasonable response window has elapsed.
+
+## Positioning and execution rules
+
+Present ALPINOSS as a professional technology company delivering digital platforms, workflow automation, AI-supported processes and system integration. Lead with business outcomes, architecture and the client's operational problem. Do not volunteer internal capability gaps or describe the company in apologetic or amateur terms.
+
+At the same time, every proposal and commitment must map to a deliverable that ALPINOSS can actually build and validate. Do not claim existing customers, production deployments, certifications, integrations or platform features that have not been verified. Confirm the prospect's systems, access, security requirements and acceptance criteria before committing to a production scope.
