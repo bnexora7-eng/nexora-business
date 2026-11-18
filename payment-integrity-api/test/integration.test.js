@@ -130,6 +130,33 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   assert.equal(typeof preflight.configuration.github_token_configured, "boolean");
   assert.equal(typeof preflight.configuration.repository_configured, "boolean");
   assert.equal(typeof preflight.configuration.encryption_key_configured, "boolean");
+  assert.deepEqual(preflight.runtime_configuration, {
+    email: {
+      provider: "test_stream",
+      api_key_configured: false,
+      sender_configured: false,
+      uses_resend_test_sender: false,
+      test_transport_enabled: true
+    },
+    ai: {
+      api_key_configured: true,
+      monthly_budget_configured: true,
+      enabled: true
+    },
+    payments: {
+      mollie_key_mode: "test",
+      one_off_checkout_enabled: false,
+      live_payments_enabled: false
+    }
+  });
+  const preflightJson = JSON.stringify(preflight);
+  for (const secretValue of [
+    "integration-backup-trigger-token-for-tests-only",
+    "test_nexora_integration_key",
+    "test_nexora_ai_key"
+  ]) {
+    assert.equal(preflightJson.includes(secretValue), false, "diagnostics must never disclose secret values");
+  }
   const jobsAfterPreflight = await pool.query("SELECT COUNT(*)::int AS count FROM backup_jobs");
   assert.equal(jobsAfterPreflight.rows[0].count, jobsBeforePreflight.rows[0].count, "preflight must not create a backup job");
 
