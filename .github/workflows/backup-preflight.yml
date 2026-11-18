@@ -67,33 +67,6 @@ jobs:
           fi
           echo "PASS: read-only preflight succeeded. No backup job was created."
 
-      - name: Create and remove temporary GitHub Actions secret to verify write permission
-        shell: bash
-        env:
-          BACKUP_TOKEN: ${{ secrets.NEXORA_BACKUP_TRIGGER_TOKEN }}
-          API_URL: https://nexora-payment-integrity-api.onrender.com
-        run: |
-          set -euo pipefail
-          response="$(mktemp)"
-          trap 'rm -f "$response"' EXIT
-          status="$(curl --silent --show-error --output "$response" --write-out '%{http_code}' \
-            --request POST --connect-timeout 10 --max-time 60 \
-            -H "Authorization: Bearer $BACKUP_TOKEN" \
-            "$API_URL/internal/backup/github-actions-secrets-permission-test" || true)"
-          if [ "$status" != "200" ]; then
-            echo "Secret permission test endpoint failed (HTTP ${status:-none})."
-            cat "$response" 2>/dev/null || true
-            exit 1
-          fi
-          cat "$response"
-          result="$(jq -er '.status' "$response")"
-          if [ "$result" != "permission_test_passed" ]; then
-            echo "GitHub Actions secret write permission was not confirmed."
-            exit 1
-          fi
-          jq -e '.write_access == true and (.cleanup == "deleted" or .cleanup == "not_present")' "$response" >/dev/null
-          echo "PASS: temporary test secret was created and removed. Existing secrets were not changed."
-
   permission-test:
     if: >-
       github.event_name == 'pull_request' &&
