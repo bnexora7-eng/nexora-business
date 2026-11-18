@@ -63,3 +63,15 @@ test("central ALPINOSS pricing page exposes all prices and milestone terms", asy
   assert.match(pricing, /no monthly membership or recurring platform fee/i);
   assert.doesNotMatch(pricing, /29\.99|monthly membership fee|subscription checkout/i);
 });
+
+
+test("account sign-in session is shared with the member workspace", async () => {
+  const account = await readFile(accountPath, "utf8");
+  const workspace = await readFile(appPath, "utf8");
+  assert.match(account, /sessionStorage\.setItem\(["']alpinoss_web_token["']/);
+  assert.match(account, /sessionStorage\.setItem\(["']alpinoss_web_email["']/);
+  assert.match(workspace, /sessionStorage\.getItem\(["']alpinoss_web_token["']/);
+  assert.match(workspace, /sessionStorage\.removeItem\(["']alpinoss_web_token["']/);
+  assert.match(workspace, /sessionStorage\.removeItem\(["']alpinoss_web_email["']/);
+  assert.doesNotMatch(workspace, /nexora_web_token|nexora_web_email/);
+});
