@@ -73,12 +73,23 @@ async function handleBackupStatus(req, res, id) {
   if (!result.rowCount) return send(res, 404, { error: "Backup job not found" });
   return send(res, 200, backupJobView(result.rows[0]));
 }
+const GITHUB_ACTIONS_SECRETS_REPOSITORY = "bnexora7-eng/nexora-business";
+const GITHUB_ACTIONS_SECRETS_API = "https://api.github.com/repos/" + GITHUB_ACTIONS_SECRETS_REPOSITORY + "/actions/secrets";
+
+function githubHttpStatus(status) {
+  if (status === 401) return "unauthorized";
+  if (status === 403) return "forbidden_or_rate_limited";
+  if (status === 404) return "repository_not_found_or_not_accessible";
+  if (status === 422) return "validation_rejected";
+  return "http_" + status;
+}
+
 async function checkGitHubActionsSecretsReadAccess() {
   const token = String(process.env.GITHUB_TOKEN || "").trim();
   if (!token) return { status: "not_configured" };
   try {
     const response = await fetch(
-      "https://api.github.com/repos/bnexora7-eng/nexora-private-backups/actions/secrets/public-key",
+      GITHUB_ACTIONS_SECRETS_API + "/public-key",
       {
         headers: {
           Authorization: "Bearer " + token,
@@ -90,13 +101,157 @@ async function checkGitHubActionsSecretsReadAccess() {
       }
     );
     if (response.status === 200) return { status: "available", permission: "secrets_read" };
-    if (response.status === 401) return { status: "unauthorized" };
-    if (response.status === 403) return { status: "forbidden_or_rate_limited" };
-    if (response.status === 404) return { status: "repository_not_found_or_not_accessible" };
-    return { status: "http_error", http_status: response.status };
+    return { status: githubHttpStatus(response.status) };
   } catch {
     return { status: "request_failed" };
   }
+}
+
+function sealGitHubActionsSecret(publicKey, plaintext) {
+  return new Promise((resolve, reject) => {
+    const child = spawn("python3", ["/backup/github_seal.py"], {
+      stdio: ["pipe", "pipe", "ignore"]
+    });
+    let output = "";
+    let settled = false;
+    const finish = (error, value) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      if (error) reject(error);
+      else resolve(value);
+    };
+    const timeout = setTimeout(() => {
+      child.kill("SIGKILL");
+      finish(new Error("Secret encryption helper timed out"));
+    }, 5000);
+    child.stdout.setEncoding("utf8");
+    child.stdout.on("data", (chunk) => {
+      output += chunk;
+      if (output.length > 16384) {
+        child.kill("SIGKILL");
+        finish(new Error("Secret encryption helper output exceeded limit"));
+      }
+    });
+    child.once("error", () => finish(new Error("Secret encryption helper could not start")));
+    child.once("close", (code) => {
+      if (code !== 0) return finish(new Error("Secret encryption helper failed"));
+      const encrypted = output.trim();
+      if (!/^[A-Za-z0-9+/]+={0,2}$/.test(encrypted)) {
+        return finish(new Error("Secret encryption helper returned invalid output"));
+      }
+      finish(null, encrypted);
+    });
+    child.stdin.on("error", () => finish(new Error("Secret encryption helper input failed")));
+    child.stdin.end(JSON.stringify({ public_key: publicKey, plaintext }));
+  });
+}
+
+async function handleGitHubActionsSecretPermissionTest(req, res) {
+  if (!backupAuthorized(req)) return send(res, 401, { error: "Authentication required" });
+  const token = String(process.env.GITHUB_TOKEN || "").trim();
+  if (!token) return send(res, 503, { status: "not_configured", stage: "github_token" });
+
+  const headers = {
+    Authorization: "Bearer " + token,
+    Accept: "application/vnd.github+json",
+    "X-GitHub-Api-Version": "2022-11-28",
+    "User-Agent": "ALPINOSS-secret-permission-test"
+  };
+
+  let publicKeyResponse;
+  try {
+    publicKeyResponse = await fetch(GITHUB_ACTIONS_SECRETS_API + "/public-key", {
+      headers,
+      signal: AbortSignal.timeout(10000)
+    });
+  } catch {
+    return send(res, 200, { status: "inconclusive", stage: "public_key_request_failed" });
+  }
+  if (publicKeyResponse.status !== 200) {
+    return send(res, 200, {
+      status: "read_access_not_available",
+      github_result: githubHttpStatus(publicKeyResponse.status)
+    });
+  }
+
+  let publicKeyData;
+  try {
+    publicKeyData = await publicKeyResponse.json();
+  } catch {
+    return send(res, 200, { status: "inconclusive", stage: "invalid_public_key_response" });
+  }
+  if (typeof publicKeyData?.key !== "string" ||
+      typeof publicKeyData?.key_id !== "string" ||
+      !/^[A-Za-z0-9+/]+={0,2}$/.test(publicKeyData.key) ||
+      !publicKeyData.key_id) {
+    return send(res, 200, { status: "inconclusive", stage: "invalid_public_key_response" });
+  }
+
+  const secretName = "ALPINOSS_PERMISSION_TEST_" + crypto.randomBytes(12).toString("hex").toUpperCase();
+  const testValue = crypto.randomBytes(32).toString("base64url");
+  let encryptedValue;
+  try {
+    encryptedValue = await sealGitHubActionsSecret(publicKeyData.key, testValue);
+  } catch {
+    return send(res, 503, { status: "inconclusive", stage: "secret_encryption_unavailable" });
+  }
+
+  let putStatus = null;
+  let putFailed = false;
+  try {
+    const putResponse = await fetch(GITHUB_ACTIONS_SECRETS_API + "/" + secretName, {
+      method: "PUT",
+      headers: { ...headers, "Content-Type": "application/json" },
+      body: JSON.stringify({ encrypted_value: encryptedValue, key_id: publicKeyData.key_id }),
+      signal: AbortSignal.timeout(15000)
+    });
+    putStatus = putResponse.status;
+  } catch {
+    putFailed = true;
+  }
+
+  // Attempt deletion even when PUT times out: GitHub may have accepted the write
+  // before the connection failed. A 404 confirms there is nothing left to remove.
+  let deleteStatus = null;
+  try {
+    const deleteResponse = await fetch(GITHUB_ACTIONS_SECRETS_API + "/" + secretName, {
+      method: "DELETE",
+      headers,
+      signal: AbortSignal.timeout(15000)
+    });
+    deleteStatus = deleteResponse.status;
+  } catch {
+    // Cleanup could not be confirmed; return the temporary name for manual removal.
+  }
+
+  const cleanupConfirmed = deleteStatus === 204 || deleteStatus === 404;
+  const writeSucceeded = putStatus === 201 || putStatus === 204;
+  if (!cleanupConfirmed) {
+    return send(res, 200, {
+      status: "cleanup_unconfirmed",
+      write_access: writeSucceeded ? true : putFailed ? null : false,
+      cleanup: "unconfirmed",
+      temporary_secret_name: secretName
+    });
+  }
+
+  if (writeSucceeded) {
+    return send(res, 200, {
+      status: "permission_test_passed",
+      repository: GITHUB_ACTIONS_SECRETS_REPOSITORY,
+      write_access: true,
+      cleanup: deleteStatus === 204 ? "deleted" : "not_present"
+    });
+  }
+
+  return send(res, 200, {
+    status: putFailed ? "write_result_unknown" : "write_access_not_confirmed",
+    repository: GITHUB_ACTIONS_SECRETS_REPOSITORY,
+    write_access: putFailed ? null : false,
+    github_result: putFailed ? "request_failed" : githubHttpStatus(putStatus),
+    cleanup: deleteStatus === 204 ? "deleted" : "not_present"
+  });
 }
 async function handleBackupPreflight(req, res) {
   if (!backupAuthorized(req)) return send(res, 401, { error: "Authentication required" });
@@ -163,6 +318,7 @@ async function handleBackupPreflight(req, res) {
     },
     configuration,
     github_actions_secrets_read_access: githubActionsSecretsReadAccess,
+    github_actions_secrets_write_test_endpoint: "available",
     runtime_configuration: runtimeConfiguration
   });
 }
@@ -1593,6 +1749,9 @@ const server = createServer(async (req, res) => {
     }
     const backupStatusMatch = /^\/internal\/backup\/([0-9a-f-]{36})$/.exec(pathname);
     if (req.method === "GET" && pathname === "/internal/backup/preflight") return await handleBackupPreflight(req, res);
+    if (req.method === "POST" && pathname === "/internal/backup/github-actions-secrets-permission-test") {
+      return await handleGitHubActionsSecretPermissionTest(req, res);
+    }
     if (req.method === "POST" && pathname === "/internal/backup") return await startBackup(req, res);
     if (req.method === "GET" && backupStatusMatch) return await handleBackupStatus(req, res, backupStatusMatch[1]);
     if (req.method === "GET" && pathname === "/ready") {

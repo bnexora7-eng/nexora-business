@@ -48,6 +48,7 @@ jobs:
             pg_restore --version | grep -E "18\\."
             timeout --version | head -n 1
             python3 -c "from cryptography.hazmat.primitives.ciphers.aead import AESGCM; print(1)"
+            python3 -c "import base64,json,subprocess; from nacl.public import PrivateKey,SealedBox; k=PrivateKey.generate(); m=\"alpinoss-sealed-box-smoke\"; p=json.dumps({\"public_key\":base64.b64encode(bytes(k.public_key)).decode(),\"plaintext\":m}); r=subprocess.run([\"python3\",\"/backup/github_seal.py\"],input=p,text=True,capture_output=True,check=True); assert SealedBox(k).decrypt(base64.b64decode(r.stdout))==m.encode(); print(\"PASS: GitHub sealed-box encryption round-trip.\")"
             test -x /backup/run.sh
             test -s /backup/crypto.py
             test -s /backup/upload_backup.py
