@@ -2,12 +2,12 @@
   "expo": {
     "name": "ALPINOSS",
     "slug": "alpinoss",
-    "version": "0.4.0",
+    "version": "0.5.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "android": {
-      "package": "com.nexora.business",
-      "versionCode": 4,
+      "package": "com.alpinoss.app",
+      "versionCode": 5,
       "permissions": []
     },
     "extra": {
