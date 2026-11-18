@@ -1,17 +1,11 @@
 name: NEXORA isolated PostgreSQL restore test
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - ".github/workflows/nexora-restore-test.yml"
   workflow_dispatch:
     inputs:
       backup_stamp:
         description: "UTC backup stamp, exactly YYYYMMDDTHHMMSSZ (from the private backup release)"
-        required: false
-        default: "20261118T040615Z"
+        required: true
         type: string
 
 permissions:
@@ -39,7 +33,7 @@ jobs:
 
     env:
       BACKUP_REPOSITORY: bnexora7-eng/nexora-private-backups
-      BACKUP_STAMP: ${{ inputs.backup_stamp || '20261118T040615Z' }}
+      BACKUP_STAMP: ${{ inputs.backup_stamp }}
       BACKUP_ENCRYPTION_KEY: ${{ secrets.BACKUP_ENCRYPTION_KEY }}
       GH_TOKEN: ${{ secrets.BACKUP_READ_TOKEN }}
       PGHOST: 127.0.0.1
