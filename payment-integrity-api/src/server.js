@@ -90,6 +90,43 @@ async function handleBackupPreflight(req, res) {
     encryption_key_configured: Boolean(process.env.BACKUP_ENCRYPTION_KEY)
   };
   const configured = Object.values(configuration).every(Boolean);
+
+  // Report configuration presence only. Never include secret values, database URLs,
+  // sender addresses, customer data, or provider credentials in diagnostics.
+  const resendKeyConfigured = Boolean(process.env.RESEND_API_KEY);
+  const brevoKeyConfigured = Boolean(process.env.BREVO_API_KEY);
+  const emailProvider = process.env.NODE_ENV === "test" && process.env.SMTP_TEST_MODE === "true"
+    ? "test_stream"
+    : resendKeyConfigured ? "resend" : brevoKeyConfigured ? "brevo" : "none";
+  const resendSender = String(process.env.RESEND_FROM || "").trim();
+  const resendUsesTestSender = emailProvider === "resend" &&
+    (!resendSender || resendSender === "onboarding@resend.dev");
+  const emailSenderConfigured = emailProvider === "resend"
+    ? Boolean(resendSender) && !resendUsesTestSender
+    : emailProvider === "brevo"
+      ? Boolean(String(process.env.BREVO_FROM || "").trim())
+      : false;
+  const mollieKey = String(process.env.MOLLIE_API_KEY || "");
+  const runtimeConfiguration = {
+    email: {
+      provider: emailProvider,
+      api_key_configured: emailProvider === "resend" ? resendKeyConfigured : emailProvider === "brevo" ? brevoKeyConfigured : false,
+      sender_configured: emailSenderConfigured,
+      uses_resend_test_sender: resendUsesTestSender,
+      test_transport_enabled: emailProvider === "test_stream"
+    },
+    ai: {
+      api_key_configured: Boolean(AI_API_KEY),
+      monthly_budget_configured: AI_MONTHLY_TOKEN_LIMIT > 0,
+      enabled: Boolean(AI_API_KEY) && AI_MONTHLY_TOKEN_LIMIT > 0
+    },
+    payments: {
+      mollie_key_mode: !mollieKey ? "missing" : mollieKey.startsWith("test_") ? "test" : mollieKey.startsWith("live_") ? "live" : "unknown",
+      one_off_checkout_enabled: process.env.ENABLE_ONE_OFF_PAYMENTS === "true",
+      live_payments_enabled: process.env.ENABLE_LIVE_PAYMENTS === "true"
+    }
+  };
+
   return send(res, 200, {
     status: configured && databaseSizeBytes <= maxUploadBytes ? "preflight_passed" : "preflight_attention_required",
     database: {
@@ -98,7 +135,8 @@ async function handleBackupPreflight(req, res) {
       size_mib: Number((databaseSizeBytes / (1024 * 1024)).toFixed(2)),
       below_90_mib_database_size_threshold: databaseSizeBytes <= maxUploadBytes
     },
-    configuration
+    configuration,
+    runtime_configuration: runtimeConfiguration
   });
 }
 async function startBackup(req, res) {
