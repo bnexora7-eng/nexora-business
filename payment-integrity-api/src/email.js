@@ -21,6 +21,40 @@ async function sendEmail(message) {
     });
   }
 
+  // Resend is the preferred transactional-email provider. It uses HTTPS, not SMTP.
+  const resendKey = process.env.RESEND_API_KEY;
+  if (resendKey) {
+    const sender = process.env.RESEND_FROM || "onboarding@resend.dev";
+    if (sender === "onboarding@resend.dev" && process.env.RESEND_ALLOW_TEST_SENDER !== "true") {
+      throw Object.assign(new Error("Resend is configured with its test sender. Set RESEND_FROM to an address on a verified domain before enabling account emails."), { statusCode: 503 });
+    }
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    try {
+      const response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        signal: controller.signal,
+        headers: { "Authorization": "Bearer " + resendKey, "accept": "application/json", "content-type": "application/json" },
+        body: JSON.stringify({
+          from: sender.includes("<") ? sender : "ALPINOSS <" + sender + ">",
+          to: [message.to],
+          subject: message.subject,
+          text: message.text,
+          html: message.html
+        })
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        console.error("Resend email API rejected message:", response.status, result.name || result.statusCode || "unknown error");
+        throw Object.assign(new Error("Resend email API rejected the message (HTTP " + response.status + ")."), { statusCode: 502 });
+      }
+      console.log("ALPINOSS email accepted by Resend:", result.id || "message ID unavailable");
+      return { messageId: result.id };
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
   const apiKey = process.env.BREVO_API_KEY;
   const sender = process.env.BREVO_FROM;
   if (!apiKey) {
