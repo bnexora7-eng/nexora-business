@@ -214,7 +214,6 @@ async function handleGitHubActionsSecretPermissionTest(req, res) {
   // Attempt deletion even when PUT times out: GitHub may have accepted the write
   // before the connection failed. A 404 confirms there is nothing left to remove.
   let deleteStatus = null;
-  let deleteFailed = false;
   try {
     const deleteResponse = await fetch(GITHUB_ACTIONS_SECRETS_API + "/" + secretName, {
       method: "DELETE",
@@ -223,7 +222,7 @@ async function handleGitHubActionsSecretPermissionTest(req, res) {
     });
     deleteStatus = deleteResponse.status;
   } catch {
-    deleteFailed = true;
+    // Cleanup could not be confirmed; return the temporary name for manual removal.
   }
 
   const cleanupConfirmed = deleteStatus === 204 || deleteStatus === 404;
