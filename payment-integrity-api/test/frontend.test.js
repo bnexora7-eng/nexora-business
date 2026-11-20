@@ -12,18 +12,19 @@ test("member workspace page has valid JavaScript and all required product sectio
   assert.ok(script, "workspace page must include its application script");
   assert.doesNotThrow(() => new vm.Script(script), "workspace application script must parse");
   assert.doesNotMatch(script, /subscriptions\/me|29\.99|All Access required/i, "workspace must not enforce a paid membership");
-  for (const id of ["workspace-form", "ai-form", "post-form", "listing-form"]) {
+  for (const id of ["workspace-form", "post-form", "listing-form"]) {
     assert.match(html, new RegExp('id="' + id + '"'), "missing UI form: " + id);
   }
   for (const endpoint of [
     "/v1/auth/me",
     "/v1/business/workspace",
-    "/v1/business/ai-plan",
     "/v1/community/posts",
     "/v1/marketplace/listings"
   ]) {
     assert.ok(html.includes(endpoint), "missing API integration: " + endpoint);
   }
+  assert.doesNotMatch(html, /id="ai-form"/, "disabled AI generation must not be presented as an active form");
+  assert.match(html, /AI generation is not active/, "workspace must explain why live AI generation is unavailable");
   assert.match(html, /Authorization:\s*"Bearer "\s*\+\s*token/);
   assert.doesNotMatch(script, /\.innerHTML\s*=/, "untrusted API content must not be inserted as HTML");
 });
