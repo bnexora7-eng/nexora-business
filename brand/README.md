@@ -17,3 +17,8 @@ When the original files are supplied:
 4. Keep the current SVG concepts separate and clearly labelled as provisional until explicitly approved.
 
 Do not claim that a description or CSS approximation is a permanent backup of the original image.
+
+
+## Current published-site safeguard (2026-11-20)
+
+The homepage and workspace no longer reference `app/1794828604878.jpg`, which was identified as incorrect artwork by the owner. Until the exact approved original asset can be recovered from existing project history or archived uploads, the public homepage must not display that image or either provisional SVG concept as the approved logo. The workspace uses a text ALPINOSS wordmark as a temporary, clearly non-original fallback. Deployment checks must verify that the obsolete image is absent and that the fallback wordmark is present; they must not require the obsolete JPG.
