@@ -65,7 +65,7 @@ Older example amounts in archived project notes are service/project estimates, n
 - `GET/POST /v1/community/posts` — public read preview; authenticated accounts can publish in the current free-access mode.
 - `GET/POST /v1/marketplace/listings` — public read preview; authenticated accounts can publish; checkout/escrow is not implemented.
 - `GET/PUT /v1/business/workspace` — authenticated account workspace.
-- `POST /v1/business/ai-plan` — authenticated route; requires a server-side AI provider key and explicit budget controls.
+- `POST /v1/business/ai-plan` — requires a verified, signed-in account, a server-side AI provider key and a non-zero explicit token budget; no paid membership is required.
 - `POST /v1/events` — signed provider event screening with HMAC-SHA256, timestamp checks and idempotency.
 - `POST /v1/demo/events` — simulated browser-demo events only when the public demo is enabled and restricted to its configured origin.
 
