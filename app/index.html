@@ -13,9 +13,9 @@
 
 /* ALPINOSS reference-matched interface: deep navy, cyan neon frames, glass panels */
 :root{color-scheme:dark;--bg:#030916;--panel:#0a1a2c;--line:#23618a;--text:#eef8ff;--muted:#a9c2d6;--mint:#00d9ff;--blue:#35aaff;--red:#ff7f91}
-body{background:radial-gradient(ellipse at 50% 0,#0b3150 0,transparent 42%),radial-gradient(ellipse at 50% 65%,#061a30 0,transparent 60%),#030916}body:before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background:url("../assets/alpinoss-official.jpg") center 42%/cover no-repeat;opacity:.12;filter:saturate(.85)}
+body{background:radial-gradient(ellipse at 50% 0,#0b3150 0,transparent 42%),radial-gradient(ellipse at 50% 65%,#061a30 0,transparent 60%),#030916}body:before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background:radial-gradient(ellipse at 50% 15%,#123b55 0,transparent 48%);}
 .top{height:82px;border-bottom:1px solid #1b5277;box-shadow:0 8px 30px #00111f66}
-.brand{display:flex;align-items:center;font-size:25px;letter-spacing:.2em;text-shadow:0 0 14px #00cfff77,0 0 32px #007bb955}.brand img{display:block;width:42px;height:58px;object-fit:contain;margin-right:10px;flex:none}
+.brand{display:none}.brand img{display:none}
 .brand small{color:#7ceaff;font-size:9px;letter-spacing:.25em;margin-top:2px}
 .top-actions{display:flex;align-items:center;gap:12px;color:#82a9c3;font-size:12px;letter-spacing:.08em;text-transform:uppercase}
 .top-actions a,.top-actions button{color:#c9e9f8;text-decoration:none;border:1px solid #1b628d;border-radius:7px;padding:8px 12px;background:#071b2c}
@@ -63,13 +63,32 @@ button.primary{background:linear-gradient(90deg,#00c9f5,#5ceaff);color:#031522;b
 #alpinoss-intro img{display:block;width:100vw;height:100dvh;max-width:100%;max-height:100%;object-fit:contain;object-position:center}
 #alpinoss-intro.is-leaving{opacity:0;visibility:hidden;pointer-events:none}
 @media(prefers-reduced-motion:reduce){#alpinoss-intro{transition:none}}
+
+/* Clean premium ALPINOSS workspace menu — no secondary logo in the menu */
+.top{height:58px;justify-content:flex-end;border-bottom:1px solid #20435b}
+.top-actions{margin-left:auto}
+.hero{padding:34px 0 18px;margin:0}
+.hero h1{font-size:clamp(28px,5vw,42px);letter-spacing:.015em;text-transform:none}
+.tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;padding:18px 0 30px;border:0}
+.tabs button{min-height:170px;padding:22px 24px;border:1px solid #31566e;border-radius:15px;background:linear-gradient(145deg,rgba(20,48,67,.94),rgba(5,17,31,.98));box-shadow:inset 0 1px 0 #c7f4ff18, inset 0 -22px 35px #00101b55,0 14px 28px #0007;backdrop-filter:blur(12px);transition:transform .2s ease,border-color .2s ease,box-shadow .2s ease}
+.tabs button:before{inset:7px;border:1px solid #8bdfff26;border-radius:10px;clip-path:none}
+.tabs button:after{right:-28px;bottom:-50px;width:130px;height:130px;border:1px solid #72dfff2a;transform:rotate(45deg);box-shadow:0 0 0 12px #72dfff08,0 0 0 25px #72dfff05}
+.tabs button:hover,.tabs button.active{transform:translateY(-3px);border-color:#65dfff;box-shadow:inset 0 1px 0 #d8f8ff28,inset 0 0 34px #00bfff18,0 16px 34px #0009,0 0 22px #00bfff20}
+.tabs button strong{margin-top:16px;font-size:clamp(17px,2.5vw,21px);letter-spacing:.13em;color:#eafaff}
+.tabs button small{max-width:78%;font-size:12px;color:#aac5d6}
+.tab-number{color:#74e2ff;border-color:#367b9b;background:#061a29aa}
+.tab-symbol{color:#79e7ff;text-shadow:0 0 16px #00cfff77}
+.tab-plus{color:#79e7ff;font-size:25px}
+@media(max-width:520px){.top{height:52px}.hero{padding:28px 0 12px}.tabs{gap:11px;padding:15px 0 24px}.tabs button{min-height:155px;padding:17px 16px}.tabs button strong{font-size:15px;letter-spacing:.09em}.tabs button small{font-size:11px;max-width:85%}.tab-symbol{right:17px;top:15px}.tab-plus{right:15px;bottom:9px}}
+@media(max-width:360px){.tabs{grid-template-columns:repeat(2,minmax(0,1fr))}.tabs button{min-height:145px;padding:14px 12px}.tabs button strong{font-size:13px}}
+
 </style>
 </head>
 <body>
 <div id="alpinoss-intro" role="img" aria-label="ALPINOSS — official opening artwork"><img src="../assets/alpinoss-official.jpg" alt="Official ALPINOSS logo — NEXT LEVEL TOGETHER — EST. 2026" fetchpriority="high"></div>
-<header class="wrap top"><a class="brand" href="../" aria-label="ALPINOSS home"><img src="../assets/alpinoss-official.jpg" alt="Official ALPINOSS logo"> <span>ALPINOSS<small>NEXT LEVEL TOGETHER · EST. 2026</small></span></a><div class="top-actions"><a href="../account/">Account</a><span aria-hidden="true">·</span><button id="signout" type="button">Sign out</button></div></header>
+<header class="wrap top"><div class="top-actions"><a href="../account/">Account</a><span aria-hidden="true">·</span><button id="signout" type="button">Sign out</button></div></header>
 <div class="wrap">
-<section class="brand-visual" aria-label="Official ALPINOSS logo"><img src="../assets/alpinoss-official.jpg" alt="Official ALPINOSS logo — NEXT LEVEL TOGETHER — EST. 2026" fetchpriority="high"></section><section class="hero"><div class="eyebrow">ALPINOSS WORKSPACE</div><h1>Your workspace.</h1><p class="muted">Business planning, community and marketplace tools in one place.</p><div id="global-status" class="status" role="status" aria-live="polite"></div></section>
+<section class="hero"><div class="eyebrow">ONE PLATFORM · FOUR DESTINATIONS</div><h1>Explore your workspace.</h1><p class="muted">Choose where you want to go. Your tools, technology, marketplace and community — brought together in one place.</p><div id="global-status" class="status" role="status" aria-live="polite"></div></section>
 <section id="gate" class="panel hidden"><h2 id="gate-title">Sign in required</h2><p id="gate-copy" class="muted">Sign in to your ALPINOSS account to use the workspace.</p><a href="../account/" class="primary" style="display:inline-block;text-decoration:none">Open account</a></section>
 <div id="workspace-app">
 <nav class="tabs" aria-label="Workspace sections"><button class="active" type="button" data-tab="business" aria-controls="tab-business" aria-pressed="true"><span class="tab-number">01</span><span class="tab-symbol">✧</span><strong>PLATFORM</strong><small>Tools, plans and your personal workspace</small><span class="tab-plus">+</span></button><button type="button" data-tab="technology" aria-controls="tab-technology" aria-pressed="false"><span class="tab-number">02</span><span class="tab-symbol">⌘</span><strong>TECHNOLOGY</strong><small>AI, systems and digital infrastructure</small><span class="tab-plus">+</span></button><button type="button" data-tab="marketplace" aria-controls="tab-marketplace" aria-pressed="false"><span class="tab-number">03</span><span class="tab-symbol">◇</span><strong>MARKETPLACE</strong><small>Discover offers, products and services</small><span class="tab-plus">+</span></button><button type="button" data-tab="community" aria-controls="tab-community" aria-pressed="false"><span class="tab-number">04</span><span class="tab-symbol">◎</span><strong>COMMUNITY</strong><small>People, ideas and shared opportunities</small><span class="tab-plus">+</span></button></nav>
@@ -98,7 +117,7 @@ button.primary{background:linear-gradient(90deg,#00c9f5,#5ceaff);color:#031522;b
 "use strict";
 const intro=document.getElementById("alpinoss-intro");
 const introImage=intro.querySelector("img");
-function finishIntro(){window.setTimeout(()=>intro.classList.add("is-leaving"),2800);}
+function finishIntro(){window.setTimeout(()=>intro.classList.add("is-leaving"),3200);}
 if(introImage.complete){finishIntro();}else{introImage.addEventListener("load",finishIntro,{once:true});introImage.addEventListener("error",()=>intro.classList.add("is-leaving"),{once:true});window.setTimeout(()=>intro.classList.add("is-leaving"),8000);}
 const API="https://nexora-payment-integrity-api.onrender.com";
 const token=sessionStorage.getItem("alpinoss_web_token");
