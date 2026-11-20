@@ -83,7 +83,8 @@ jobs:
           for section in PLATFORM TECHNOLOGY MARKETPLACE COMMUNITY; do
             grep -q "$section" /tmp/alpinoss-app.html
           done
-          grep -q 'class="brand-visual"' /tmp/alpinoss-app.html
+          grep -q 'id="alpinoss-intro"' /tmp/alpinoss-app.html
+          ! grep -q 'class="brand-visual"' /tmp/alpinoss-app.html
           grep -q 'assets/alpinoss-official.jpg' /tmp/alpinoss-site.html
           grep -q '../assets/alpinoss-official.jpg' /tmp/alpinoss-app.html
           ! grep -q '1794828604878.jpg' /tmp/alpinoss-app.html
@@ -208,9 +209,11 @@ jobs:
           if (await page.locator("#ai-form").count() !== 0) throw new Error("Disabled AI form must not be presented as active");
           if (!(await page.getByText("AI generation is not active.", { exact: false }).count())) throw new Error("AI disabled-state explanation is missing");
           await page.locator("#gate").waitFor({ state: "visible" });
-          const logo = page.locator(".brand-visual img");
-          await logo.waitFor({ state: "visible" });
-          if (!(await logo.evaluate(img => img.complete && img.naturalWidth > 0))) throw new Error("ALPINOSS logo image did not load");
+          const introLogo = page.locator("#alpinoss-intro img");
+          if (await introLogo.count() !== 1) throw new Error("Expected exactly one full-screen ALPINOSS intro artwork");
+          if (!(await introLogo.evaluate(img => img.complete && img.naturalWidth > 0))) throw new Error("Official ALPINOSS intro artwork did not load");
+          if (await page.locator(".brand-visual img").count() !== 0) throw new Error("A duplicate logo must not appear in the workspace menu");
+          await page.locator("#alpinoss-intro").waitFor({ state: "hidden", timeout: 10000 });
           for (const key of ["business", "technology", "marketplace", "community"]) {
             const tab = page.locator('[data-tab="' + key + '"]');
             await tab.click();
@@ -224,7 +227,7 @@ jobs:
           await page.setViewportSize({ width: 390, height: 844 });
           const columns = await page.locator(".tabs").evaluate(el => getComputedStyle(el).gridTemplateColumns.split(" ").length);
           if (columns !== 2) throw new Error("Mobile workspace menu should have two columns; got " + columns);
-          console.log("PASS ALPINOSS mobile 2x2 menu and logo asset");
+          console.log("PASS ALPINOSS mobile 2x2 menu, single intro artwork and no duplicate menu logo");
           console.log("PASS ALPINOSS AI feature is accurately marked unavailable until server configuration is approved");
           } finally {
             await browser.close();
