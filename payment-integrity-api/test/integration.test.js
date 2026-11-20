@@ -111,6 +111,12 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
 
   assert.equal(healthy, true, "API should start and connect to PostgreSQL");
 
+  const rootResponse = await fetch(`http://127.0.0.1:${port}/`);
+  assert.equal(rootResponse.status, 200);
+  const rootInfo = await rootResponse.json();
+  assert.equal(rootInfo.service, "ALPINOSS Platform API");
+  assert.match(rootInfo.message, /Business Studio.*Community.*Marketplace.*one-time payments/);
+
   const readiness = await fetch(`http://127.0.0.1:${port}/ready`);
   assert.equal(readiness.status, 200, "readiness must confirm PostgreSQL connectivity");
   assert.deepEqual(await readiness.json(), { status: "ready", database: "connected" });
