@@ -79,6 +79,13 @@ jobs:
           curl --fail --silent --show-error --location "$URL/app/" -o /tmp/alpinoss-app.html
           grep -q "ALPINOSS Workspace" /tmp/alpinoss-app.html
           grep -q "/v1/business/ai-plan" /tmp/alpinoss-app.html
+          for section in PLATFORM TECHNOLOGY MARKETPLACE COMMUNITY; do
+            grep -q "$section" /tmp/alpinoss-app.html
+          done
+          grep -q '1794828604878.jpg' /tmp/alpinoss-app.html
+          curl --fail --silent --show-error --location "$URL/app/1794828604878.jpg" -o /tmp/alpinoss-logo.jpg
+          test -s /tmp/alpinoss-logo.jpg
+          echo "PASS: ALPINOSS logo asset and all four workspace menu sections are published."
           curl --fail --silent --show-error --location "$URL/order.html" -o /tmp/alpinoss-order.html
           grep -q "Project enquiry" /tmp/alpinoss-order.html
           grep -q "Prepare email enquiry" /tmp/alpinoss-order.html
