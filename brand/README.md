@@ -1,24 +1,13 @@
-# ALPINOSS brand asset status
+# ALPINOSS brand assets
 
-## Important: original approved artwork is not yet archived here
+## Approved source artwork
 
-The two SVG files currently in this repository are working vector concepts, not verified copies of the exact original logo/profile artwork the owner approved earlier.
+- `../app/1794828604878.jpg` — the owner's original ALPINOSS logo artwork. Preserve this image unchanged: metallic ALPINOSS lettering, biomechanical/cosmic composition, blue Earth, and the exact “NEXT LEVEL TOGETHER” / “EST. 2026” lettering.
+- The supplied portrait screenshot `22023(2).jpg` is the approved reference for the workspace layout, not a replacement logo. It defines the dark full-bleed background, illuminated glass/metal cards, and 2×2 mobile menu: PLATFORM, TECHNOLOGY, MARKETPLACE, COMMUNITY.
+- `../alpinoss-brand.svg` and `../alpinoss-icon.svg` remain provisional concepts and must not replace the approved JPG.
 
-- `../alpinoss-brand.svg` — provisional biomechanical illustration. Do not describe it as the final approved logo or replace the original artwork with it.
-- `../alpinoss-icon.svg` — provisional matching icon, also not verified as the original.
-- `alpinoss-background.css` — a CSS reference approximation of the dark navy, grid, electric-blue and red lighting treatment; it is not the original background image file.
-
-The exact original artwork described by the owner — metallic ALPINOSS lettering, blue Earth near the bottom, engineered mechanical cable details and cosmic lighting, without a humanoid/guardian head or tentacle-like arms — must be supplied as its original image file(s) before it can be archived faithfully.
-
-When the original files are supplied:
-1. Preserve them byte-for-byte in a dedicated `brand/original/` directory.
-2. Record file names, dimensions and SHA-256 checksums.
-3. Use the originals for website/profile/app branding and create resized exports only from those originals.
-4. Keep the current SVG concepts separate and clearly labelled as provisional until explicitly approved.
-
-Do not claim that a description or CSS approximation is a permanent backup of the original image.
-
+Use the original JPG as the brand artwork on the homepage, workspace, and account page. The workspace should reproduce the supplied screenshot's composition and card styling while keeping all controls functional and responsive.
 
 ## Current published-site safeguard (2026-11-20)
 
-The homepage and workspace no longer reference `app/1794828604878.jpg`, which was identified as incorrect artwork by the owner. Until the exact approved original asset can be recovered from existing project history or archived uploads, the public homepage must not display that image or either provisional SVG concept as the approved logo. The workspace uses a text ALPINOSS wordmark as a temporary, clearly non-original fallback. Deployment checks must verify that the obsolete image is absent and that the fallback wordmark is present; they must not require the obsolete JPG.
+The homepage, workspace, and account page now use the restored original ALPINOSS JPG. Deployment checks verify the image is published and that all four workspace menu sections are present. The SVG concepts remain provisional.
