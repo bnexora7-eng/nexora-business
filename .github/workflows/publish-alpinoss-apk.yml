@@ -1,0 +1,86 @@
+name: Publish ALPINOSS Android APK download
+"on":
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: false
+jobs:
+  publish:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Install mobile dependencies
+        working-directory: mobile
+        run: npm install --no-audit --no-fund
+      - name: Generate Android project
+        working-directory: mobile
+        run: npx expo prebuild --platform android --non-interactive
+      - name: Build debug APK
+        working-directory: mobile/android
+        run: ./gradlew assembleDebug --no-daemon
+      - name: Prepare public download
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p public-download
+          cp mobile/android/app/build/outputs/apk/debug/app-debug.apk public-download/alpinoss.apk
+          sha256sum public-download/alpinoss.apk | tee public-download/SHA256SUMS.txt
+          cat > public-download/index.html <<'HTML'
+          <!doctype html>
+          <html lang="pl"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+          <title>ALPINOSS Android</title>
+          <body style="font:16px system-ui;max-width:640px;margin:40px auto;padding:0 18px;background:#030711;color:#fff">
+          <h1>ALPINOSS — Android</h1>
+          <p>Nowa wersja instalacyjna aplikacji ALPINOSS.</p>
+          <p><a href="./alpinoss.apk" download style="display:inline-block;padding:16px 22px;background:#fff;color:#030711;border-radius:10px;font-weight:700">POBIERZ APK</a></p>
+          <p>Po pobraniu otwórz plik alpinoss.apk i wybierz „Zainstaluj”.</p>
+          <p><a href="./SHA256SUMS.txt" style="color:#9ecbff">Suma kontrolna pliku</a></p>
+          </body></html>
+          HTML
+          test -s public-download/alpinoss.apk
+          test "$(stat -c%s public-download/alpinoss.apk)" -gt 1000000
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public-download
+          name: alpinoss-android-download
+      - name: Deploy public APK download
+        id: deployment
+        uses: actions/deploy-pages@v4
+        with:
+          artifact_name: alpinoss-android-download
+      - name: Verify public APK download
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="https://bnexora7-eng.github.io/nexora-business/downloads/"
+          for attempt in $(seq 1 18); do
+            if curl --fail --silent --show-error --location "$URL" -o /tmp/alpinoss-download.html; then break; fi
+            sleep 10
+          done
+          grep -q "POBIERZ APK" /tmp/alpinoss-download.html
+          curl --fail --silent --show-error --location "$URL/alpinoss.apk" -o /tmp/alpinoss-public.apk
+          test "$(stat -c%s /tmp/alpinoss-public.apk)" -gt 1000000
+          file /tmp/alpinoss-public.apk | grep -qi "Android package"
+          echo "PASS: public ALPINOSS APK download is reachable."
