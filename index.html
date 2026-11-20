@@ -33,12 +33,38 @@ form{display:grid;gap:14px}.fields{display:grid;grid-template-columns:1fr 1fr;ga
 .footer{border-top:1px solid #20364d;padding:18px 0 34px;color:var(--muted);font-size:12px;display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
 @media(max-width:850px){.core-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.nav{gap:12px}.nav-links{gap:12px}.nav-links>a{font-size:10px;letter-spacing:.05em}}
 @media(max-width:620px){.hero-banner{display:flex;flex-direction:column;gap:18px}.hero-copy{max-width:100%}.hero-art{position:relative;right:auto;top:auto;transform:none;width:min(100%,390px);max-height:none;align-self:center}.wrap{width:min(100% - 26px,1160px)}.nav{min-height:64px}.nav-links>a{display:none}.hero-banner{min-height:250px;padding:30px 22px;margin-top:15px}.hero-banner h1{font-size:clamp(36px,11vw,56px);letter-spacing:.08em}.hero-banner .tagline{font-size:26px}.core-grid{gap:10px}.core-card{min-height:172px;padding:18px 14px}.core-card h2{font-size:18px}.core-card p{font-size:12px}.cards{grid-template-columns:1fr}.split{grid-template-columns:1fr}.fields{grid-template-columns:1fr}.field.full{grid-column:auto}.footer-nav{align-items:flex-start;flex-direction:column;padding:19px}.footer-links{gap:10px 16px}}
+
+/* ALPINOSS visual alignment: dark metallic base and cyan-only neon accents */
+:root{--bg:#030916;--panel:#081a2c;--line:#1b587d;--text:#effaff;--muted:#a9c4d7;--blue:#00cfff;--red:#00e2ff;--cyan:#78eaff}
+body{background:radial-gradient(ellipse at 15% 4%,#0b3451 0,transparent 38%),radial-gradient(ellipse at 90% 22%,#08283d 0,transparent 36%),#030916}
+.brand{letter-spacing:.2em;text-shadow:0 0 18px #00cfff66}
+.mega-menu summary{border-color:#2377a0;background:linear-gradient(145deg,#0b2941,#071628);box-shadow:inset 0 0 18px #00bfff18}
+.menu-panel{border-color:#2481ad;background:linear-gradient(145deg,#0b2941f7,#04111ff7);box-shadow:0 18px 50px #000d,0 0 22px #00bfff20}
+.menu-panel a{border:1px solid transparent;border-radius:7px}
+.menu-panel a:hover{background:#0d3550;border-color:#2aa7d6;color:#fff;box-shadow:inset 0 0 18px #00cfff20}
+.hero-banner{background:radial-gradient(ellipse at 50% 50%,#0c3b5c99 0,transparent 56%),linear-gradient(115deg,#050d1b,#0b2033 52%,#061221);border-color:#2476a0;box-shadow:0 24px 80px #0009,inset 0 0 60px #007eb322}
+.hero-banner:before{opacity:.5;background-image:linear-gradient(#7ddfff22 1px,transparent 1px),linear-gradient(90deg,#7ddfff22 1px,transparent 1px),repeating-linear-gradient(135deg,transparent 0 34px,#00cfff22 35px 36px,transparent 37px 70px)}
+.hero-banner:after{border-color:#73ddff3d}
+.hero-copy{max-width:100%}
+.hero-banner h1{color:#f2fbff;text-shadow:0 0 24px #00cfff77,3px 3px 0 #07101d}
+.hero-banner .tagline{color:#fff;text-shadow:0 0 22px #00d9ff55}
+.hero-banner .tagline span{background:linear-gradient(90deg,#7beaff 0%,#fff 52%,#45cfff 100%);background-clip:text;-webkit-background-clip:text;color:transparent}
+.hero-meta i,.hero-meta b{background:#00d9ff;box-shadow:0 0 12px #00d9ff}
+.core-card{border-color:#1c628a;background:linear-gradient(145deg,#0c2941ed,#061322 72%);box-shadow:0 12px 34px #0007,inset 0 0 20px #00cfff12}
+.core-card:before{background:linear-gradient(90deg,#00cfff,#78eaff)}
+.core-card:after{border-color:#4aadd033;box-shadow:0 0 0 12px #00cfff08,0 0 0 26px #00cfff06}
+.core-card:hover{border-color:#4bdcff;box-shadow:0 18px 42px #0008,0 0 24px #00cfff25}
+.core-card .num,.core-card .open{color:#82eaff}
+.footer-nav{border-color:#1c648b;background:radial-gradient(ellipse at 8% 50%,#0b416966 0,transparent 48%),radial-gradient(ellipse at 92% 50%,#06405a55 0,transparent 48%),linear-gradient(110deg,#050e1b,#0b2033 55%,#061321);box-shadow:0 14px 44px #0008}
+.footer-brand small{color:#82eaff}
+@media(max-width:620px){.hero-copy{max-width:100%}}
+
 </style>
 </head>
 <body>
 <header class="wrap nav"><a class="brand" href="./" aria-label="ALPINOSS home">ALPINOSS</a><nav class="nav-links" aria-label="Main navigation"><a href="company/">Company</a><a href="app/">Platform</a><a href="app/">Technology</a><a href="app/">Marketplace</a><a href="app/">Community</a><details class="mega-menu"><summary>Menu ▾</summary><div class="menu-panel"><a href="pricing/">Prices &amp; Payments</a><a href="account/">Account &amp; Settings</a><a href="privacy/">Privacy &amp; Security</a><a href="payment-integrity-demo/demo.html">Technology Demo</a><a href="#enquiry">Support &amp; Contact</a></div></details></nav></header>
 <main>
-<section class="wrap hero-banner" aria-label="ALPINOSS global platform"><div class="hero-copy"><div class="eyebrow">GLOBAL PLATFORM</div><h1>ALPINOSS</h1><p class="tagline"><span>NEXT LEVEL TOGETHER</span></p><div class="hero-meta"><i></i> Connected ideas <b></b> Worldwide direction</div></div><img class="hero-art" src="alpinoss-brand.svg" alt="ALPINOSS biomechanical guardian above a luminous blue Earth"></section>
+<section class="wrap hero-banner" aria-label="ALPINOSS global platform"><div class="hero-copy"><div class="eyebrow">GLOBAL PLATFORM</div><h1>ALPINOSS</h1><p class="tagline"><span>NEXT LEVEL TOGETHER</span></p><div class="hero-meta"><i></i> Connected ideas <b></b> Worldwide direction</div></div></section>
 <section class="content" id="explore"><div class="wrap"><div class="eyebrow">Explore ALPINOSS</div><h2>Four main areas. More possibilities inside.</h2><p class="sub">Choose an area to get started. Each one opens the door to its own tools, services and specialist features.</p><div class="core-grid">
 <a class="core-card" href="app/"><span class="num">01 / CORE AREA</span><h2>Platform</h2><p>Your starting point for ALPINOSS products, workspaces and services.</p><span class="open">Explore platform →</span></a>
 <a class="core-card" href="app/"><span class="num">02 / CORE AREA</span><h2>Technology</h2><p>AI, software, automation, integrations and technical projects.</p><span class="open">Explore technology →</span></a>
