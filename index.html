@@ -59,9 +59,20 @@ body{background:radial-gradient(ellipse at 15% 4%,#0b3451 0,transparent 38%),rad
 .footer-brand small{color:#82eaff}
 @media(max-width:620px){.hero-copy{max-width:100%}}
 
+
+/* First-entry brand screen: preserve the official artwork exactly as supplied. */
+#alpinoss-splash{position:fixed;inset:0;z-index:9999;width:100%;height:100dvh;min-height:100svh;padding:24px;border:0;border-radius:0;background:radial-gradient(ellipse at 50% 45%,#0b3550 0%,#061526 48%,#020711 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;cursor:pointer}
+#alpinoss-splash[hidden],#site-shell[hidden]{display:none}
+#alpinoss-splash img{display:block;width:min(88vw,680px);max-height:72dvh;object-fit:contain;border:1px solid #1d789f;border-radius:14px;box-shadow:0 0 35px #00cfff38,0 0 100px #007eaa20}
+#alpinoss-splash .enter-hint{color:#8ceaff;font-size:11px;font-weight:850;letter-spacing:.3em;text-transform:uppercase;text-shadow:0 0 14px #00cfff88}
+#alpinoss-splash:focus-visible{outline:3px solid #8ceaff;outline-offset:-8px}
+@media(max-width:620px){#alpinoss-splash{padding:16px}#alpinoss-splash img{width:94vw;max-height:68dvh}}
+
 </style>
 </head>
 <body>
+<button id="alpinoss-splash" type="button" aria-label="Enter ALPINOSS"><img src="assets/alpinoss-official.jpg" alt="Official ALPINOSS logo — Next Level Together" fetchpriority="high"><span class="enter-hint">Touch the logo to enter</span></button>
+<div id="site-shell" hidden>
 <header class="wrap nav"><a class="brand" href="./" aria-label="ALPINOSS home">ALPINOSS</a><nav class="nav-links" aria-label="Main navigation"><a href="company/">Company</a><a href="app/#platform">Platform</a><a href="app/#technology">Technology</a><a href="app/#marketplace">Marketplace</a><a href="app/#community">Community</a><details class="mega-menu"><summary>Menu ▾</summary><div class="menu-panel"><a href="pricing/">Prices &amp; Payments</a><a href="account/">Account &amp; Settings</a><a href="privacy/">Privacy &amp; Security</a><a href="payment-integrity-demo/demo.html">Technology Demo</a><a href="#enquiry">Support &amp; Contact</a></div></details></nav></header>
 <main>
 <section class="wrap hero-banner" aria-label="ALPINOSS global platform"><div class="hero-copy"><div class="eyebrow">GLOBAL PLATFORM</div><h1>ALPINOSS</h1><p class="tagline"><span>NEXT LEVEL TOGETHER</span></p><div class="hero-meta"><i></i> Connected ideas <b></b> Worldwide direction</div></div><img class="hero-art" src="assets/alpinoss-official.jpg" alt="Official ALPINOSS logo artwork" fetchpriority="high"></section>
@@ -77,4 +88,17 @@ body{background:radial-gradient(ellipse at 15% 4%,#0b3451 0,transparent 38%),rad
 <div class="card"><div class="eyebrow">Start a project enquiry</div><h3>Tell us what you need</h3><p class="sub">Choose the type of work and describe the result you want in the project enquiry form. It is non-binding and does not take payment or create an automatic order.</p><a class="btn" href="order.html">Open project enquiry form</a><p class="fine" style="margin-top:14px">The form prepares an email in your email application. Review it and press Send to submit your enquiry. No payment is requested at this stage.</p></div></div></section>
 </main>
 <section class="wrap footer-nav" aria-label="ALPINOSS navigation"><a class="footer-brand" href="./">ALPINOSS<small>GLOBAL PLATFORM · MANY POSSIBILITIES.</small></a><nav class="footer-links"><a href="company/">Company</a><a href="app/#platform">Platform</a><a href="app/#technology">Technology</a><a href="app/#marketplace">Marketplace</a><a href="app/#community">Community</a><a href="account/">Account</a><a href="privacy/">Privacy</a></nav></section><footer class="wrap footer"><span>© 2026 ALPINOSS</span><span><a href="privacy/">Privacy notice</a> · <a href="mailto:alpinoosalpinoos@gmail.com">Contact</a></span></footer>
+</div>
+<script>
+(() => {
+  const splash = document.getElementById("alpinoss-splash");
+  const shell = document.getElementById("site-shell");
+  if (!splash || !shell) return;
+  splash.addEventListener("click", () => {
+    splash.hidden = true;
+    shell.hidden = false;
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }, { once: true });
+})();
+</script>
 </body></html>
