@@ -1741,7 +1741,7 @@ const server = createServer(async (req, res) => {
     const pathname = (req.url || "/").split("?")[0].replace(/\/+$/, "") || "/";
     if (req.method === "OPTIONS") { res.writeHead(204); return res.end(); }
     if (req.method === "GET" && pathname === "/") {
-      return send(res, 200, { service: "NEXORA Payment Integrity API", status: "online", endpoints: { health: "/health", readiness: "/ready" }, message: "API is running. Use the documented /v1 endpoints for account, subscription and payment operations." });
+      return send(res, 200, { service: "ALPINOSS Platform API", status: "online", endpoints: { health: "/health", readiness: "/ready" }, message: "ALPINOSS API is running. Use the documented /v1 endpoints for account, Business Studio, Community, Marketplace, project quotations, one-time payments and payment-event screening." });
     }
     if (req.method === "GET" && pathname === "/health") {
       if (pool) await pool.query("SELECT 1");
