@@ -198,6 +198,28 @@ jobs:
               console.log("PASS browser UI " + item.name);
             }
             console.log("PASS: ACCEPT, REVIEW and REJECT render correctly in the public browser demo.");
+
+          // Verify the real ALPINOSS workspace menu, logo asset and mobile 2x2 layout.
+          await page.goto("https://bnexora7-eng.github.io/nexora-business/app/?menu-check=" + Date.now(), { waitUntil: "networkidle", timeout: 60000 });
+          await page.locator("#workspace-app").waitFor({ state: "visible" });
+          await page.locator("#gate").waitFor({ state: "visible" });
+          const logo = page.locator(".brand-visual img");
+          await logo.waitFor({ state: "visible" });
+          if (!(await logo.evaluate(img => img.complete && img.naturalWidth > 0))) throw new Error("ALPINOSS logo image did not load");
+          for (const key of ["business", "technology", "marketplace", "community"]) {
+            const tab = page.locator('[data-tab="' + key + '"]');
+            await tab.click();
+            if (await tab.getAttribute("aria-pressed") !== "true") throw new Error("Menu state did not update for " + key);
+            if (!(await page.locator("#tab-" + key).isVisible())) throw new Error("Menu panel did not open for " + key);
+            for (const other of ["business", "technology", "marketplace", "community"].filter(item => item !== key)) {
+              if (await page.locator("#tab-" + other).isVisible()) throw new Error("Unexpected visible panel: " + other);
+            }
+            console.log("PASS ALPINOSS menu " + key.toUpperCase());
+          }
+          await page.setViewportSize({ width: 390, height: 844 });
+          const columns = await page.locator(".tabs").evaluate(el => getComputedStyle(el).gridTemplateColumns.split(" ").length);
+          if (columns !== 2) throw new Error("Mobile workspace menu should have two columns; got " + columns);
+          console.log("PASS ALPINOSS mobile 2x2 menu and logo asset");
           } finally {
             await browser.close();
           }
