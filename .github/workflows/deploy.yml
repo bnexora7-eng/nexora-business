@@ -82,10 +82,12 @@ jobs:
           for section in PLATFORM TECHNOLOGY MARKETPLACE COMMUNITY; do
             grep -q "$section" /tmp/alpinoss-app.html
           done
-          grep -q '1794828604878.jpg' /tmp/alpinoss-app.html
-          curl --fail --silent --show-error --location "$URL/app/1794828604878.jpg" -o /tmp/alpinoss-logo.jpg
-          test -s /tmp/alpinoss-logo.jpg
-          echo "PASS: ALPINOSS logo asset and all four workspace menu sections are published."
+          grep -q 'class="brand-wordmark"' /tmp/alpinoss-app.html
+          if grep -q '1794828604878.jpg' /tmp/alpinoss-site.html /tmp/alpinoss-app.html; then
+            echo "FAIL: obsolete NEXORA artwork is still referenced."
+            exit 1
+          fi
+          echo "PASS: ALPINOSS wordmark is published and obsolete NEXORA artwork is absent; all four workspace menu sections are present."
           curl --fail --silent --show-error --location "$URL/order.html" -o /tmp/alpinoss-order.html
           grep -q "Project enquiry" /tmp/alpinoss-order.html
           grep -q "Prepare email enquiry" /tmp/alpinoss-order.html
