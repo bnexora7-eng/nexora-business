@@ -37,7 +37,7 @@ jobs:
           java-version: "17"
       - name: Install dependencies
         working-directory: mobile
-        run: npm ci --no-audit --no-fund
+        run: npm install --no-audit --no-fund
 
       - name: Preserve generated dependency lock for review
         if: always()
