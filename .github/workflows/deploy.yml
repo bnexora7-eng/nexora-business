@@ -204,6 +204,8 @@ jobs:
           // Verify the real ALPINOSS workspace menu, logo asset and mobile 2x2 layout.
           await page.goto("https://bnexora7-eng.github.io/nexora-business/app/?menu-check=" + Date.now(), { waitUntil: "networkidle", timeout: 60000 });
           await page.locator("#workspace-app").waitFor({ state: "visible" });
+          if (await page.locator("#ai-form").count() !== 0) throw new Error("Disabled AI form must not be presented as active");
+          if (!(await page.getByText("AI generation is not active.", { exact: false }).count())) throw new Error("AI disabled-state explanation is missing");
           await page.locator("#gate").waitFor({ state: "visible" });
           const logo = page.locator(".brand-visual img");
           await logo.waitFor({ state: "visible" });
@@ -222,6 +224,7 @@ jobs:
           const columns = await page.locator(".tabs").evaluate(el => getComputedStyle(el).gridTemplateColumns.split(" ").length);
           if (columns !== 2) throw new Error("Mobile workspace menu should have two columns; got " + columns);
           console.log("PASS ALPINOSS mobile 2x2 menu and logo asset");
+          console.log("PASS ALPINOSS AI feature is accurately marked unavailable until server configuration is approved");
           } finally {
             await browser.close();
           }
