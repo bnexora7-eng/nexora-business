@@ -10,15 +10,52 @@
 <style>
 :root{color-scheme:dark;--bg:#07111f;--panel:#102238;--line:#29435d;--text:#eff6ff;--muted:#a8b8ca;--mint:#4b8dff;--blue:#78aaff;--red:#ff8998}
 *{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 85% 0,#173b52 0,transparent 36%),var(--bg);color:var(--text);font:15px/1.6 Inter,system-ui,-apple-system,Segoe UI,sans-serif}.wrap{width:min(1120px,calc(100% - 32px));margin:auto}.top{height:72px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #20364d}.brand{font-weight:900;letter-spacing:.18em;color:var(--text);text-decoration:none}.brand small{display:block;color:var(--mint);font-size:9px;letter-spacing:.22em}.top a,.top button{color:var(--muted);background:none;border:0;text-decoration:none;font:inherit;cursor:pointer}.hero{padding:38px 0 24px}.eyebrow{color:var(--mint);font-size:10px;font-weight:850;letter-spacing:.2em;text-transform:uppercase}.hero h1{font-size:clamp(32px,5vw,48px);line-height:1.08;letter-spacing:-.04em;margin:8px 0}.muted{color:var(--muted)}.tabs{display:flex;gap:8px;overflow:auto;padding:12px 0 18px;border-bottom:1px solid var(--line)}.tabs button{white-space:nowrap;background:#0b1b2c;color:var(--muted);border:1px solid var(--line);padding:10px 15px;border-radius:9px;font:inherit;font-weight:750;cursor:pointer}.tabs button.active{background:var(--mint);color:#061923;border-color:var(--mint)}main{padding-bottom:60px}.panel{background:linear-gradient(145deg,#122c43,#0b1a2b);border:1px solid var(--line);border-radius:16px;padding:clamp(18px,3vw,28px);margin:18px 0}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.field{display:grid;gap:6px;margin:12px 0}label{font-size:11px;color:var(--muted);font-weight:800;letter-spacing:.08em}input,textarea,select{width:100%;background:#071727;color:var(--text);border:1px solid #35516b;border-radius:8px;padding:12px;font:inherit}textarea{min-height:92px;resize:vertical}input:focus,textarea:focus,select:focus{outline:2px solid #4b8dff88;border-color:var(--mint)}button.primary{background:var(--mint);color:#061923;border:0;border-radius:9px;padding:12px 17px;font:inherit;font-weight:900;cursor:pointer}button:disabled{opacity:.55;cursor:wait}.status{display:none;border:1px solid var(--line);border-radius:9px;padding:11px 13px;margin:12px 0;overflow-wrap:anywhere}.status.error{display:block;border-color:#824452;color:#ffc1c9;background:#301b25}.status.ok{display:block;border-color:#367e70;color:#a7f4df;background:#102a2a}.hidden{display:none!important}.item{padding:14px 0;border-bottom:1px solid #29435d}.item:last-child{border-bottom:0}.item h3{margin:0 0 5px;font-size:16px}.meta{font-size:11px;color:var(--muted)}.output{white-space:pre-wrap;background:#071727;border:1px solid var(--line);padding:16px;border-radius:10px;margin-top:14px;overflow-wrap:anywhere}.empty{padding:24px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:10px}.price{color:var(--mint);font-weight:850}.footer{border-top:1px solid #20364d;padding:20px 0 32px;color:var(--muted);font-size:12px}@media(max-width:700px){.grid{grid-template-columns:1fr}.top{height:64px}}
+
+/* ALPINOSS reference-matched interface: deep navy, cyan neon frames, glass panels */
+:root{color-scheme:dark;--bg:#030916;--panel:#0a1a2c;--line:#23618a;--text:#eef8ff;--muted:#a9c2d6;--mint:#00d9ff;--blue:#35aaff;--red:#ff7f91}
+body{background:radial-gradient(ellipse at 50% 0,#0b3150 0,transparent 42%),radial-gradient(ellipse at 50% 65%,#061a30 0,transparent 60%),#030916}
+.top{height:82px;border-bottom:1px solid #1b5277;box-shadow:0 8px 30px #00111f66}
+.brand{font-size:25px;letter-spacing:.2em;text-shadow:0 0 14px #00cfff77,0 0 32px #007bb955}
+.brand small{color:#7ceaff;font-size:9px;letter-spacing:.25em;margin-top:2px}
+.top-actions{display:flex;align-items:center;gap:12px;color:#82a9c3;font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+.top-actions a,.top-actions button{color:#c9e9f8;text-decoration:none;border:1px solid #1b628d;border-radius:7px;padding:8px 12px;background:#071b2c}
+.top-actions a:hover,.top-actions button:hover{border-color:#00d9ff;color:#fff;box-shadow:0 0 16px #00cfff33}
+.hero{position:relative;overflow:hidden;padding:42px 28px 30px;margin:22px 0 16px;border:1px solid #1a6894;border-radius:15px;background:linear-gradient(120deg,#07182aee,#0a2940d9 55%,#061222ee);box-shadow:inset 0 0 45px #007db51c,0 16px 42px #0008}
+.hero:after{content:"";position:absolute;inset:9px;border:1px solid #50d7ff33;border-radius:10px;pointer-events:none;clip-path:polygon(0 0,100% 0,100% 72%,94% 72%,94% 100%,0 100%)}
+.eyebrow{color:#ff8797;letter-spacing:.25em}
+.hero h1{font-size:clamp(32px,5vw,49px);letter-spacing:.08em;text-transform:uppercase;margin:8px 0;color:#f4fbff;text-shadow:0 0 20px #00aaff66}
+.hero .muted{max-width:720px;font-size:15px}
+.tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;overflow:visible;padding:16px 0 24px;border-bottom:1px solid #164767}
+.tabs button{position:relative;display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:8px;min-height:185px;white-space:normal;text-align:left;overflow:hidden;padding:20px 20px 18px 22px;border:1px solid #2479a7;border-radius:12px;background:linear-gradient(145deg,#0b2942f2,#07172bf5 72%);color:#d8f3ff;box-shadow:inset 0 0 24px #008bc522,0 10px 24px #0007;transition:border-color .18s,box-shadow .18s,transform .18s}
+.tabs button:before{content:"";position:absolute;inset:6px;border:1px solid #55dfff38;border-radius:8px;pointer-events:none;clip-path:polygon(0 0,100% 0,100% 78%,92% 78%,92% 100%,0 100%)}
+.tabs button:after{content:"";position:absolute;right:-35px;bottom:-55px;width:125px;height:125px;border:1px solid #25cfff33;transform:rotate(45deg);box-shadow:0 0 0 10px #00d9ff09,0 0 0 22px #00d9ff06}
+.tabs button:hover,.tabs button.active{transform:translateY(-2px);border-color:#00d9ff;box-shadow:inset 0 0 30px #00bfff25,0 0 22px #00bfff33,0 14px 28px #0008;background:linear-gradient(145deg,#103b59,#071b30)}
+.tabs button.active{color:#effcff}
+.tab-number{font-size:10px;letter-spacing:.22em;color:#68cfff;border:1px solid #287fb0;border-radius:5px;padding:4px 8px}
+.tab-symbol{position:absolute;top:20px;right:24px;font-size:25px;color:#55eaff;text-shadow:0 0 15px #00d9ff88}
+.tabs button strong{margin-top:9px;font-size:clamp(16px,2.3vw,21px);letter-spacing:.12em;color:#ff8999}
+.tabs button small{max-width:260px;color:#b2c9db;font-size:12px;line-height:1.5;font-weight:500;letter-spacing:0}
+.tab-plus{position:absolute;right:19px;bottom:13px;font-size:22px;font-weight:300;color:#57dfff}
+.panel{position:relative;border:1px solid #1e648e;border-radius:13px;background:linear-gradient(145deg,#0c2941f2,#071628f5);box-shadow:inset 0 0 28px #008bc51a,0 12px 28px #0006}
+.panel h2{color:#f1faff;letter-spacing:.015em}
+input,textarea,select{background:#041323;border-color:#245879}
+input:focus,textarea:focus,select:focus{outline:2px solid #00d9ff66;border-color:#00d9ff}
+button.primary{background:linear-gradient(90deg,#00c9f5,#5ceaff);color:#031522;box-shadow:0 0 18px #00cfff33}
+.status.ok{border-color:#168c9c;color:#a6f7ff;background:#082633}
+.item{border-bottom-color:#174565}
+.footer{border-top-color:#174565}
+@media(max-width:520px){.top{height:72px}.brand{font-size:21px}.brand small{font-size:8px}.top-actions{gap:6px;font-size:10px}.top-actions a,.top-actions button{padding:7px 8px}.hero{padding:30px 18px 24px}.tabs{gap:9px}.tabs button{min-height:165px;padding:15px 13px}.tabs button strong{font-size:14px;letter-spacing:.08em}.tabs button small{font-size:11px}.tab-symbol{right:15px;top:14px;font-size:20px}.tab-plus{right:13px;bottom:8px}}
+@media(max-width:360px){.tabs{grid-template-columns:1fr}.tabs button{min-height:145px}}
+
 </style>
 </head>
 <body>
-<header class="wrap top"><a class="brand" href="../"><img src="../alpinoss-icon.svg" alt="" width="34" height="34" style="vertical-align:middle;margin-right:10px">ALPINOSS<small>MEMBER WORKSPACE</small></a><div><a href="../account/">Account</a> · <button id="signout" type="button">Sign out</button></div></header>
+<header class="wrap top"><a class="brand" href="../" aria-label="ALPINOSS home">ALPINOSS<small>NEXT LEVEL TOGETHER · EST. 2026</small></a><div class="top-actions"><a href="../account/">Account</a><span aria-hidden="true">·</span><button id="signout" type="button">Sign out</button></div></header>
 <div class="wrap">
 <section class="hero"><div class="eyebrow">ALPINOSS WORKSPACE</div><h1>Your workspace.</h1><p class="muted">Business planning, community and marketplace tools in one place.</p><div id="global-status" class="status" role="status" aria-live="polite"></div></section>
 <section id="gate" class="panel hidden"><h2 id="gate-title">Sign in required</h2><p id="gate-copy" class="muted">Sign in to your ALPINOSS account to use the workspace.</p><a href="../account/" class="primary" style="display:inline-block;text-decoration:none">Open account</a></section>
 <div id="workspace-app" class="hidden">
-<nav class="tabs" aria-label="Workspace sections"><button class="active" data-tab="business">Platform</button><button data-tab="technology">Technology</button><button data-tab="marketplace">Marketplace</button><button data-tab="community">Community</button></nav>
+<nav class="tabs" aria-label="Workspace sections"><button class="active" data-tab="business"><span class="tab-number">01</span><span class="tab-symbol">✧</span><strong>PLATFORM</strong><small>Tools, plans and your personal workspace</small><span class="tab-plus">+</span></button><button data-tab="technology"><span class="tab-number">02</span><span class="tab-symbol">⌘</span><strong>TECHNOLOGY</strong><small>AI, systems and digital infrastructure</small><span class="tab-plus">+</span></button><button data-tab="marketplace"><span class="tab-number">03</span><span class="tab-symbol">◇</span><strong>MARKETPLACE</strong><small>Discover offers, products and services</small><span class="tab-plus">+</span></button><button data-tab="community"><span class="tab-number">04</span><span class="tab-symbol">◎</span><strong>COMMUNITY</strong><small>People, ideas and shared opportunities</small><span class="tab-plus">+</span></button></nav>
 <main>
 <section id="tab-business">
 <div class="panel"><div class="eyebrow">YOUR BUSINESS PROFILE</div><h2>Business workspace</h2><p class="muted">Save your business idea and goals to your account.</p>
