@@ -1,4 +1,4 @@
-name: Publish ALPINOSS Android APK download
+name: Publish ALPINOSS Android APK release
 "on":
   push:
     branches: [main]
@@ -6,17 +6,12 @@ name: Publish ALPINOSS Android APK download
       - ".github/workflows/publish-alpinoss-apk.yml"
   workflow_dispatch:
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 concurrency:
-  group: pages
+  group: alpinoss-apk-release
   cancel-in-progress: false
 jobs:
   publish:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -39,52 +34,22 @@ jobs:
       - name: Build debug APK
         working-directory: mobile/android
         run: ./gradlew assembleDebug --no-daemon
-      - name: Prepare public download
+      - name: Prepare release files
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p public-download
-          cp mobile/android/app/build/outputs/apk/debug/app-debug.apk public-download/alpinoss.apk
-          sha256sum public-download/alpinoss.apk | tee public-download/SHA256SUMS.txt
-          cat > public-download/index.html <<'HTML'
-          <!doctype html>
-          <html lang="pl"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-          <title>ALPINOSS Android</title>
-          <body style="font:16px system-ui;max-width:640px;margin:40px auto;padding:0 18px;background:#030711;color:#fff">
-          <h1>ALPINOSS — Android</h1>
-          <p>Nowa wersja instalacyjna aplikacji ALPINOSS.</p>
-          <p><a href="./alpinoss.apk" download style="display:inline-block;padding:16px 22px;background:#fff;color:#030711;border-radius:10px;font-weight:700">POBIERZ APK</a></p>
-          <p>Po pobraniu otwórz plik alpinoss.apk i wybierz „Zainstaluj”.</p>
-          <p><a href="./SHA256SUMS.txt" style="color:#9ecbff">Suma kontrolna pliku</a></p>
-          </body></html>
-          HTML
-          test -s public-download/alpinoss.apk
-          test "$(stat -c%s public-download/alpinoss.apk)" -gt 1000000
-      - name: Configure Pages
-        uses: actions/configure-pages@v5
+          mkdir -p release-files
+          cp mobile/android/app/build/outputs/apk/debug/app-debug.apk release-files/ALPINOSS.apk
+          sha256sum release-files/ALPINOSS.apk > release-files/SHA256SUMS.txt
+          test -s release-files/ALPINOSS.apk
+          test "$(stat -c%s release-files/ALPINOSS.apk)" -gt 1000000
+      - name: Publish public GitHub release asset
+        uses: softprops/action-gh-release@v2
         with:
-          enablement: true
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: public-download
-          name: alpinoss-android-download
-      - name: Deploy public APK download
-        id: deployment
-        uses: actions/deploy-pages@v4
-        with:
-          artifact_name: alpinoss-android-download
-      - name: Verify public APK download
-        shell: bash
-        run: |
-          set -euo pipefail
-          URL="https://bnexora7-eng.github.io/nexora-business/downloads/"
-          for attempt in $(seq 1 18); do
-            if curl --fail --silent --show-error --location "$URL" -o /tmp/alpinoss-download.html; then break; fi
-            sleep 10
-          done
-          grep -q "POBIERZ APK" /tmp/alpinoss-download.html
-          curl --fail --silent --show-error --location "$URL/alpinoss.apk" -o /tmp/alpinoss-public.apk
-          test "$(stat -c%s /tmp/alpinoss-public.apk)" -gt 1000000
-          file /tmp/alpinoss-public.apk | grep -qi "Android package"
-          echo "PASS: public ALPINOSS APK download is reachable."
+          tag_name: alpinoss-android-2026-11-20
+          name: ALPINOSS Android — 20 November 2026
+          make_latest: true
+          files: |
+            release-files/ALPINOSS.apk
+            release-files/SHA256SUMS.txt
+          body: "Public ALPINOSS Android APK download. Install ALPINOSS.apk on your Android device."
