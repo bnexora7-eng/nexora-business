@@ -1,5 +1,9 @@
 name: Publish ALPINOSS Android APK download
 "on":
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/publish-alpinoss-apk.yml"
   workflow_dispatch:
 permissions:
   contents: read
