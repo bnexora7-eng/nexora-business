@@ -2,7 +2,7 @@
 
 ## Approved source artwork
 
-- `../app/1794828604878.jpg` — the owner's original ALPINOSS logo artwork. Preserve this image unchanged: metallic ALPINOSS lettering, biomechanical/cosmic composition, blue Earth, and the exact “NEXT LEVEL TOGETHER” / “EST. 2026” lettering.
+- `../assets/alpinoss-official.jpg` — exact copy of the owner-supplied approved source file `22001(3).jpg`. Preserve it unchanged. Preserve this image unchanged: metallic ALPINOSS lettering, biomechanical/cosmic composition, blue Earth, and the exact “NEXT LEVEL TOGETHER” / “EST. 2026” lettering.
 - The supplied portrait screenshot `22023(2).jpg` is the approved reference for the workspace layout, not a replacement logo. It defines the dark full-bleed background, illuminated glass/metal cards, and 2×2 mobile menu: PLATFORM, TECHNOLOGY, MARKETPLACE, COMMUNITY.
 - `../alpinoss-brand.svg` and `../alpinoss-icon.svg` remain provisional concepts and must not replace the approved JPG.
 

@@ -83,9 +83,11 @@ jobs:
             grep -q "$section" /tmp/alpinoss-app.html
           done
           grep -q 'class="brand-visual"' /tmp/alpinoss-app.html
-          grep -q 'app/1794828604878.jpg' /tmp/alpinoss-site.html
-          grep -q '../app/1794828604878.jpg' /tmp/alpinoss-app.html
-          curl --fail --silent --show-error --location "$URL/app/1794828604878.jpg" -o /tmp/alpinoss-logo.jpg
+          grep -q 'assets/alpinoss-official.jpg' /tmp/alpinoss-site.html
+          grep -q '../assets/alpinoss-official.jpg' /tmp/alpinoss-app.html
+          ! grep -q '1794828604878.jpg' /tmp/alpinoss-app.html
+          ! grep -q '1794828604878.jpg' /tmp/alpinoss-site.html
+          curl --fail --silent --show-error --location "$URL/assets/alpinoss-official.jpg" -o /tmp/alpinoss-logo.jpg
           test -s /tmp/alpinoss-logo.jpg
           file /tmp/alpinoss-logo.jpg | grep -qi "jpeg image data"
           echo "PASS: original ALPINOSS logo and all four workspace menu sections are present."
