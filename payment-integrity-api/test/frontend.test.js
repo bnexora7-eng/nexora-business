@@ -92,3 +92,15 @@ test("homepage core areas open their matching ALPINOSS workspace modules", async
   assert.ok(script, "workspace page must include its application script");
   assert.doesNotThrow(() => new vm.Script(script), "workspace application script must parse");
 });
+
+test("official ALPINOSS logo is the first screen and opens the main menu on tap", async () => {
+  const html = await readFile(new URL("../../index.html", import.meta.url), "utf8");
+  assert.match(html, /<button id="alpinoss-splash"[^>]*aria-label="Enter ALPINOSS"/);
+  assert.match(html, /<img src="assets\/alpinoss-official\.jpg" alt="Official ALPINOSS logo — Next Level Together"/);
+  assert.match(html, /<div id="site-shell" hidden>/);
+  assert.ok(html.indexOf('id="alpinoss-splash"') < html.indexOf('id="site-shell"'), "logo screen must appear before the site menu");
+  assert.match(html, /splash\.addEventListener\("click",\s*\(\)\s*=>\s*\{\s*splash\.hidden = true;\s*shell\.hidden = false;/);
+  for (const area of ["Platform", "Technology", "Marketplace", "Community"]) {
+    assert.ok(html.includes(">" + area + "</h2>"), "main menu must include " + area);
+  }
+});
