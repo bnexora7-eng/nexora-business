@@ -48,6 +48,8 @@ button.primary{background:linear-gradient(90deg,#00c9f5,#5ceaff);color:#031522;b
 @media(max-width:360px){.tabs{grid-template-columns:1fr}.tabs button{min-height:145px}}
 
 
+.brand-wordmark{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px 12px 30px;text-align:center;color:#eaf7ff;text-shadow:0 0 22px #00bfff66}.brand-wordmark div{font-size:clamp(38px,9vw,76px);font-weight:950;letter-spacing:.2em}.brand-wordmark span{margin-top:5px;font-size:clamp(10px,2vw,14px);letter-spacing:.42em;color:#7ceaff}
+
 /* Approved ALPINOSS artwork slots and menu composition */
 .brand-visual{display:flex;justify-content:center;align-items:center;padding:8px 0 26px}
 .brand-visual img{display:block;width:min(100%,720px);max-height:390px;object-fit:contain;border:1px solid #246b91;border-radius:16px;background:#030916;box-shadow:0 0 35px #00bfff24,0 20px 55px #0009}
@@ -62,7 +64,7 @@ button.primary{background:linear-gradient(90deg,#00c9f5,#5ceaff);color:#031522;b
 <body>
 <header class="wrap top"><a class="brand" href="../" aria-label="ALPINOSS home">ALPINOSS<small>NEXT LEVEL TOGETHER · EST. 2026</small></a><div class="top-actions"><a href="../account/">Account</a><span aria-hidden="true">·</span><button id="signout" type="button">Sign out</button></div></header>
 <div class="wrap">
-<section class="brand-visual" aria-label="ALPINOSS official artwork"><img src="1794828604878.jpg" alt="Oficjalne logo ALPINOSS — NEXT LEVEL TOGETHER" onerror="this.hidden=true"></section><section class="hero"><div class="eyebrow">ALPINOSS WORKSPACE</div><h1>Your workspace.</h1><p class="muted">Business planning, community and marketplace tools in one place.</p><div id="global-status" class="status" role="status" aria-live="polite"></div></section>
+<section class="brand-wordmark" aria-label="ALPINOSS"><div>ALPINOSS</div><span>NEXT LEVEL TOGETHER</span></section><section class="hero"><div class="eyebrow">ALPINOSS WORKSPACE</div><h1>Your workspace.</h1><p class="muted">Business planning, community and marketplace tools in one place.</p><div id="global-status" class="status" role="status" aria-live="polite"></div></section>
 <section id="gate" class="panel hidden"><h2 id="gate-title">Sign in required</h2><p id="gate-copy" class="muted">Sign in to your ALPINOSS account to use the workspace.</p><a href="../account/" class="primary" style="display:inline-block;text-decoration:none">Open account</a></section>
 <div id="workspace-app" class="hidden">
 <nav class="tabs" aria-label="Workspace sections"><button class="active" data-tab="business"><span class="tab-number">01</span><span class="tab-symbol">✧</span><strong>PLATFORM</strong><small>Tools, plans and your personal workspace</small><span class="tab-plus">+</span></button><button data-tab="technology"><span class="tab-number">02</span><span class="tab-symbol">⌘</span><strong>TECHNOLOGY</strong><small>AI, systems and digital infrastructure</small><span class="tab-plus">+</span></button><button data-tab="marketplace"><span class="tab-number">03</span><span class="tab-symbol">◇</span><strong>MARKETPLACE</strong><small>Discover offers, products and services</small><span class="tab-plus">+</span></button><button data-tab="community"><span class="tab-number">04</span><span class="tab-symbol">◎</span><strong>COMMUNITY</strong><small>People, ideas and shared opportunities</small><span class="tab-plus">+</span></button></nav>
