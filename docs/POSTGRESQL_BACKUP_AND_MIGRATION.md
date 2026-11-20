@@ -20,7 +20,7 @@ Do not treat the grace period as a backup strategy. The database becomes inacces
 
 The Render MCP SQL query failed because the database's external IP allowlist is empty. This does not prove the application cannot connect: Render services in the same region can use the database's internal connection URL.
 
-Verified encrypted logical backups are now being produced by the existing Render API backup runner. As of 18 November 2026, successful backup runs exist for 15, 16, 17 and 18 November. The latest encrypted dump is `nexora-20261118T040615Z.dump.enc` (42,520 bytes). The active runner executes `pg_dump` in custom format, validates the plaintext archive with `pg_restore --list`, encrypts it, uploads the ciphertext and manifest to the private backup repository, downloads the uploaded assets again and verifies their SHA-256. The 18 November workflow and Render job both completed successfully. **A restore into a separate recovery database has not yet been demonstrated.**
+Verified encrypted logical backups are being produced by the existing Render API backup runner. Successful backup runs are recorded from 15 through 20 November 2026. The latest verified encrypted dump is `nexora-20261120T040403Z.dump.enc` (42,675 bytes; SHA-256 `f16216855c735d663e04ed035671a1bb1d88954769a43599b208ddd9ad769dba`). The 20 November GitHub Actions run and Render backup job both completed successfully. The active runner executes `pg_dump` in custom format, validates the plaintext archive with `pg_restore --list`, encrypts it, uploads the ciphertext and manifest to the private backup repository, downloads the uploaded assets again and verifies their SHA-256. **A restore into a separate recovery database has not yet been demonstrated.**
 
 ## Required backup procedure
 
@@ -122,3 +122,13 @@ The final Cron Blueprint now pins branch `main` and sets `autoDeploy: false` so 
 - The workflow log shows the read-only database preflight passed, the Render endpoint accepted the backup, and the final status endpoint returned `succeeded`. The API implementation marks a backup job successful only when the backup process exits with code 0. `backup/run.sh` runs `pg_dump --format=custom`, then `pg_restore --list`, then encryption and upload. `backup/upload_backup.py` downloads each uploaded release asset and compares its SHA-256 with the original bytes before reporting success.
 - This is evidence of a completed logical dump, archive-list validation and encrypted asset read-back verification. It is **not** evidence of a full restore.
 - Next recovery gate: manually dispatch `.github/workflows/nexora-restore-test.yml` for backup stamp `20261118T040615Z`. The workflow is designed to restore into a disposable PostgreSQL 18 service, then check application table and index counts. Do not point it at the production database.
+
+
+## Verified backup operations — 20 November 2026
+
+- Latest scheduled GitHub Actions run: [run 6](https://github.com/bnexora7-eng/nexora-business/actions/runs/44671851499), completed successfully on 20 November 2026 at 04:04:16 UTC.
+- The run log confirms that the read-only preflight passed (database size 9,057,983 bytes / 8.64 MiB), Render accepted the backup request, and the authenticated status endpoint returned `succeeded`. The corresponding Render application log records backup job `504e0e87-56ce-4e4c-978a-78af13ad3574` as succeeded at 04:04:11 UTC.
+- Private release: `nexora-backup-20261120T040403Z`; encrypted asset `nexora-20261120T040403Z.dump.enc`, 42,675 bytes; GitHub asset digest `sha256:f16216855c735d663e04ed035671a1bb1d88954769a43599b208ddd9ad769dba`.
+- The workflow's success gate requires the Render backup job to report `succeeded`. The checked-in `backup/run.sh` executes `pg_dump --format=custom`, then `pg_restore --list`, then encryption and upload. The uploader downloads the uploaded release asset and verifies its SHA-256 before reporting success.
+- This confirms the dump process, archive-list validation, encrypted upload and asset read-back verification for the 20 November run. It does **not** confirm a full restore.
+- The isolated restore workflow `.github/workflows/nexora-restore-test.yml` is present, but no completed `workflow_dispatch` run for that restore workflow was found as of 20 November 2026. The recovery gate remains open.
