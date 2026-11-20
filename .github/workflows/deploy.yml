@@ -78,7 +78,8 @@ jobs:
           echo "PASS: ALPINOSS operator quotation page is published."
           curl --fail --silent --show-error --location "$URL/app/" -o /tmp/alpinoss-app.html
           grep -q "ALPINOSS Workspace" /tmp/alpinoss-app.html
-          grep -q "/v1/business/ai-plan" /tmp/alpinoss-app.html
+          grep -q "AI generation is not active" /tmp/alpinoss-app.html
+          ! grep -q 'id="ai-form"' /tmp/alpinoss-app.html
           for section in PLATFORM TECHNOLOGY MARKETPLACE COMMUNITY; do
             grep -q "$section" /tmp/alpinoss-app.html
           done
