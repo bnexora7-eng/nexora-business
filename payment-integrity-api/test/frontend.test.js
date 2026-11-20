@@ -104,3 +104,18 @@ test("official ALPINOSS logo is the first screen and opens the main menu on tap"
     assert.ok(html.includes(">" + area + "</h2>"), "main menu must include " + area);
   }
 });
+
+
+test("mobile Payment Integrity sends synthetic events to the backend screening API", async () => {
+  const mobilePath = new URL("../../mobile/App.tsx", import.meta.url);
+  const serverPath = new URL("../src/server.js", import.meta.url);
+  const mobile = await readFile(mobilePath, "utf8");
+  const server = await readFile(serverPath, "utf8");
+  assert.match(mobile, /apiRequest\(["']\/v1\/demo\/events["']/);
+  assert.match(mobile, /currency:\s*["']EUR["']/);
+  assert.match(mobile, /status:\s*["']SUCCESS["']/);
+  assert.match(mobile, /setDecision\(data\.decision\)/);
+  assert.doesNotMatch(mobile, /const screening = useMemo/);
+  assert.match(server, /if \(req\.headers\.origin && req\.headers\.origin !== DEMO_ORIGIN\)/);
+  assert.match(server, /pathname === "\/v1\/demo\/events"/);
+});
