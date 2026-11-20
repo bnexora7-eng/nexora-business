@@ -15,7 +15,7 @@
 :root{color-scheme:dark;--bg:#030916;--panel:#0a1a2c;--line:#23618a;--text:#eef8ff;--muted:#a9c2d6;--mint:#00d9ff;--blue:#35aaff;--red:#ff7f91}
 body{background:radial-gradient(ellipse at 50% 0,#0b3150 0,transparent 42%),radial-gradient(ellipse at 50% 65%,#061a30 0,transparent 60%),#030916}body:before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background:url("../assets/alpinoss-official.jpg") center 42%/cover no-repeat;opacity:.12;filter:saturate(.85)}
 .top{height:82px;border-bottom:1px solid #1b5277;box-shadow:0 8px 30px #00111f66}
-.brand{font-size:25px;letter-spacing:.2em;text-shadow:0 0 14px #00cfff77,0 0 32px #007bb955}
+.brand{display:flex;align-items:center;font-size:25px;letter-spacing:.2em;text-shadow:0 0 14px #00cfff77,0 0 32px #007bb955}.brand img{display:block;width:42px;height:58px;object-fit:contain;margin-right:10px;flex:none}
 .brand small{color:#7ceaff;font-size:9px;letter-spacing:.25em;margin-top:2px}
 .top-actions{display:flex;align-items:center;gap:12px;color:#82a9c3;font-size:12px;letter-spacing:.08em;text-transform:uppercase}
 .top-actions a,.top-actions button{color:#c9e9f8;text-decoration:none;border:1px solid #1b628d;border-radius:7px;padding:8px 12px;background:#071b2c}
@@ -60,11 +60,11 @@ button.primary{background:linear-gradient(90deg,#00c9f5,#5ceaff);color:#031522;b
 </style>
 </head>
 <body>
-<header class="wrap top"><a class="brand" href="../" aria-label="ALPINOSS home">ALPINOSS<small>NEXT LEVEL TOGETHER · EST. 2026</small></a><div class="top-actions"><a href="../account/">Account</a><span aria-hidden="true">·</span><button id="signout" type="button">Sign out</button></div></header>
+<header class="wrap top"><a class="brand" href="../" aria-label="ALPINOSS home"><img src="../assets/alpinoss-official.jpg" alt="Official ALPINOSS logo"> <span>ALPINOSS<small>NEXT LEVEL TOGETHER · EST. 2026</small></span></a><div class="top-actions"><a href="../account/">Account</a><span aria-hidden="true">·</span><button id="signout" type="button">Sign out</button></div></header>
 <div class="wrap">
 <section class="brand-visual" aria-label="Official ALPINOSS logo"><img src="../assets/alpinoss-official.jpg" alt="Official ALPINOSS logo — NEXT LEVEL TOGETHER — EST. 2026" fetchpriority="high"></section><section class="hero"><div class="eyebrow">ALPINOSS WORKSPACE</div><h1>Your workspace.</h1><p class="muted">Business planning, community and marketplace tools in one place.</p><div id="global-status" class="status" role="status" aria-live="polite"></div></section>
 <section id="gate" class="panel hidden"><h2 id="gate-title">Sign in required</h2><p id="gate-copy" class="muted">Sign in to your ALPINOSS account to use the workspace.</p><a href="../account/" class="primary" style="display:inline-block;text-decoration:none">Open account</a></section>
-<div id="workspace-app" class="hidden">
+<div id="workspace-app">
 <nav class="tabs" aria-label="Workspace sections"><button class="active" type="button" data-tab="business" aria-controls="tab-business" aria-pressed="true"><span class="tab-number">01</span><span class="tab-symbol">✧</span><strong>PLATFORM</strong><small>Tools, plans and your personal workspace</small><span class="tab-plus">+</span></button><button type="button" data-tab="technology" aria-controls="tab-technology" aria-pressed="false"><span class="tab-number">02</span><span class="tab-symbol">⌘</span><strong>TECHNOLOGY</strong><small>AI, systems and digital infrastructure</small><span class="tab-plus">+</span></button><button type="button" data-tab="marketplace" aria-controls="tab-marketplace" aria-pressed="false"><span class="tab-number">03</span><span class="tab-symbol">◇</span><strong>MARKETPLACE</strong><small>Discover offers, products and services</small><span class="tab-plus">+</span></button><button type="button" data-tab="community" aria-controls="tab-community" aria-pressed="false"><span class="tab-number">04</span><span class="tab-symbol">◎</span><strong>COMMUNITY</strong><small>People, ideas and shared opportunities</small><span class="tab-plus">+</span></button></nav>
 <main>
 <section id="tab-business">
