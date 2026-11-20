@@ -5,7 +5,7 @@
 ## Architecture
 
 - The browser sends business-planning fields to `POST /v1/business/ai-plan`.
-- The API requires a verified, signed-in account with active ALPINOSS All Access (or access remaining in an already-paid canceled period).
+- The API requires a verified, signed-in account. AI generation is not gated by a paid membership.
 - The API sends the request to the OpenAI Chat Completions endpoint. The default model is `gpt-4.1-mini`.
 - The API key is read only from `OPENAI_API_KEY` in the Render service environment. It is never sent to the browser or stored in Git.
 - The endpoint has a 25-second timeout, PostgreSQL-backed authentication and per-account AI request limits, a global monthly token reservation limit, field-size limits and a hard 256 KiB cap on the provider's JSON response body.
@@ -33,6 +33,7 @@
 - No automatic retries, to avoid unexpected duplicate usage
 - No prompt or response body logging by the API
 - No API key configured in the current Render deployment
+- `AI_MONTHLY_TOKEN_LIMIT=0` keeps generation disabled until an explicit budget is approved
 - No live OpenAI request has been made or billed
 
 ## Verification status
