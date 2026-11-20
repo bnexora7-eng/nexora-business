@@ -77,3 +77,18 @@ test("account sign-in session is shared with the member workspace", async () => 
   assert.match(workspace, /sessionStorage\.removeItem\(["']alpinoss_web_email["']/);
   assert.doesNotMatch(workspace, /nexora_web_token|nexora_web_email/);
 });
+
+test("homepage core areas open their matching ALPINOSS workspace modules", async () => {
+  const homePath = new URL("../../index.html", import.meta.url);
+  const workspacePath = new URL("../../app/index.html", import.meta.url);
+  const home = await readFile(homePath, "utf8");
+  const workspace = await readFile(workspacePath, "utf8");
+  for (const route of ["platform", "technology", "marketplace", "community"]) {
+    assert.ok(home.includes('href="app/#' + route + '"'), "homepage must link to " + route);
+  }
+  assert.match(workspace, /const routeToTab=\{platform:"business",business:"business",technology:"technology",marketplace:"marketplace",community:"community"\}/);
+  assert.match(workspace, /window\.addEventListener\("hashchange",activateFromHash\)/);
+  const script = workspace.match(/<script>([\s\S]*?)<\/script>/i)?.[1];
+  assert.ok(script, "workspace page must include its application script");
+  assert.doesNotThrow(() => new vm.Script(script), "workspace application script must parse");
+});
