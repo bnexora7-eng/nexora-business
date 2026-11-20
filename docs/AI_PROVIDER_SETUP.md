@@ -17,7 +17,7 @@
 3. In Render, open the `nexora-payment-integrity-api` service and its Environment page.
 4. Add `OPENAI_API_KEY` as a secret value. Keep `OPENAI_MODEL` set to `gpt-4.1-mini`; `OPENAI_API_URL` can remain unset because the official endpoint is the default.
 5. Save and deploy the environment change. Do not enable live use until the deployment is healthy.
-6. Sign in with a verified test account that has All Access, generate a short test plan, and verify the result in Business Studio. Confirm the provider usage dashboard records the request.
+6. Sign in with a verified free ALPINOSS account, generate a short test plan, and verify the result in Business Studio. AI generation is not tied to a paid membership. Confirm the provider usage dashboard records the request.
 7. Set a low API usage budget/alert in the OpenAI Platform before allowing member traffic. A budget alert may notify but should not be treated as a guaranteed hard spending cap; enforce application-side usage limits as well.
 
 ## Current safe defaults and limits
