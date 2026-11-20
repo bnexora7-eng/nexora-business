@@ -82,12 +82,13 @@ jobs:
           for section in PLATFORM TECHNOLOGY MARKETPLACE COMMUNITY; do
             grep -q "$section" /tmp/alpinoss-app.html
           done
-          grep -q 'class="brand-wordmark"' /tmp/alpinoss-app.html
-          ! grep -q '1794828604878.jpg' /tmp/alpinoss-site.html
-          ! grep -q '1794828604878.jpg' /tmp/alpinoss-app.html
-          grep -q "NEXT LEVEL TOGETHER" /tmp/alpinoss-site.html
-          grep -q "NEXT LEVEL TOGETHER" /tmp/alpinoss-app.html
-          echo "PASS: incorrect JPG is absent; ALPINOSS wordmark and all four menu sections are present."
+          grep -q 'class="brand-visual"' /tmp/alpinoss-app.html
+          grep -q 'app/1794828604878.jpg' /tmp/alpinoss-site.html
+          grep -q '../app/1794828604878.jpg' /tmp/alpinoss-app.html
+          curl --fail --silent --show-error --location "$URL/app/1794828604878.jpg" -o /tmp/alpinoss-logo.jpg
+          test -s /tmp/alpinoss-logo.jpg
+          file /tmp/alpinoss-logo.jpg | grep -qi "jpeg image data"
+          echo "PASS: original ALPINOSS logo and all four workspace menu sections are present."
           curl --fail --silent --show-error --location "$URL/order.html" -o /tmp/alpinoss-order.html
           grep -q "Project enquiry" /tmp/alpinoss-order.html
           grep -q "Prepare email enquiry" /tmp/alpinoss-order.html
