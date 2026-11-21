@@ -533,7 +533,7 @@ async function handleEvent(req, res) {
 }
 async function handleDemoEvent(req, res) {
   if (!ENABLE_PUBLIC_DEMO) return send(res, 404, { error: "Demo endpoint disabled" });
-  if (req.headers.origin !== DEMO_ORIGIN) return send(res, 403, { error: "Origin not allowed" });
+  if (req.headers.origin && req.headers.origin !== DEMO_ORIGIN) return send(res, 403, { error: "Origin not allowed" });
   // Render public traffic passes through Cloudflare, which overwrites this header with the connecting client IP.
   // Ignore X-Forwarded-For: its list can contain caller-supplied values.
   const ip = String(req.headers["cf-connecting-ip"] || req.socket.remoteAddress || "unknown").trim().slice(0, 128);

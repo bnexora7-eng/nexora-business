@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import * as SecureStore from "expo-secure-store";
 import AlpinossModules from "./NexoraModules";
 import { API_BASE, apiRequest } from "./api";
@@ -30,6 +30,9 @@ export default function App() {
   const [pendingVerificationEmail,setPendingVerificationEmail] = useState("");
   const [account,setAccount] = useState<Account|null>(null);
   const [decision,setDecision] = useState<Decision|null>(null);
+  const [screeningBusy,setScreeningBusy] = useState(false);
+  const [screeningMessage,setScreeningMessage] = useState("");
+  const [screeningReason,setScreeningReason] = useState("");
   const [expandedArea,setExpandedArea] = useState<string|null>(null);
 
 
@@ -132,15 +135,48 @@ export default function App() {
     );
   };
 
-  const screening = useMemo(():Decision => {
-    const n = Number(amount.replace(",","."));
-    if (!Number.isFinite(n) || n <= 0) return "REJECT";
-    if (n > 5000) return "REVIEW";
-    if (reference.trim().length < 5) return "REVIEW";
-    return "ACCEPT";
-  },[amount,reference]);
+  const runScreening = async () => {
+    const numericAmount = Number(amount.replace(",", "."));
+    const eventId = reference.trim();
+    if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
+      setDecision("REJECT");
+      setScreeningReason("Enter a valid amount greater than zero.");
+      setScreeningMessage("Input validation failed; no API request was sent.");
+      return;
+    }
+    if (!eventId || eventId.length > 256) {
+      setDecision(null);
+      setScreeningReason("");
+      setScreeningMessage("Enter a reference between 1 and 256 characters.");
+      return;
+    }
+    setScreeningBusy(true);
+    setDecision(null);
+    setScreeningReason("");
+    setScreeningMessage("Sending the event to the ALPINOSS screening API…");
+    try {
+      const { ok, data } = await apiRequest("/v1/demo/events", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ event_id: eventId, amount: numericAmount, currency: "EUR", status: "SUCCESS" })
+      });
+      if (!ok) throw new Error(data.error || "The screening API rejected the request.");
+      if (data.decision !== "ACCEPT" && data.decision !== "REVIEW" && data.decision !== "REJECT") {
+        throw new Error("The screening API returned an invalid decision.");
+      }
+      setDecision(data.decision);
+      setScreeningReason(typeof data.reason === "string" ? data.reason : "");
+      setScreeningMessage(data.duplicate ? "Duplicate event detected by the API." : "Decision returned by the ALPINOSS API.");
+    } catch (error) {
+      setDecision(null);
+      setScreeningReason("");
+      setScreeningMessage(error instanceof Error ? error.message : "Could not reach the screening API.");
+    } finally {
+      setScreeningBusy(false);
+    }
+  };
 
-  const go = (next:Tab) => { setTab(next); setDecision(null); setExpandedArea(null); };
+  const go = (next:Tab) => { setTab(next); setDecision(null); setScreeningMessage(""); setScreeningReason(""); setExpandedArea(null); };
   const areaCard = (area:string, index:string, description:string, actions:{title:string;subtitle:string;target:Tab}[]) => (
     <View style={styles.areaCard}>
       <View style={styles.areaAccent}/><View style={styles.areaCorner}/>
@@ -214,11 +250,12 @@ export default function App() {
       </>}
       {(tab==="Community"||tab==="Marketplace"||tab==="Business")&&<AlpinossModules screen={tab} signedIn={!!account} onNavigate={go}/>}
       {tab==="Integrity" && <>
-        <Card><Text style={styles.kicker}>PAYMENT INTEGRITY • DEMO</Text><Text style={styles.hero}>Screen a payment event.</Text><Text style={styles.muted}>Local demonstration only. This does not connect to a bank, move money or approve a real payment.</Text>
+        <Card><Text style={styles.kicker}>PAYMENT INTEGRITY • API DEMO</Text><Text style={styles.hero}>Screen a payment event.</Text><Text style={styles.muted}>This sends a synthetic EUR event to the ALPINOSS API. It does not connect to a bank, move money or approve a real payment. Demo events are kept temporarily in server memory.</Text>
           <Text style={styles.label}>AMOUNT (EUR)</Text><TextInput value={amount} onChangeText={setAmount} keyboardType="decimal-pad" placeholder="950.00" placeholderTextColor={C.muted} style={styles.input}/>
-          <Text style={styles.label}>REFERENCE</Text><TextInput value={reference} onChangeText={setReference} autoCapitalize="characters" placeholder="NX-2026-001" placeholderTextColor={C.muted} style={styles.input}/>
-          <TouchableOpacity style={styles.primary} onPress={()=>setDecision(screening)}><Text style={styles.primaryText}>RUN DEMO SCREENING</Text></TouchableOpacity>
-          {decision && <View style={[styles.result,{borderColor:decision==="ACCEPT"?C.green:decision==="REVIEW"?C.amber:C.red}]}><Text style={[styles.resultTitle,{color:decision==="ACCEPT"?C.green:decision==="REVIEW"?C.amber:C.red}]}>{decision}</Text><Text style={styles.muted}>Illustrative rule-based result. Production screening requires validated rules, audit controls and security testing.</Text></View>}
+          <Text style={styles.label}>REFERENCE / EVENT ID</Text><TextInput value={reference} onChangeText={setReference} autoCapitalize="characters" placeholder="NX-2026-001" placeholderTextColor={C.muted} style={styles.input}/>
+          <TouchableOpacity style={[styles.primary,screeningBusy&&{opacity:0.6}]} disabled={screeningBusy} onPress={runScreening}><Text style={styles.primaryText}>{screeningBusy?"SCREENING…":"RUN API SCREENING"}</Text></TouchableOpacity>
+          {!!screeningMessage&&<Text accessibilityRole="alert" style={styles.note}>{screeningMessage}</Text>}
+          {decision && <View style={[styles.result,{borderColor:decision==="ACCEPT"?C.green:decision==="REVIEW"?C.amber:C.red}]}><Text style={[styles.resultTitle,{color:decision==="ACCEPT"?C.green:decision==="REVIEW"?C.amber:C.red}]}>{decision}</Text>{!!screeningReason&&<Text style={styles.muted}>{screeningReason}</Text>}<Text style={styles.muted}>Decision returned by the API demo rules. This is not certified fraud detection or a live payment authorization.</Text></View>}
         </Card>
         <Text style={styles.section}>Decision outcomes</Text>
         <View style={styles.outcomes}><Text style={{color:C.green,fontWeight:"800"}}>ACCEPT</Text><Text style={{color:C.amber,fontWeight:"800"}}>REVIEW</Text><Text style={{color:C.red,fontWeight:"800"}}>REJECT</Text></View>
