@@ -20,7 +20,7 @@ Do not treat the grace period as a backup strategy. The database becomes inacces
 
 The Render MCP SQL query failed because the database's external IP allowlist is empty. This does not prove the application cannot connect: Render services in the same region can use the database's internal connection URL.
 
-Verified encrypted logical backups are being produced by the existing Render API backup runner. Successful backup runs are recorded from 15 through 20 November 2026. The latest verified encrypted dump is `nexora-20261120T040403Z.dump.enc` (42,675 bytes; SHA-256 `f16216855c735d663e04ed035671a1bb1d88954769a43599b208ddd9ad769dba`). The 20 November GitHub Actions run and Render backup job both completed successfully. The active runner executes `pg_dump` in custom format, validates the plaintext archive with `pg_restore --list`, encrypts it, uploads the ciphertext and manifest to the private backup repository, downloads the uploaded assets again and verifies their SHA-256. **A restore into a separate recovery database has not yet been demonstrated.**
+Verified encrypted logical backups are being produced by the existing Render API backup runner. Successful backup runs are recorded from 15 through 21 November 2026. The latest verified encrypted dump is `nexora-20261120T040403Z.dump.enc` (42,675 bytes; SHA-256 `f16216855c735d663e04ed035671a1bb1d88954769a43599b208ddd9ad769dba`). The 20 November GitHub Actions run and Render backup job both completed successfully. The active runner executes `pg_dump` in custom format, validates the plaintext archive with `pg_restore --list`, encrypts it, uploads the ciphertext and manifest to the private backup repository, downloads the uploaded assets again and verifies their SHA-256. **A restore into a separate recovery database has not yet been demonstrated.**
 
 ## Required backup procedure
 
@@ -132,3 +132,14 @@ The final Cron Blueprint now pins branch `main` and sets `autoDeploy: false` so 
 - The workflow's success gate requires the Render backup job to report `succeeded`. The checked-in `backup/run.sh` executes `pg_dump --format=custom`, then `pg_restore --list`, then encryption and upload. The uploader downloads the uploaded release asset and verifies its SHA-256 before reporting success.
 - This confirms the dump process, archive-list validation, encrypted upload and asset read-back verification for the 20 November run. It does **not** confirm a full restore.
 - The isolated restore workflow `.github/workflows/nexora-restore-test.yml` is present, but no completed `workflow_dispatch` run for that restore workflow was found as of 20 November 2026. The recovery gate remains open.
+
+
+## Verified backup operations — 21 November 2026
+
+- Latest scheduled GitHub Actions backup run: [run 7](https://github.com/bnexora7-eng/nexora-business/actions/runs/44863901704), completed successfully on 21 November 2026 at 04:00:44 UTC.
+- Read-only preflight passed. The database measured 9,066,175 bytes (8.65 MiB); the runner reported the backup destination, GitHub token and encryption configuration as present.
+- Render API backup job: `71c4ce0d-8117-4d6d-9d3e-37e7d2963aa2`, status `succeeded`; Render application logs recorded success at 04:00:40 UTC.
+- Private release: `nexora-backup-20261121T040031Z`; encrypted asset `nexora-20261121T040031Z.dump.enc`, 42,907 bytes; GitHub asset digest `sha256:62efa5c278dbeebc81e5979e414cf00e31c444c2f2d77b9313e42f39a47f4050`.
+- The checked-in `backup/run.sh` executes `pg_dump --format=custom`, validates the resulting plaintext archive with `pg_restore --list`, encrypts it, and invokes the uploader. The uploader verifies the uploaded encrypted asset by downloading it again and comparing SHA-256. The successful Render job plus the scheduled workflow's success gate confirm that this pipeline completed.
+- This confirms the 21 November logical dump, archive-list validation, encrypted upload and asset read-back verification. It does **not** confirm a full restore.
+- The isolated PostgreSQL 18 restore workflow remains manual (`workflow_dispatch`). No restore-test run was found in the latest 100 repository workflow runs as of 21 November 2026. The recovery gate remains open; do not mark the backup as fully recovery-tested until a separate-database restore succeeds.
