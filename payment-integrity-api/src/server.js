@@ -1267,12 +1267,12 @@ async function handleLogin(req,res) {
   const email=typeof input?.email==="string"?input.email.trim().toLowerCase():"";
   const password=typeof input?.password==="string"?input.password:"";
   if(!email||email.length>254||!password||password.length>128) return send(res,401,{error:"Email or password is incorrect"});
-  const found=await pool.query("SELECT id,email,password_hash,created_at,email_verified_at FROM app_users WHERE email=$1",[email]);
+  const found=await pool.query("SELECT id,email,display_name,password_hash,created_at,email_verified_at FROM app_users WHERE email=$1",[email]);
   if(!found.rowCount||!(await verifyPassword(password,found.rows[0].password_hash))) return send(res,401,{error:"Email or password is incorrect"});
   const user=found.rows[0];
   if(!user.email_verified_at) return send(res,403,{error:"Confirm your email address before signing in. You can request a new verification email.",code:"email_not_verified"});
   const token=await createUserSession(user.id);
-  return send(res,200,{token,token_type:"Bearer",expires_in:2592000,user:{id:String(user.id),email:user.email,created_at:user.created_at}});
+  return send(res,200,{token,token_type:"Bearer",expires_in:2592000,user:{id:String(user.id),email:user.email,display_name:user.display_name,created_at:user.created_at}});
 }
 
 async function handleVerifyEmail(req,res) {
@@ -1364,7 +1364,7 @@ async function handleMe(req, res) {
   const token = bearerToken(req);
   if (!token) return send(res, 401, { error: "Authentication required" });
   const result = await pool.query(
-    `SELECT u.id, u.email, u.created_at, u.subscription_status
+    `SELECT u.id, u.email, u.display_name, u.created_at, u.subscription_status
      FROM app_sessions s JOIN app_users u ON u.id=s.user_id
      WHERE s.token_hash=$1 AND s.revoked_at IS NULL AND s.expires_at > NOW()
        AND u.email_verified_at IS NOT NULL`,
@@ -1372,7 +1372,17 @@ async function handleMe(req, res) {
   );
   if (!result.rowCount) return send(res, 401, { error: "Session is invalid or expired" });
   const user = result.rows[0];
-  return send(res, 200, { user: { id: String(user.id), email: user.email, created_at: user.created_at, subscription_status: user.subscription_status } });
+  return send(res, 200, { user: { id: String(user.id), email: user.email, display_name: user.display_name, created_at: user.created_at, subscription_status: user.subscription_status } });
+}
+async function handleUpdateProfile(req,res) {
+  const user=await requireUser(req,res); if(!user) return;
+  const raw=await readBody(req); let input;
+  try { input=JSON.parse(raw.toString("utf8")); } catch { return send(res,400,{error:"Invalid JSON"}); }
+  const displayName=typeof input?.display_name==="string"?input.display_name.trim().replace(/\\s+/g," "):"";
+  if(displayName.length<2||displayName.length>40||/[<>]/.test(displayName)) return send(res,422,{error:"Display name must contain 2 to 40 characters and cannot include angle brackets"});
+  const result=await pool.query("UPDATE app_users SET display_name=$2,updated_at=NOW() WHERE id=$1 RETURNING id,email,display_name,created_at,subscription_status",[user.id,displayName]);
+  const profile=result.rows[0];
+  return send(res,200,{user:{id:String(profile.id),email:profile.email,display_name:profile.display_name,created_at:profile.created_at,subscription_status:profile.subscription_status}});
 }
 async function handleLogout(req, res) {
   if (!pool) return send(res, 503, { error: "Account service is not configured; database is required" });
@@ -1532,7 +1542,7 @@ async function handleCommunity(req, res) {
   if (req.method === "GET") {
     if (!pool) return send(res, 503, { error: "Community database is not configured" });
     const result = await pool.query(
-      `SELECT p.id,p.body,p.created_at FROM community_posts p ORDER BY p.created_at DESC LIMIT 50`
+      `SELECT p.id,p.body,p.created_at,COALESCE(NULLIF(u.display_name,''),'ALPINOSS MEMBER') AS author_name FROM community_posts p JOIN app_users u ON u.id=p.user_id ORDER BY p.created_at DESC LIMIT 50`
     );
     return send(res, 200, { posts: result.rows });
   }
@@ -1766,6 +1776,7 @@ const server = createServer(async (req, res) => {
     if (req.method === "POST" && pathname === "/v1/auth/request-password-reset") return await handleRequestPasswordReset(req,res);
     if (req.method === "POST" && pathname === "/v1/auth/reset-password") return await handleResetPassword(req,res);
     if (req.method === "GET" && pathname === "/v1/auth/me") return await handleMe(req, res);
+    if (req.method === "PUT" && pathname === "/v1/auth/profile") return await handleUpdateProfile(req,res);
     if (req.method === "POST" && pathname === "/v1/auth/logout") return await handleLogout(req, res);
     if (req.method === "DELETE" && pathname === "/v1/auth/account") return await handleDeleteAccount(req, res);
     if (req.method === "POST" && pathname === "/v1/auth/delete-request") return await handleWebAccountDeletion(req, res);
