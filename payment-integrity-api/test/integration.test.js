@@ -518,6 +518,38 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   assert.equal(communityRead.status, 200);
   assert.ok(Array.isArray((await communityRead.json()).posts));
 
+  // Retired recurring products must remain inert even when Mollie retries old webhooks.
+  const legacyOrderId = randomUUID();
+  await pool.query(
+    "INSERT INTO own_payments (order_id,user_id,amount,currency,description,status,mollie_payment_id) VALUES ($1,$2,29.99,'EUR','NEXORA All Access monthly subscription','open','tr_nexorafirst')",
+    [legacyOrderId, accountId]
+  );
+  mockFirstPaymentMetadata = { order_id: legacyOrderId, user_id: String(accountId), product: "nexora_all_access" };
+  firstPaymentStatus = "paid";
+  const legacyFirstWebhook = await fetch(`http://127.0.0.1:${port}/v1/payments/mollie-webhook`, {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ id: "tr_nexorafirst" })
+  });
+  assert.equal(legacyFirstWebhook.status, 200);
+  assert.equal((await legacyFirstWebhook.json()).legacy_subscription_ignored, true);
+  assert.equal(mollieSubscriptionCreateCount, 0, "retired first-payment webhook must not create a recurring Mollie subscription");
+  const legacyAccount = await pool.query(
+    "SELECT subscription_status,mollie_subscription_id FROM app_users WHERE id=$1",
+    [accountId]
+  );
+  assert.equal(legacyAccount.rows[0].subscription_status, "inactive");
+  assert.equal(legacyAccount.rows[0].mollie_subscription_id, null);
+  const legacyRecurringWebhook = await fetch(`http://127.0.0.1:${port}/v1/payments/mollie-webhook`, {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ id: "tr_nexorarecurring" })
+  });
+  assert.equal(legacyRecurringWebhook.status, 200);
+  assert.equal((await legacyRecurringWebhook.json()).legacy_subscription_ignored, true);
+  assert.equal(mollieSubscriptionCreateCount, 0, "retired renewal webhook must not create recurring subscriptions");
+  await pool.query("DELETE FROM own_payments WHERE order_id=$1", [legacyOrderId]);
+
   // Monthly membership is disabled: a signed-in account must never start a subscription checkout.
   const disabledCheckout = await fetch(`http://127.0.0.1:${port}/v1/subscriptions/checkout`, {
     method: "POST", headers: { authorization: "Bearer " + loggedIn.token, "content-type": "application/json" },
