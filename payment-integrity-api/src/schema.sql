@@ -27,6 +27,7 @@ CREATE INDEX IF NOT EXISTS screening_audit_provider_event_idx ON screening_audit
 CREATE TABLE IF NOT EXISTS app_users (
   id BIGSERIAL PRIMARY KEY,
   email TEXT NOT NULL UNIQUE,
+  display_name VARCHAR(40) NOT NULL DEFAULT '',
   password_hash TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -120,6 +121,7 @@ CREATE TABLE IF NOT EXISTS business_workspaces (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+ALTER TABLE app_users ADD COLUMN IF NOT EXISTS display_name VARCHAR(40) NOT NULL DEFAULT '';
 ALTER TABLE app_users ADD COLUMN IF NOT EXISTS email_verified_at TIMESTAMPTZ;
 ALTER TABLE app_users ADD COLUMN IF NOT EXISTS mollie_customer_id TEXT UNIQUE;
 ALTER TABLE app_users ADD COLUMN IF NOT EXISTS mollie_subscription_id TEXT UNIQUE;
