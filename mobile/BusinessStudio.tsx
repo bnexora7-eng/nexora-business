@@ -7,6 +7,9 @@ const s={card:{backgroundColor:C.panel,borderWidth:1,borderColor:C.line,borderRa
 export default function BusinessStudio({signedIn}:{signedIn:boolean}){
  const [tool,setTool]=useState<"planner"|"swot"|"tasks">("planner");
  const [doneTasks,setDoneTasks]=useState<number[]>([]);
+ const [tasksLoaded,setTasksLoaded]=useState(false);
+ useEffect(()=>{let active=true;(async()=>{try{const raw=await SecureStore.getItemAsync("alpinoss_business_tasks_v1");if(raw){const parsed:unknown=JSON.parse(raw);if(Array.isArray(parsed))setDoneTasks(parsed.filter((value):value is number=>Number.isInteger(value)&&value>=0&&value<7));}}catch{}finally{if(active)setTasksLoaded(true);}})();return()=>{active=false;};},[]);
+ useEffect(()=>{if(!tasksLoaded)return;SecureStore.setItemAsync("alpinoss_business_tasks_v1",JSON.stringify(doneTasks)).catch(()=>{});},[doneTasks,tasksLoaded]);
  const [name,setName]=useState("ALPINOSS");
  const [tagline,setTagline]=useState("");
  const [industry,setIndustry]=useState("");

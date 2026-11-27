@@ -2,11 +2,11 @@ import React, { useEffect, useMemo, useState } from "react";
 import * as SecureStore from "expo-secure-store";
 import AlpinossModules from "./NexoraModules";
 import { API_BASE, apiRequest } from "./api";
-import { Alert, BackHandler, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View, Linking } from "react-native";
+import { Alert, BackHandler, Image, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View, Linking } from "react-native";
 
 type Tab = "Home" | "Community" | "Marketplace" | "Business" | "Integrity" | "Profile";
 type Decision = "ACCEPT" | "REVIEW" | "REJECT";
-type Account = { id: string; email: string; created_at: string; subscription_status?: string };
+type Account = { id: string; email: string; display_name?: string; created_at: string; subscription_status?: string };
 
 const C = { bg:"#08111F", panel:"#111E30", panel2:"#17263B", line:"#263A53", text:"#F3F7FC", muted:"#91A4BA", cyan:"#4b8dff", blue:"#6EA8FF", green:"#43D19E", amber:"#F5BD58", red:"#FF7777" };
 
@@ -19,16 +19,18 @@ function Action({title,subtitle,onPress}:{title:string;subtitle:string;onPress:(
 }
 
 export default function App() {
-  const [tab,setTab] = useState<Tab>("Home");
+  const [tab,setTab] = useState<Tab>("Profile");
   const [amount,setAmount] = useState("950");
   const [reference,setReference] = useState("NX-2026-001");
   const [email,setEmail] = useState("");
   const [password,setPassword] = useState("");
-  const [authMode,setAuthMode] = useState<"login"|"register">("register");
+  const [authMode,setAuthMode] = useState<"login"|"register">("login");
   const [authBusy,setAuthBusy] = useState(false);
   const [authMessage,setAuthMessage] = useState("");
   const [pendingVerificationEmail,setPendingVerificationEmail] = useState("");
   const [account,setAccount] = useState<Account|null>(null);
+  const [profileName,setProfileName] = useState("");
+  const [profileBusy,setProfileBusy] = useState(false);
   const [decision,setDecision] = useState<Decision|null>(null);
   const [expandedArea,setExpandedArea] = useState<string|null>(null);
 
@@ -49,7 +51,7 @@ export default function App() {
           }
           return;
         }
-        if (active) setAccount(data.user);
+        if (active) { setAccount(data.user); setProfileName(data.user.display_name||""); }
       } catch {
         if (active) setAuthMessage("Nie można połączyć się z serwerem konta.");
       }
@@ -80,6 +82,7 @@ export default function App() {
       }
       await SecureStore.setItemAsync("nexora_session", data.token);
       setAccount(data.user);
+      setProfileName(data.user.display_name||"");
       setPassword("");
       setPendingVerificationEmail("");
       setAuthMessage("Zalogowano pomyślnie.");
@@ -89,6 +92,20 @@ export default function App() {
     } finally {
       setAuthBusy(false);
     }
+  };
+
+  const saveProfile = async () => {
+    const name=profileName.trim().replace(/\s+/g," ");
+    if(name.length<2||name.length>40||/[<>]/.test(name)){setAuthMessage("Nazwa profilu musi mieć od 2 do 40 znaków.");return;}
+    setProfileBusy(true);
+    try{
+      const token=await SecureStore.getItemAsync("nexora_session");
+      if(!token) throw new Error("Sesja wygasła. Zaloguj się ponownie.");
+      const {ok,data}=await apiRequest("/v1/auth/profile",{method:"PUT",headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},body:JSON.stringify({display_name:name})});
+      if(!ok) throw new Error(data.error||"Nie udało się zapisać profilu.");
+      setAccount(data.user);setProfileName(data.user.display_name||"");setAuthMessage("Profil został zapisany.");
+    }catch(error){setAuthMessage(error instanceof Error?error.message:"Błąd zapisu profilu.");}
+    finally{setProfileBusy(false);}
   };
 
   const signOut = async () => {
@@ -174,7 +191,7 @@ export default function App() {
     <View pointerEvents="none" style={styles.bioStructure}><View style={styles.bioSpineLeft}/><View style={styles.bioSpineRight}/><View style={styles.bioCrossbarTop}/><View style={styles.bioCrossbarBottom}/><View style={styles.bioNodeTopLeft}/><View style={styles.bioNodeTopRight}/><View style={styles.bioNodeBottomLeft}/><View style={styles.bioNodeBottomRight}/><View style={styles.bioCableOne}/><View style={styles.bioCableTwo}/></View>
     <StatusBar barStyle="light-content" backgroundColor={C.bg}/>
     <View style={styles.header}>
-      <View><Text style={styles.brand}>ALPINOSS</Text><Text style={styles.tag}>MANY POSSIBILITIES</Text></View>
+      <View style={{flexDirection:"row",alignItems:"center",gap:10}}><Image source={require("./assets/alpinoss-official.jpg")} style={{width:54,height:54}} resizeMode="contain"/><View><Text style={styles.brand}>ALPINOSS</Text><Text style={styles.tag}>NEXT LEVEL TOGETHER</Text></View></View>
       <TouchableOpacity onPress={()=>go("Profile")} style={styles.accountButton}><Text style={styles.accountButtonText}>ACCOUNT ↗</Text></TouchableOpacity>
     </View>
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
@@ -184,27 +201,26 @@ export default function App() {
         <View style={styles.brandHero}>
           <View style={styles.heroTopLine}><View style={styles.heroLine}/><Text style={styles.heroOverline}>A WORLD OF POSSIBILITIES</Text><View style={styles.heroLine}/></View>
           <View style={styles.heroWordmarkStage}>
-            <Text style={styles.heroWordmark}>ALPINOSS</Text>
+            <Image source={require("./assets/alpinoss-official.jpg")} style={{width:"92%",height:132}} resizeMode="contain"/>
             <View style={styles.wordmarkUnderline}/>
             <Text style={styles.heroTagline}>MANY POSSIBILITIES</Text>
           </View>
           <View style={styles.heroBottom}><Text style={styles.heroBottomText}>CONNECT  •  CREATE  •  EXPLORE</Text></View>
         </View>
-        <Text style={styles.homeIntro}>One connected space to build, explore, create and connect.</Text>
+        <Text style={styles.homeIntro}>Technology, marketplace and community — built to move ideas forward.</Text>
         <View style={styles.areaGrid}>
-          {areaCard("Platform","01","Tools, plans and your personal workspace",[
+          {areaCard("Technology","01","AI, systems and digital infrastructure",[
             {title:"Business workspace",subtitle:"Build and manage your projects",target:"Business"},
-            {title:"Account & profile",subtitle:"Sign in and manage your account",target:"Profile"}
+            {title:"Payment Integrity",subtitle:"Open the payment screening demo",target:"Integrity"}
           ])}
-          {areaCard("Technology","02","AI, systems and digital infrastructure",[
-            {title:"Payment Integrity",subtitle:"Open the payment screening demo",target:"Integrity"},
-            {title:"Business tools",subtitle:"Explore your project workspace",target:"Business"}
-          ])}
-          {areaCard("Marketplace","03","Discover offers, products and services",[
+          {areaCard("Marketplace","02","Discover offers, products and services",[
             {title:"Explore marketplace",subtitle:"Browse and publish offers",target:"Marketplace"}
           ])}
-          {areaCard("Community","04","People, ideas and shared opportunities",[
+          {areaCard("Community","03","People, ideas and shared opportunities",[
             {title:"Open community",subtitle:"Connect and share updates",target:"Community"}
+          ])}
+          {areaCard("Prices","04","One-off project fees. Scope and price to discuss.",[
+            {title:"Request a project quote",subtitle:"Discuss scope, timing and budget",target:"Business"}
           ])}
         </View>
         <Text style={styles.homeFoot}>ALPINOSS  •  MANY POSSIBILITIES</Text>
@@ -225,11 +241,20 @@ export default function App() {
         <Text style={styles.note}>Duplicate-event protection and the separate API prototype remain part of the existing project. This mobile demo is not a regulated payment service.</Text>
       </>}
       {tab==="Profile" && <>
+        <View style={styles.accountHero}>
+          <Image source={require("./assets/alpinoss-official.jpg")} style={styles.accountHeroLogo} resizeMode="contain"/>
+          <Text style={styles.accountHeroTitle}>GLOBAL PLATFORM</Text>
+          <Text style={styles.accountHeroSubtitle}>MANY POSSIBILITIES  •  NEXT LEVEL TOGETHER</Text>
+        </View>
         <Card>
           <Text style={styles.kicker}>ALPINOSS ACCOUNT</Text>
           {account ? <>
             <Text style={styles.hero}>You are signed in.</Text>
             <Text style={styles.muted}>{account.email}</Text>
+            <Text style={styles.label}>PUBLIC DISPLAY NAME</Text>
+            <TextInput value={profileName} onChangeText={setProfileName} maxLength={40} placeholder="Your name in the community" placeholderTextColor={C.muted} style={styles.input}/>
+            <TouchableOpacity style={[styles.primary,profileBusy&&{opacity:0.6}]} disabled={profileBusy} onPress={saveProfile}><Text style={styles.primaryText}>{profileBusy?"SAVING…":"SAVE PROFILE"}</Text></TouchableOpacity>
+            {!!authMessage&&<Text accessibilityRole="alert" style={styles.note}>{authMessage}</Text>}
             <TouchableOpacity style={styles.primary} onPress={signOut}><Text style={styles.primaryText}>SIGN OUT</Text></TouchableOpacity>
             <TouchableOpacity style={[styles.action,{marginTop:12,borderColor:C.red}]} onPress={deleteAccount}><Text style={{color:C.red,fontWeight:"800"}}>DELETE ACCOUNT AND DATA</Text></TouchableOpacity>
             <TouchableOpacity onPress={()=>Linking.openURL("https://bnexora7-eng.github.io/nexora-business/privacy/")}><Text style={styles.note}>Privacy policy</Text></TouchableOpacity>
@@ -259,7 +284,7 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
- safe:{flex:1,backgroundColor:"#030711"},cosmicGlowTop:{position:"absolute",top:-140,right:-100,width:360,height:360,borderRadius:180,backgroundColor:"#0B4A88",opacity:0.24},cosmicGlowBottom:{position:"absolute",bottom:40,left:-150,width:360,height:360,borderRadius:180,backgroundColor:"#68152F",opacity:0.17},starField:{...StyleSheet.absoluteFillObject},bioStructure:{...StyleSheet.absoluteFillObject,opacity:0.48},bioSpineLeft:{position:"absolute",left:5,top:90,bottom:70,width:2,backgroundColor:"#1B5C91",opacity:0.45},bioSpineRight:{position:"absolute",right:5,top:130,bottom:95,width:2,backgroundColor:"#713044",opacity:0.42},bioCrossbarTop:{position:"absolute",top:118,left:0,right:0,height:1,backgroundColor:"#2D5B80",opacity:0.25},bioCrossbarBottom:{position:"absolute",bottom:145,left:0,right:0,height:1,backgroundColor:"#25496C",opacity:0.3},bioNodeTopLeft:{position:"absolute",top:112,left:1,width:12,height:12,borderWidth:1,borderColor:"#398ED0",backgroundColor:"#07172A",transform:[{rotate:"45deg"}]},bioNodeTopRight:{position:"absolute",top:124,right:1,width:12,height:12,borderWidth:1,borderColor:"#A33B56",backgroundColor:"#170D1B",transform:[{rotate:"45deg"}]},bioNodeBottomLeft:{position:"absolute",bottom:139,left:1,width:10,height:10,borderWidth:1,borderColor:"#398ED0",backgroundColor:"#07172A",transform:[{rotate:"45deg"}]},bioNodeBottomRight:{position:"absolute",bottom:139,right:1,width:10,height:10,borderWidth:1,borderColor:"#A33B56",backgroundColor:"#170D1B",transform:[{rotate:"45deg"}]},bioCableOne:{position:"absolute",top:210,left:-38,width:130,height:1,backgroundColor:"#2789D0",opacity:0.4,transform:[{rotate:"-28deg"}]},bioCableTwo:{position:"absolute",top:390,right:-38,width:130,height:1,backgroundColor:"#9A304D",opacity:0.35,transform:[{rotate:"28deg"}]},star:{position:"absolute",width:3,height:3,borderRadius:2,backgroundColor:"#A9D5FF",opacity:0.8,shadowColor:"#4B9DFF",shadowOpacity:1,shadowRadius:6},header:{paddingHorizontal:20,paddingTop:12,paddingBottom:14,borderBottomWidth:1,borderColor:C.line,flexDirection:"row",alignItems:"center",justifyContent:"space-between"},accountButton:{borderWidth:1,borderColor:C.cyan,borderRadius:8,paddingHorizontal:11,paddingVertical:9},accountButtonText:{fontSize:9,fontWeight:"900",letterSpacing:1,color:C.cyan},backLink:{marginBottom:16,alignSelf:"flex-start",paddingVertical:7},backLinkText:{fontSize:10,fontWeight:"900",letterSpacing:1.5,color:C.cyan},globalLabel:{fontSize:10,fontWeight:"900",letterSpacing:3,color:"#FF5366",marginBottom:12},brandHero:{minHeight:278,backgroundColor:"#070D18",borderWidth:1,borderColor:"#315B80",borderRadius:12,overflow:"hidden",alignItems:"center",paddingTop:17,marginBottom:22,shadowColor:"#168BFF",shadowOpacity:0.34,shadowRadius:22,elevation:9},heroTopLine:{width:"86%",flexDirection:"row",alignItems:"center",gap:9},heroLine:{height:1,flex:1,backgroundColor:"#3C5E85"},heroOverline:{fontSize:7,fontWeight:"900",letterSpacing:2,color:"#8FB6E9"},heroWordmarkStage:{flex:1,width:"100%",alignItems:"center",justifyContent:"center",paddingHorizontal:14},heroWordmark:{fontSize:35,fontWeight:"900",letterSpacing:3,color:"#E9F3FF",marginTop:8,textShadowColor:"#4E9DFF",textShadowRadius:18,textShadowOffset:{width:0,height:2}},wordmarkUnderline:{width:"58%",height:2,marginTop:14,backgroundColor:"#4B9DFF",shadowColor:"#168BFF",shadowOpacity:1,shadowRadius:10,elevation:5},heroTagline:{fontSize:9,fontWeight:"900",letterSpacing:4,color:"#E34D63",marginTop:3},heroBottom:{width:"100%",borderTopWidth:1,borderColor:"#203753",paddingVertical:10,alignItems:"center",backgroundColor:"#0B1728"},heroBottomText:{fontSize:8,fontWeight:"900",letterSpacing:2,color:"#8DAED5"},homeIntro:{fontSize:14,lineHeight:22,color:C.muted,marginTop:-8,marginBottom:22},areaGrid:{flexDirection:"row",flexWrap:"wrap",justifyContent:"space-between",gap:12},areaCard:{width:"47%",minHeight:154,backgroundColor:"#091525",borderWidth:1,borderColor:"#3B6488",borderRadius:12,overflow:"hidden",marginBottom:2,shadowColor:"#168BFF",shadowOpacity:0.28,shadowRadius:12,elevation:6},areaAccent:{position:"absolute",left:0,top:0,bottom:0,width:3,backgroundColor:"#39A7FF",shadowColor:"#39A7FF",shadowOpacity:0.9,shadowRadius:7},areaCorner:{position:"absolute",right:-22,top:-22,width:64,height:64,borderWidth:1,borderColor:"#47769C",backgroundColor:"#15304A",opacity:0.45,transform:[{rotate:"45deg"}]},areaHead:{minHeight:152,padding:13,paddingLeft:16,justifyContent:"space-between",backgroundColor:"#0A1A2D"},areaIndex:{width:30,height:26,borderWidth:1,borderColor:"#65B9FF",alignItems:"center",justifyContent:"center",borderRadius:3,backgroundColor:"#102B45",transform:[{skewX:"-7deg"}]},areaIndexText:{fontSize:9,fontWeight:"900",color:C.cyan,letterSpacing:1},areaTitle:{fontSize:15,fontWeight:"900",letterSpacing:1,color:C.text,marginTop:14},areaDescription:{fontSize:11,lineHeight:16,color:C.muted,marginTop:5},areaChevron:{position:"absolute",right:12,top:12,fontSize:18,color:C.cyan,fontWeight:"700"},areaActions:{paddingHorizontal:9,paddingBottom:9,borderTopWidth:1,borderColor:"#315A7D",backgroundColor:"#071321"},homeFoot:{fontSize:9,fontWeight:"800",letterSpacing:2,color:C.muted,textAlign:"center",marginTop:22},
+ safe:{flex:1,backgroundColor:"#030711"}, accountHero:{backgroundColor:"#0A1728",borderWidth:1,borderColor:"#24476A",borderRadius:18,paddingVertical:18,paddingHorizontal:14,alignItems:"center",marginBottom:14,overflow:"hidden"},accountHeroLogo:{width:"100%",height:116},accountHeroTitle:{fontSize:12,fontWeight:"900",letterSpacing:3,color:"#D9EAFE",marginTop:8},accountHeroSubtitle:{fontSize:9,fontWeight:"800",letterSpacing:1.2,color:"#6EA8FF",marginTop:7,textAlign:"center"},cosmicGlowTop:{position:"absolute",top:-140,right:-100,width:360,height:360,borderRadius:180,backgroundColor:"#0B4A88",opacity:0.24},cosmicGlowBottom:{position:"absolute",bottom:40,left:-150,width:360,height:360,borderRadius:180,backgroundColor:"#68152F",opacity:0.17},starField:{...StyleSheet.absoluteFillObject},bioStructure:{...StyleSheet.absoluteFillObject,opacity:0.48},bioSpineLeft:{position:"absolute",left:5,top:90,bottom:70,width:2,backgroundColor:"#1B5C91",opacity:0.45},bioSpineRight:{position:"absolute",right:5,top:130,bottom:95,width:2,backgroundColor:"#713044",opacity:0.42},bioCrossbarTop:{position:"absolute",top:118,left:0,right:0,height:1,backgroundColor:"#2D5B80",opacity:0.25},bioCrossbarBottom:{position:"absolute",bottom:145,left:0,right:0,height:1,backgroundColor:"#25496C",opacity:0.3},bioNodeTopLeft:{position:"absolute",top:112,left:1,width:12,height:12,borderWidth:1,borderColor:"#398ED0",backgroundColor:"#07172A",transform:[{rotate:"45deg"}]},bioNodeTopRight:{position:"absolute",top:124,right:1,width:12,height:12,borderWidth:1,borderColor:"#A33B56",backgroundColor:"#170D1B",transform:[{rotate:"45deg"}]},bioNodeBottomLeft:{position:"absolute",bottom:139,left:1,width:10,height:10,borderWidth:1,borderColor:"#398ED0",backgroundColor:"#07172A",transform:[{rotate:"45deg"}]},bioNodeBottomRight:{position:"absolute",bottom:139,right:1,width:10,height:10,borderWidth:1,borderColor:"#A33B56",backgroundColor:"#170D1B",transform:[{rotate:"45deg"}]},bioCableOne:{position:"absolute",top:210,left:-38,width:130,height:1,backgroundColor:"#2789D0",opacity:0.4,transform:[{rotate:"-28deg"}]},bioCableTwo:{position:"absolute",top:390,right:-38,width:130,height:1,backgroundColor:"#9A304D",opacity:0.35,transform:[{rotate:"28deg"}]},star:{position:"absolute",width:3,height:3,borderRadius:2,backgroundColor:"#A9D5FF",opacity:0.8,shadowColor:"#4B9DFF",shadowOpacity:1,shadowRadius:6},header:{paddingHorizontal:20,paddingTop:12,paddingBottom:14,borderBottomWidth:1,borderColor:C.line,flexDirection:"row",alignItems:"center",justifyContent:"space-between"},accountButton:{borderWidth:1,borderColor:C.cyan,borderRadius:8,paddingHorizontal:11,paddingVertical:9},accountButtonText:{fontSize:9,fontWeight:"900",letterSpacing:1,color:C.cyan},backLink:{marginBottom:16,alignSelf:"flex-start",paddingVertical:7},backLinkText:{fontSize:10,fontWeight:"900",letterSpacing:1.5,color:C.cyan},globalLabel:{fontSize:10,fontWeight:"900",letterSpacing:3,color:"#FF5366",marginBottom:12},brandHero:{minHeight:278,backgroundColor:"#070D18",borderWidth:1,borderColor:"#315B80",borderRadius:12,overflow:"hidden",alignItems:"center",paddingTop:17,marginBottom:22,shadowColor:"#168BFF",shadowOpacity:0.34,shadowRadius:22,elevation:9},heroTopLine:{width:"86%",flexDirection:"row",alignItems:"center",gap:9},heroLine:{height:1,flex:1,backgroundColor:"#3C5E85"},heroOverline:{fontSize:7,fontWeight:"900",letterSpacing:2,color:"#8FB6E9"},heroWordmarkStage:{flex:1,width:"100%",alignItems:"center",justifyContent:"center",paddingHorizontal:14},heroWordmark:{fontSize:35,fontWeight:"900",letterSpacing:3,color:"#E9F3FF",marginTop:8,textShadowColor:"#4E9DFF",textShadowRadius:18,textShadowOffset:{width:0,height:2}},wordmarkUnderline:{width:"58%",height:2,marginTop:14,backgroundColor:"#4B9DFF",shadowColor:"#168BFF",shadowOpacity:1,shadowRadius:10,elevation:5},heroTagline:{fontSize:9,fontWeight:"900",letterSpacing:4,color:"#E34D63",marginTop:3},heroBottom:{width:"100%",borderTopWidth:1,borderColor:"#203753",paddingVertical:10,alignItems:"center",backgroundColor:"#0B1728"},heroBottomText:{fontSize:8,fontWeight:"900",letterSpacing:2,color:"#8DAED5"},homeIntro:{fontSize:14,lineHeight:22,color:C.muted,marginTop:-8,marginBottom:22},areaGrid:{flexDirection:"row",flexWrap:"wrap",justifyContent:"space-between",gap:12},areaCard:{width:"47%",minHeight:154,backgroundColor:"#091525",borderWidth:1,borderColor:"#3B6488",borderRadius:12,overflow:"hidden",marginBottom:2,shadowColor:"#168BFF",shadowOpacity:0.28,shadowRadius:12,elevation:6},areaAccent:{position:"absolute",left:0,top:0,bottom:0,width:3,backgroundColor:"#39A7FF",shadowColor:"#39A7FF",shadowOpacity:0.9,shadowRadius:7},areaCorner:{position:"absolute",right:-22,top:-22,width:64,height:64,borderWidth:1,borderColor:"#47769C",backgroundColor:"#15304A",opacity:0.45,transform:[{rotate:"45deg"}]},areaHead:{minHeight:152,padding:13,paddingLeft:16,justifyContent:"space-between",backgroundColor:"#0A1A2D"},areaIndex:{width:30,height:26,borderWidth:1,borderColor:"#65B9FF",alignItems:"center",justifyContent:"center",borderRadius:3,backgroundColor:"#102B45",transform:[{skewX:"-7deg"}]},areaIndexText:{fontSize:9,fontWeight:"900",color:C.cyan,letterSpacing:1},areaTitle:{fontSize:15,fontWeight:"900",letterSpacing:1,color:C.text,marginTop:14},areaDescription:{fontSize:11,lineHeight:16,color:C.muted,marginTop:5},areaChevron:{position:"absolute",right:12,top:12,fontSize:18,color:C.cyan,fontWeight:"700"},areaActions:{paddingHorizontal:9,paddingBottom:9,borderTopWidth:1,borderColor:"#315A7D",backgroundColor:"#071321"},homeFoot:{fontSize:9,fontWeight:"800",letterSpacing:2,color:C.muted,textAlign:"center",marginTop:22},
  brandMark:{width:42,height:42,borderRadius:11,borderWidth:1,borderColor:"#79B8FF",backgroundColor:"#101F35",alignItems:"center",justifyContent:"center",position:"relative",shadowColor:C.cyan,shadowOpacity:0.55,shadowRadius:12,elevation:5},brandMarkText:{fontSize:25,fontWeight:"900",color:"#E8F4FF",letterSpacing:-2,textShadowColor:"#5AA7FF",textShadowRadius:9,textShadowOffset:{width:0,height:1}},brandChip:{position:"absolute",width:9,height:9,right:-3,bottom:-3,borderRadius:2,backgroundColor:C.cyan,borderWidth:2,borderColor:C.bg},brand:{fontSize:25,fontWeight:"900",letterSpacing:2,color:C.text},tag:{fontSize:9,letterSpacing:2,color:C.muted,marginTop:2},status:{flexDirection:"row",alignItems:"center",gap:7,borderWidth:1,borderColor:C.line,borderRadius:20,paddingHorizontal:10,paddingVertical:7},dot:{width:7,height:7,borderRadius:5,backgroundColor:C.amber},statusText:{fontSize:9,fontWeight:"800",color:C.amber,letterSpacing:1},
  content:{padding:20,paddingBottom:30},eyebrow:{fontSize:10,fontWeight:"800",letterSpacing:2,color:C.cyan,marginBottom:8},heading:{fontSize:27,lineHeight:33,fontWeight:"800",color:C.text,marginBottom:18},card:{backgroundColor:C.panel,borderWidth:1,borderColor:C.line,borderRadius:18,padding:18,marginBottom:18},kicker:{fontSize:10,fontWeight:"800",letterSpacing:1.7,color:C.cyan,marginBottom:12},hero:{fontSize:23,lineHeight:29,fontWeight:"800",color:C.text,marginBottom:10},muted:{fontSize:13,lineHeight:20,color:C.muted},tagRow:{flexDirection:"row",gap:7,flexWrap:"wrap",marginTop:17},tagChip:{overflow:"hidden",fontSize:9,color:C.cyan,borderWidth:1,borderColor:C.line,borderRadius:20,paddingHorizontal:9,paddingVertical:6,letterSpacing:1,fontWeight:"800"},
  section:{fontSize:17,fontWeight:"800",color:C.text,marginTop:4,marginBottom:10},action:{backgroundColor:C.panel,borderWidth:1,borderColor:C.line,borderRadius:14,padding:15,marginBottom:9,flexDirection:"row",alignItems:"center"},actionTitle:{fontSize:15,fontWeight:"800",color:C.text,marginBottom:4},arrow:{fontSize:26,color:C.cyan,paddingLeft:10},note:{fontSize:12,lineHeight:19,color:C.muted,marginTop:12,marginBottom:14},label:{fontSize:10,fontWeight:"800",letterSpacing:1.5,color:C.muted,marginTop:14,marginBottom:7},input:{backgroundColor:C.bg,borderWidth:1,borderColor:C.line,borderRadius:10,paddingHorizontal:13,paddingVertical:12,color:C.text,fontSize:15},

@@ -248,7 +248,21 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
     headers: { authorization: "Bearer " + loggedIn.token }
   });
   assert.equal(profile.status, 200);
-  assert.equal((await profile.json()).user.email, accountEmail);
+  const profileData = await profile.json();
+  assert.equal(profileData.user.email, accountEmail);
+  assert.equal(profileData.user.display_name, "");
+  const invalidDisplayName = await fetch(`http://127.0.0.1:${port}/v1/auth/profile`, {
+    method: "PUT", headers: { "content-type": "application/json", authorization: "Bearer " + loggedIn.token },
+    body: JSON.stringify({ display_name: "x" })
+  });
+  assert.equal(invalidDisplayName.status, 422);
+  const updatedProfile = await fetch(`http://127.0.0.1:${port}/v1/auth/profile`, {
+    method: "PUT", headers: { "content-type": "application/json", authorization: "Bearer " + loggedIn.token },
+    body: JSON.stringify({ display_name: "ALPINOSS Member" })
+  });
+  assert.equal(updatedProfile.status, 200);
+  assert.equal((await updatedProfile.json()).user.display_name, "ALPINOSS Member");
+
 
   // Project quotations can only be created and approved by the operator token.
   const quotePayload = { customer_email: accountEmail, amount: "375.00", description: "ALPINOSS small-company project", company_size_tier: "small_company", expiry_days: 14 };
@@ -379,6 +393,12 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
     body: JSON.stringify({ body: "verified accounts can publish without a subscription" })
   });
   assert.equal(lockedFeature.status, 201);
+  assert.equal((await lockedFeature.json()).post.author_name, "ALPINOSS Member");
+  const communityFeed = await fetch(`http://127.0.0.1:${port}/v1/community/posts`);
+  assert.equal(communityFeed.status, 200);
+  const feedData = await communityFeed.json();
+  assert.ok(feedData.posts.some(item => item.author_name === "ALPINOSS Member"));
+
 
 
   const lockedMarketplace = await fetch(`http://127.0.0.1:${port}/v1/marketplace/listings`, {
@@ -497,6 +517,39 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   const communityRead = await fetch("http://127.0.0.1:" + port + "/v1/community/posts");
   assert.equal(communityRead.status, 200);
   assert.ok(Array.isArray((await communityRead.json()).posts));
+
+  // Retired recurring products must remain inert even when Mollie retries old webhooks.
+  await pool.query("UPDATE app_users SET subscription_status='inactive',mollie_subscription_id=NULL WHERE id=$1", [accountId]);
+  const legacyOrderId = randomUUID();
+  await pool.query(
+    "INSERT INTO own_payments (order_id,user_id,amount,currency,description,status,mollie_payment_id) VALUES ($1,$2,29.99,'EUR','NEXORA All Access monthly subscription','open','tr_nexorafirst')",
+    [legacyOrderId, accountId]
+  );
+  mockFirstPaymentMetadata = { order_id: legacyOrderId, user_id: String(accountId), product: "nexora_all_access" };
+  firstPaymentStatus = "paid";
+  const legacyFirstWebhook = await fetch(`http://127.0.0.1:${port}/v1/payments/mollie-webhook`, {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ id: "tr_nexorafirst" })
+  });
+  assert.equal(legacyFirstWebhook.status, 200);
+  assert.equal((await legacyFirstWebhook.json()).legacy_subscription_ignored, true);
+  assert.equal(mollieSubscriptionCreateCount, 0, "retired first-payment webhook must not create a recurring Mollie subscription");
+  const legacyAccount = await pool.query(
+    "SELECT subscription_status,mollie_subscription_id FROM app_users WHERE id=$1",
+    [accountId]
+  );
+  assert.equal(legacyAccount.rows[0].subscription_status, "inactive");
+  assert.equal(legacyAccount.rows[0].mollie_subscription_id, null);
+  const legacyRecurringWebhook = await fetch(`http://127.0.0.1:${port}/v1/payments/mollie-webhook`, {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ id: "tr_nexorarecurring" })
+  });
+  assert.equal(legacyRecurringWebhook.status, 200);
+  assert.equal((await legacyRecurringWebhook.json()).legacy_subscription_ignored, true);
+  assert.equal(mollieSubscriptionCreateCount, 0, "retired renewal webhook must not create recurring subscriptions");
+  await pool.query("DELETE FROM own_payments WHERE order_id=$1", [legacyOrderId]);
 
   // Monthly membership is disabled: a signed-in account must never start a subscription checkout.
   const disabledCheckout = await fetch(`http://127.0.0.1:${port}/v1/subscriptions/checkout`, {
