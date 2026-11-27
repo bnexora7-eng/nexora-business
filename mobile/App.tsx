@@ -19,7 +19,7 @@ function Action({title,subtitle,onPress}:{title:string;subtitle:string;onPress:(
 }
 
 export default function App() {
-  const [tab,setTab] = useState<Tab>("Home");
+  const [tab,setTab] = useState<Tab>("Profile");
   const [amount,setAmount] = useState("950");
   const [reference,setReference] = useState("NX-2026-001");
   const [email,setEmail] = useState("");
