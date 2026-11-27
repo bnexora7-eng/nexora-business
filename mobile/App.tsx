@@ -6,7 +6,7 @@ import { Alert, BackHandler, SafeAreaView, ScrollView, StatusBar, StyleSheet, Te
 
 type Tab = "Home" | "Community" | "Marketplace" | "Business" | "Integrity" | "Profile";
 type Decision = "ACCEPT" | "REVIEW" | "REJECT";
-type Account = { id: string; email: string; created_at: string; subscription_status?: string };
+type Account = { id: string; email: string; display_name?: string; created_at: string; subscription_status?: string };
 
 const C = { bg:"#08111F", panel:"#111E30", panel2:"#17263B", line:"#263A53", text:"#F3F7FC", muted:"#91A4BA", cyan:"#4b8dff", blue:"#6EA8FF", green:"#43D19E", amber:"#F5BD58", red:"#FF7777" };
 
@@ -29,6 +29,8 @@ export default function App() {
   const [authMessage,setAuthMessage] = useState("");
   const [pendingVerificationEmail,setPendingVerificationEmail] = useState("");
   const [account,setAccount] = useState<Account|null>(null);
+  const [profileName,setProfileName] = useState("");
+  const [profileBusy,setProfileBusy] = useState(false);
   const [decision,setDecision] = useState<Decision|null>(null);
   const [expandedArea,setExpandedArea] = useState<string|null>(null);
 
@@ -49,7 +51,7 @@ export default function App() {
           }
           return;
         }
-        if (active) setAccount(data.user);
+        if (active) { setAccount(data.user); setProfileName(data.user.display_name||""); }
       } catch {
         if (active) setAuthMessage("Nie można połączyć się z serwerem konta.");
       }
@@ -80,6 +82,7 @@ export default function App() {
       }
       await SecureStore.setItemAsync("nexora_session", data.token);
       setAccount(data.user);
+      setProfileName(data.user.display_name||"");
       setPassword("");
       setPendingVerificationEmail("");
       setAuthMessage("Zalogowano pomyślnie.");
@@ -89,6 +92,20 @@ export default function App() {
     } finally {
       setAuthBusy(false);
     }
+  };
+
+  const saveProfile = async () => {
+    const name=profileName.trim().replace(/\\s+/g," ");
+    if(name.length<2||name.length>40||/[<>]/.test(name)){setAuthMessage("Nazwa profilu musi mieć od 2 do 40 znaków.");return;}
+    setProfileBusy(true);
+    try{
+      const token=await SecureStore.getItemAsync("nexora_session");
+      if(!token) throw new Error("Sesja wygasła. Zaloguj się ponownie.");
+      const {ok,data}=await apiRequest("/v1/auth/profile",{method:"PUT",headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},body:JSON.stringify({display_name:name})});
+      if(!ok) throw new Error(data.error||"Nie udało się zapisać profilu.");
+      setAccount(data.user);setProfileName(data.user.display_name||"");setAuthMessage("Profil został zapisany.");
+    }catch(error){setAuthMessage(error instanceof Error?error.message:"Błąd zapisu profilu.");}
+    finally{setProfileBusy(false);}
   };
 
   const signOut = async () => {
@@ -230,6 +247,10 @@ export default function App() {
           {account ? <>
             <Text style={styles.hero}>You are signed in.</Text>
             <Text style={styles.muted}>{account.email}</Text>
+            <Text style={styles.label}>PUBLIC DISPLAY NAME</Text>
+            <TextInput value={profileName} onChangeText={setProfileName} maxLength={40} placeholder="Your name in the community" placeholderTextColor={C.muted} style={styles.input}/>
+            <TouchableOpacity style={[styles.primary,profileBusy&&{opacity:0.6}]} disabled={profileBusy} onPress={saveProfile}><Text style={styles.primaryText}>{profileBusy?"SAVING…":"SAVE PROFILE"}</Text></TouchableOpacity>
+            {!!authMessage&&<Text accessibilityRole="alert" style={styles.note}>{authMessage}</Text>}
             <TouchableOpacity style={styles.primary} onPress={signOut}><Text style={styles.primaryText}>SIGN OUT</Text></TouchableOpacity>
             <TouchableOpacity style={[styles.action,{marginTop:12,borderColor:C.red}]} onPress={deleteAccount}><Text style={{color:C.red,fontWeight:"800"}}>DELETE ACCOUNT AND DATA</Text></TouchableOpacity>
             <TouchableOpacity onPress={()=>Linking.openURL("https://bnexora7-eng.github.io/nexora-business/privacy/")}><Text style={styles.note}>Privacy policy</Text></TouchableOpacity>
