@@ -95,7 +95,7 @@ export default function App() {
   };
 
   const saveProfile = async () => {
-    const name=profileName.trim().replace(/\\s+/g," ");
+    const name=profileName.trim().replace(/\s+/g," ");
     if(name.length<2||name.length>40||/[<>]/.test(name)){setAuthMessage("Nazwa profilu musi mieć od 2 do 40 znaków.");return;}
     setProfileBusy(true);
     try{
