@@ -18,12 +18,12 @@
       [
         "expo-splash-screen",
         {
-          "image": "../assets/alpinoss-official.jpg",
+          "image": "./assets/alpinoss-official.jpg",
           "imageWidth": 320,
           "resizeMode": "contain",
           "backgroundColor": "#030711",
           "dark": {
-            "image": "../assets/alpinoss-official.jpg",
+            "image": "./assets/alpinoss-official.jpg",
             "backgroundColor": "#030711"
           }
         }

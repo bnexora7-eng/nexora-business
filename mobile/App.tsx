@@ -191,7 +191,7 @@ export default function App() {
     <View pointerEvents="none" style={styles.bioStructure}><View style={styles.bioSpineLeft}/><View style={styles.bioSpineRight}/><View style={styles.bioCrossbarTop}/><View style={styles.bioCrossbarBottom}/><View style={styles.bioNodeTopLeft}/><View style={styles.bioNodeTopRight}/><View style={styles.bioNodeBottomLeft}/><View style={styles.bioNodeBottomRight}/><View style={styles.bioCableOne}/><View style={styles.bioCableTwo}/></View>
     <StatusBar barStyle="light-content" backgroundColor={C.bg}/>
     <View style={styles.header}>
-      <View style={{flexDirection:"row",alignItems:"center",gap:10}}><Image source={require("../assets/alpinoss-official.jpg")} style={{width:54,height:54}} resizeMode="contain"/><View><Text style={styles.brand}>ALPINOSS</Text><Text style={styles.tag}>NEXT LEVEL TOGETHER</Text></View></View>
+      <View style={{flexDirection:"row",alignItems:"center",gap:10}}><Image source={require("./assets/alpinoss-official.jpg")} style={{width:54,height:54}} resizeMode="contain"/><View><Text style={styles.brand}>ALPINOSS</Text><Text style={styles.tag}>NEXT LEVEL TOGETHER</Text></View></View>
       <TouchableOpacity onPress={()=>go("Profile")} style={styles.accountButton}><Text style={styles.accountButtonText}>ACCOUNT ↗</Text></TouchableOpacity>
     </View>
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
@@ -201,7 +201,7 @@ export default function App() {
         <View style={styles.brandHero}>
           <View style={styles.heroTopLine}><View style={styles.heroLine}/><Text style={styles.heroOverline}>A WORLD OF POSSIBILITIES</Text><View style={styles.heroLine}/></View>
           <View style={styles.heroWordmarkStage}>
-            <Image source={require("../assets/alpinoss-official.jpg")} style={{width:"92%",height:132}} resizeMode="contain"/>
+            <Image source={require("./assets/alpinoss-official.jpg")} style={{width:"92%",height:132}} resizeMode="contain"/>
             <View style={styles.wordmarkUnderline}/>
             <Text style={styles.heroTagline}>MANY POSSIBILITIES</Text>
           </View>
