@@ -25,12 +25,21 @@ export default function AlpinossModules({screen,signedIn,onNavigate}:{screen:"Co
   const [description,setDescription]=useState("");
   const [price,setPrice]=useState("0");
   const [category,setCategory]=useState("service");
+  const [offerSearch,setOfferSearch]=useState("");
+  const [offerFilter,setOfferFilter]=useState<"all"|"service"|"product"|"digital">("all");
   const [busy,setBusy]=useState(false);
   const [loading,setLoading]=useState(false);
 
   const token=async()=>await SecureStore.getItemAsync("nexora_session");
   const loadPosts=async()=>{setLoading(true);try{const {ok,data}=await apiRequest("/v1/community/posts");if(!ok)throw new Error(data.error||"Community is unavailable.");setPosts(data.posts||[]);setMessage("");}catch(e){setMessage(e instanceof Error?e.message:"Community unavailable.");}finally{setLoading(false);}};
   const loadOffers=async()=>{setLoading(true);try{const {ok,data}=await apiRequest("/v1/marketplace/listings");if(!ok)throw new Error(data.error||"Marketplace is unavailable.");setOffers(data.listings||[]);setMessage("");}catch(e){setMessage(e instanceof Error?e.message:"Marketplace unavailable.");}finally{setLoading(false);}};
+  const visibleOffers=offers.filter(o=>{
+    const matchesCategory=offerFilter==="all"||o.category===offerFilter;
+    const needle=offerSearch.trim().toLocaleLowerCase();
+    const matchesSearch=!needle||`${o.title||""} ${o.description||""}`.toLocaleLowerCase().includes(needle);
+    return matchesCategory&&matchesSearch;
+  });
+
   useEffect(()=>{if(screen==="Community")loadPosts();if(screen==="Marketplace")loadOffers();},[screen]);
 
   const publishPost=async()=>{if(!signedIn){onNavigate("Profile");return;}if(!post.trim()){setMessage("Write a post first.");return;}setBusy(true);try{const t=await token();if(!t){onNavigate("Profile");throw new Error("Your session has expired. Sign in again.");}const {ok,data}=await apiRequest("/v1/community/posts",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+t},body:JSON.stringify({body:post})});if(!ok)throw new Error(data.error||"Could not publish the update.");setPosts(p=>[data.post,...p]);setPost("");setMessage("Post published.");}catch(e){setMessage(e instanceof Error?e.message:"Could not publish.");}finally{setBusy(false);}};
@@ -51,10 +60,13 @@ export default function AlpinossModules({screen,signedIn,onNavigate}:{screen:"Co
       <View style={styles.card}><Text style={styles.title}>ALPINOSS Marketplace</Text><Text style={styles.text}>Publish services, products and digital offers. Checkout and seller payouts are not active yet.</Text>{field("OFFER TITLE",title,setTitle,"What are you offering?")}
       <Text style={styles.label}>CATEGORY</Text><View style={{flexDirection:"row",gap:8}}>{["service","product","digital"].map(c=><TouchableOpacity key={c} onPress={()=>setCategory(c)} style={{padding:9,borderRadius:8,borderWidth:1,borderColor:category===c?C.cyan:C.line}}><Text style={{color:category===c?C.cyan:C.text}}>{c}</Text></TouchableOpacity>)}</View>
       {field("DESCRIPTION",description,setDescription,"Describe your offer...",true)}{field("PRICE (EUR)",price,setPrice,"0.00")}{button("PUBLISH OFFER",publishOffer)}{!!message&&<Text style={styles.note}>{message}</Text>}</View>
-      <View style={{flexDirection:"row",justifyContent:"space-between",alignItems:"center",marginBottom:10}}><Text style={styles.title}>Offers ({offers.length})</Text><TouchableOpacity onPress={loadOffers}><Text style={styles.note}>REFRESH</Text></TouchableOpacity></View>
+      <View style={{flexDirection:"row",justifyContent:"space-between",alignItems:"center",marginBottom:10}}><Text style={styles.title}>Offers ({visibleOffers.length} / {offers.length})</Text><TouchableOpacity onPress={loadOffers}><Text style={styles.note}>REFRESH</Text></TouchableOpacity></View>
+      {field("SEARCH OFFERS",offerSearch,setOfferSearch,"Search titles and descriptions...")}
+      <View style={{flexDirection:"row",flexWrap:"wrap",gap:8,marginBottom:12,marginTop:10}}>{(["all","service","product","digital"] as const).map(f=><TouchableOpacity key={f} onPress={()=>setOfferFilter(f)} style={{paddingVertical:8,paddingHorizontal:12,borderRadius:8,borderWidth:1,borderColor:offerFilter===f?C.cyan:C.line,backgroundColor:offerFilter===f?C.panel2:"transparent"}}><Text style={{color:offerFilter===f?C.cyan:C.text,fontWeight:"800"}}>{f.toUpperCase()}</Text></TouchableOpacity>)}</View>
       {loading&&<Text style={styles.text}>Loading offers…</Text>}
-      {offers.map(o=><View key={o.id} style={styles.card}><Text style={styles.note}>{String(o.category).toUpperCase()} · ALPINOSS SELLER</Text><Text style={[styles.title,{fontSize:17}]}>{o.title}</Text><Text style={styles.text}>{o.description}</Text><Text style={styles.title}>€{Number(o.price).toFixed(2)}</Text></View>)}
+      {visibleOffers.map(o=><View key={o.id} style={styles.card}><Text style={styles.note}>{String(o.category).toUpperCase()} · ALPINOSS SELLER</Text><Text style={[styles.title,{fontSize:17}]}>{o.title}</Text><Text style={styles.text}>{o.description}</Text><Text style={styles.title}>€{Number(o.price).toFixed(2)}</Text></View>)}
       {!loading&&!offers.length&&<View style={styles.card}><Text style={styles.title}>The marketplace is ready for its first offers.</Text><Text style={styles.text}>Browse again later or publish a clear service or product offer when you're signed in. Checkout and seller payouts are not active yet.</Text></View>}
+      {!loading&&offers.length>0&&!visibleOffers.length&&<View style={styles.card}><Text style={styles.title}>No matching offers</Text><Text style={styles.text}>Try another search phrase or choose a different category.</Text></View>}
     </>}
     {screen==="Business"&&<BusinessStudio signedIn={signedIn}/>}
 
