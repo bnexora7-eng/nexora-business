@@ -29,9 +29,9 @@ npx expo start
 - Secrets belong in server-side environment variables, never in this repository or the app bundle.
 
 ## Android package
-`com.nexora.business`
+`com.alpinoss.app`
 
 The project uses Expo SDK 54, which targets Android 16 / API 36 by default.
 
 ## Current status
-The mobile app has a working prototype structure and backend account/payment API integration code. The payment provider is not configured, so checkout cannot yet accept money. Android build and TypeScript checks are automated in GitHub Actions; a successful build is a debug APK, not a Play Store release.
+The mobile app has a working prototype structure and backend account API integration code. The Business Studio execution checklist persists locally with Expo SecureStore. The payment provider is not configured, so checkout cannot accept money. Android build and TypeScript checks are automated in GitHub Actions; a successful build is a test artifact, not a Play Store release. Physical-device acceptance and Play Console publication remain outstanding.
