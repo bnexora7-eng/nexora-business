@@ -207,21 +207,20 @@ export default function App() {
           </View>
           <View style={styles.heroBottom}><Text style={styles.heroBottomText}>CONNECT  •  CREATE  •  EXPLORE</Text></View>
         </View>
-        <Text style={styles.homeIntro}>One connected space to build, explore, create and connect.</Text>
+        <Text style={styles.homeIntro}>Technology, marketplace and community — built to move ideas forward.</Text>
         <View style={styles.areaGrid}>
-          {areaCard("Platform","01","Tools, plans and your personal workspace",[
+          {areaCard("Technology","01","AI, systems and digital infrastructure",[
             {title:"Business workspace",subtitle:"Build and manage your projects",target:"Business"},
-            {title:"Account & profile",subtitle:"Sign in and manage your account",target:"Profile"}
+            {title:"Payment Integrity",subtitle:"Open the payment screening demo",target:"Integrity"}
           ])}
-          {areaCard("Technology","02","AI, systems and digital infrastructure",[
-            {title:"Payment Integrity",subtitle:"Open the payment screening demo",target:"Integrity"},
-            {title:"Business tools",subtitle:"Explore your project workspace",target:"Business"}
-          ])}
-          {areaCard("Marketplace","03","Discover offers, products and services",[
+          {areaCard("Marketplace","02","Discover offers, products and services",[
             {title:"Explore marketplace",subtitle:"Browse and publish offers",target:"Marketplace"}
           ])}
-          {areaCard("Community","04","People, ideas and shared opportunities",[
+          {areaCard("Community","03","People, ideas and shared opportunities",[
             {title:"Open community",subtitle:"Connect and share updates",target:"Community"}
+          ])}
+          {areaCard("Prices","04","One-off project fees. Scope and price to discuss.",[
+            {title:"Request a project quote",subtitle:"Discuss scope, timing and budget",target:"Business"}
           ])}
         </View>
         <Text style={styles.homeFoot}>ALPINOSS  •  MANY POSSIBILITIES</Text>
