@@ -248,7 +248,21 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
     headers: { authorization: "Bearer " + loggedIn.token }
   });
   assert.equal(profile.status, 200);
-  assert.equal((await profile.json()).user.email, accountEmail);
+  const profileData = await profile.json();
+  assert.equal(profileData.user.email, accountEmail);
+  assert.equal(profileData.user.display_name, "");
+  const invalidDisplayName = await fetch(`http://127.0.0.1:${port}/v1/auth/profile`, {
+    method: "PUT", headers: { "content-type": "application/json", authorization: "Bearer " + loggedIn.token },
+    body: JSON.stringify({ display_name: "x" })
+  });
+  assert.equal(invalidDisplayName.status, 422);
+  const updatedProfile = await fetch(`http://127.0.0.1:${port}/v1/auth/profile`, {
+    method: "PUT", headers: { "content-type": "application/json", authorization: "Bearer " + loggedIn.token },
+    body: JSON.stringify({ display_name: "ALPINOSS Member" })
+  });
+  assert.equal(updatedProfile.status, 200);
+  assert.equal((await updatedProfile.json()).user.display_name, "ALPINOSS Member");
+
 
   // Project quotations can only be created and approved by the operator token.
   const quotePayload = { customer_email: accountEmail, amount: "375.00", description: "ALPINOSS small-company project", company_size_tier: "small_company", expiry_days: 14 };
@@ -379,6 +393,12 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
     body: JSON.stringify({ body: "verified accounts can publish without a subscription" })
   });
   assert.equal(lockedFeature.status, 201);
+  assert.equal((await lockedFeature.json()).post.author_name, "ALPINOSS Member");
+  const communityFeed = await fetch(`http://127.0.0.1:${port}/v1/community/posts`);
+  assert.equal(communityFeed.status, 200);
+  const feedData = await communityFeed.json();
+  assert.ok(feedData.posts.some(item => item.author_name === "ALPINOSS Member"));
+
 
 
   const lockedMarketplace = await fetch(`http://127.0.0.1:${port}/v1/marketplace/listings`, {
