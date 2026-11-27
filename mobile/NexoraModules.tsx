@@ -27,17 +27,24 @@ export default function AlpinossModules({screen,signedIn,onNavigate}:{screen:"Co
   const [category,setCategory]=useState("service");
   const [offerSearch,setOfferSearch]=useState("");
   const [offerFilter,setOfferFilter]=useState<"all"|"service"|"product"|"digital">("all");
+  const [savedOfferIds,setSavedOfferIds]=useState<string[]>([]);
+  const [savedOffersLoaded,setSavedOffersLoaded]=useState(false);
+  const [savedOnly,setSavedOnly]=useState(false);
   const [busy,setBusy]=useState(false);
   const [loading,setLoading]=useState(false);
 
   const token=async()=>await SecureStore.getItemAsync("nexora_session");
   const loadPosts=async()=>{setLoading(true);try{const {ok,data}=await apiRequest("/v1/community/posts");if(!ok)throw new Error(data.error||"Community is unavailable.");setPosts(data.posts||[]);setMessage("");}catch(e){setMessage(e instanceof Error?e.message:"Community unavailable.");}finally{setLoading(false);}};
   const loadOffers=async()=>{setLoading(true);try{const {ok,data}=await apiRequest("/v1/marketplace/listings");if(!ok)throw new Error(data.error||"Marketplace is unavailable.");setOffers(data.listings||[]);setMessage("");}catch(e){setMessage(e instanceof Error?e.message:"Marketplace unavailable.");}finally{setLoading(false);}};
+  useEffect(()=>{let active=true;(async()=>{try{const raw=await SecureStore.getItemAsync("alpinoss_saved_offers_v1");if(raw){const parsed:unknown=JSON.parse(raw);if(Array.isArray(parsed))setSavedOfferIds(parsed.filter((id):id is string=>typeof id==="string"));}}catch{}finally{if(active)setSavedOffersLoaded(true);}})();return()=>{active=false;};},[]);
+  useEffect(()=>{if(savedOffersLoaded)SecureStore.setItemAsync("alpinoss_saved_offers_v1",JSON.stringify(savedOfferIds)).catch(()=>{});},[savedOfferIds,savedOffersLoaded]);
+  const toggleSavedOffer=(id:string)=>setSavedOfferIds(current=>current.includes(id)?current.filter(value=>value!==id):[...current,id]);
   const visibleOffers=offers.filter(o=>{
     const matchesCategory=offerFilter==="all"||o.category===offerFilter;
     const needle=offerSearch.trim().toLocaleLowerCase();
     const matchesSearch=!needle||`${o.title||""} ${o.description||""}`.toLocaleLowerCase().includes(needle);
-    return matchesCategory&&matchesSearch;
+    const matchesSaved=!savedOnly||savedOfferIds.includes(String(o.id));
+    return matchesCategory&&matchesSearch&&matchesSaved;
   });
 
   useEffect(()=>{if(screen==="Community")loadPosts();if(screen==="Marketplace")loadOffers();},[screen]);
@@ -61,10 +68,11 @@ export default function AlpinossModules({screen,signedIn,onNavigate}:{screen:"Co
       <Text style={styles.label}>CATEGORY</Text><View style={{flexDirection:"row",gap:8}}>{["service","product","digital"].map(c=><TouchableOpacity key={c} onPress={()=>setCategory(c)} style={{padding:9,borderRadius:8,borderWidth:1,borderColor:category===c?C.cyan:C.line}}><Text style={{color:category===c?C.cyan:C.text}}>{c}</Text></TouchableOpacity>)}</View>
       {field("DESCRIPTION",description,setDescription,"Describe your offer...",true)}{field("PRICE (EUR)",price,setPrice,"0.00")}{button("PUBLISH OFFER",publishOffer)}{!!message&&<Text style={styles.note}>{message}</Text>}</View>
       <View style={{flexDirection:"row",justifyContent:"space-between",alignItems:"center",marginBottom:10}}><Text style={styles.title}>Offers ({visibleOffers.length} / {offers.length})</Text><TouchableOpacity onPress={loadOffers}><Text style={styles.note}>REFRESH</Text></TouchableOpacity></View>
+      <TouchableOpacity onPress={()=>setSavedOnly(value=>!value)} style={{alignSelf:"flex-start",paddingVertical:8,paddingHorizontal:12,borderRadius:8,borderWidth:1,borderColor:savedOnly?C.cyan:C.line,marginBottom:8}}><Text style={{color:savedOnly?C.cyan:C.text,fontWeight:"800"}}>{savedOnly?"★ SAVED OFFERS":"☆ SHOW SAVED ONLY"}</Text></TouchableOpacity>
       {field("SEARCH OFFERS",offerSearch,setOfferSearch,"Search titles and descriptions...")}
       <View style={{flexDirection:"row",flexWrap:"wrap",gap:8,marginBottom:12,marginTop:10}}>{(["all","service","product","digital"] as const).map(f=><TouchableOpacity key={f} onPress={()=>setOfferFilter(f)} style={{paddingVertical:8,paddingHorizontal:12,borderRadius:8,borderWidth:1,borderColor:offerFilter===f?C.cyan:C.line,backgroundColor:offerFilter===f?C.panel2:"transparent"}}><Text style={{color:offerFilter===f?C.cyan:C.text,fontWeight:"800"}}>{f.toUpperCase()}</Text></TouchableOpacity>)}</View>
       {loading&&<Text style={styles.text}>Loading offers…</Text>}
-      {visibleOffers.map(o=><View key={o.id} style={styles.card}><Text style={styles.note}>{String(o.category).toUpperCase()} · ALPINOSS SELLER</Text><Text style={[styles.title,{fontSize:17}]}>{o.title}</Text><Text style={styles.text}>{o.description}</Text><Text style={styles.title}>€{Number(o.price).toFixed(2)}</Text></View>)}
+      {visibleOffers.map(o=><View key={o.id} style={styles.card}><View style={{flexDirection:"row",justifyContent:"space-between",alignItems:"flex-start"}}><Text style={[styles.note,{flex:1}]}>{String(o.category).toUpperCase()} · ALPINOSS SELLER</Text><TouchableOpacity accessibilityRole="button" accessibilityLabel={savedOfferIds.includes(String(o.id))?"Remove saved offer":"Save offer"} onPress={()=>toggleSavedOffer(String(o.id))} style={{paddingHorizontal:8,paddingVertical:4}}><Text style={{color:C.cyan,fontSize:18,fontWeight:"900"}}>{savedOfferIds.includes(String(o.id))?"★":"☆"}</Text></TouchableOpacity></View><Text style={[styles.title,{fontSize:17}]}>{o.title}</Text><Text style={styles.text}>{o.description}</Text><Text style={styles.title}>€{Number(o.price).toFixed(2)}</Text></View>)}
       {!loading&&!offers.length&&<View style={styles.card}><Text style={styles.title}>The marketplace is ready for its first offers.</Text><Text style={styles.text}>Browse again later or publish a clear service or product offer when you're signed in. Checkout and seller payouts are not active yet.</Text></View>}
       {!loading&&offers.length>0&&!visibleOffers.length&&<View style={styles.card}><Text style={styles.title}>No matching offers</Text><Text style={styles.text}>Try another search phrase or choose a different category.</Text></View>}
     </>}
