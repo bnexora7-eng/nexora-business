@@ -519,6 +519,7 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   assert.ok(Array.isArray((await communityRead.json()).posts));
 
   // Retired recurring products must remain inert even when Mollie retries old webhooks.
+  await pool.query("UPDATE app_users SET subscription_status='inactive',mollie_subscription_id=NULL WHERE id=$1", [accountId]);
   const legacyOrderId = randomUUID();
   await pool.query(
     "INSERT INTO own_payments (order_id,user_id,amount,currency,description,status,mollie_payment_id) VALUES ($1,$2,29.99,'EUR','NEXORA All Access monthly subscription','open','tr_nexorafirst')",
