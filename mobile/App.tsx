@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import * as SecureStore from "expo-secure-store";
 import AlpinossModules from "./NexoraModules";
 import { API_BASE, apiRequest } from "./api";
-import { Alert, BackHandler, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View, Linking } from "react-native";
+import { Alert, BackHandler, Image, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View, Linking } from "react-native";
 
 type Tab = "Home" | "Community" | "Marketplace" | "Business" | "Integrity" | "Profile";
 type Decision = "ACCEPT" | "REVIEW" | "REJECT";
@@ -24,7 +24,7 @@ export default function App() {
   const [reference,setReference] = useState("NX-2026-001");
   const [email,setEmail] = useState("");
   const [password,setPassword] = useState("");
-  const [authMode,setAuthMode] = useState<"login"|"register">("register");
+  const [authMode,setAuthMode] = useState<"login"|"register">("login");
   const [authBusy,setAuthBusy] = useState(false);
   const [authMessage,setAuthMessage] = useState("");
   const [pendingVerificationEmail,setPendingVerificationEmail] = useState("");
@@ -191,7 +191,7 @@ export default function App() {
     <View pointerEvents="none" style={styles.bioStructure}><View style={styles.bioSpineLeft}/><View style={styles.bioSpineRight}/><View style={styles.bioCrossbarTop}/><View style={styles.bioCrossbarBottom}/><View style={styles.bioNodeTopLeft}/><View style={styles.bioNodeTopRight}/><View style={styles.bioNodeBottomLeft}/><View style={styles.bioNodeBottomRight}/><View style={styles.bioCableOne}/><View style={styles.bioCableTwo}/></View>
     <StatusBar barStyle="light-content" backgroundColor={C.bg}/>
     <View style={styles.header}>
-      <View><Text style={styles.brand}>ALPINOSS</Text><Text style={styles.tag}>MANY POSSIBILITIES</Text></View>
+      <View style={{flexDirection:"row",alignItems:"center",gap:10}}><Image source={require("../assets/alpinoss-official.jpg")} style={{width:54,height:54}} resizeMode="contain"/><View><Text style={styles.brand}>ALPINOSS</Text><Text style={styles.tag}>NEXT LEVEL TOGETHER</Text></View></View>
       <TouchableOpacity onPress={()=>go("Profile")} style={styles.accountButton}><Text style={styles.accountButtonText}>ACCOUNT ↗</Text></TouchableOpacity>
     </View>
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
@@ -201,7 +201,7 @@ export default function App() {
         <View style={styles.brandHero}>
           <View style={styles.heroTopLine}><View style={styles.heroLine}/><Text style={styles.heroOverline}>A WORLD OF POSSIBILITIES</Text><View style={styles.heroLine}/></View>
           <View style={styles.heroWordmarkStage}>
-            <Text style={styles.heroWordmark}>ALPINOSS</Text>
+            <Image source={require("../assets/alpinoss-official.jpg")} style={{width:"92%",height:132}} resizeMode="contain"/>
             <View style={styles.wordmarkUnderline}/>
             <Text style={styles.heroTagline}>MANY POSSIBILITIES</Text>
           </View>
