@@ -1378,7 +1378,7 @@ async function handleUpdateProfile(req,res) {
   const user=await requireUser(req,res); if(!user) return;
   const raw=await readBody(req); let input;
   try { input=JSON.parse(raw.toString("utf8")); } catch { return send(res,400,{error:"Invalid JSON"}); }
-  const displayName=typeof input?.display_name==="string"?input.display_name.trim().replace(/\\s+/g," "):"";
+  const displayName=typeof input?.display_name==="string"?input.display_name.trim().replace(/\s+/g," "):"";
   if(displayName.length<2||displayName.length>40||/[<>]/.test(displayName)) return send(res,422,{error:"Display name must contain 2 to 40 characters and cannot include angle brackets"});
   const result=await pool.query("UPDATE app_users SET display_name=$2,updated_at=NOW() WHERE id=$1 RETURNING id,email,display_name,created_at,subscription_status",[user.id,displayName]);
   const profile=result.rows[0];
