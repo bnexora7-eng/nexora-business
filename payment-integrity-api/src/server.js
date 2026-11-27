@@ -1553,7 +1553,7 @@ async function handleCommunity(req, res) {
     const body = typeof input?.body === "string" ? input.body.trim() : "";
     if (!body || body.length > 1000) return send(res,422,{error:"Post must contain 1 to 1000 characters"});
     const result = await pool.query(
-      "INSERT INTO community_posts (user_id,body) VALUES ($1,$2) RETURNING id,body,created_at",
+      "INSERT INTO community_posts (user_id,body) VALUES ($1,$2) RETURNING id,body,created_at,(SELECT COALESCE(NULLIF(display_name,''),'ALPINOSS MEMBER') FROM app_users WHERE id=$1) AS author_name",
       [user.id,body]
     );
     return send(res,201,{post:result.rows[0]});
