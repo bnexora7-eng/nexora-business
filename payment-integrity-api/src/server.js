@@ -1054,6 +1054,12 @@ async function handleMollieWebhook(req, res) {
       const quoteStatus = payment.status === "paid" ? "paid" : payment.status === "expired" ? "expired" : ["canceled","failed"].includes(payment.status) ? "cancelled" : "payment_pending";
       await pool.query("UPDATE project_quotes SET status=$1,updated_at=NOW() WHERE id=$2 AND (status='payment_pending' OR ($1='paid' AND status IN ('cancelled','expired')))", [quoteStatus,order.quote_id]);
     }
+    if (order.description === "NEXORA All Access monthly subscription") {
+      // Legacy recurring products are retired. A delayed or retried first-payment
+      // webhook must never create a Mollie subscription or grant membership.
+      console.warn("Ignoring retired legacy subscription payment webhook", molliePaymentId);
+      return send(res,200,{received:true,legacy_subscription_ignored:true});
+    }
     if (order.description === "NEXORA All Access monthly subscription" && payment.status === "paid") {
       // Serialize first-payment activation with account deletion and checkout.
       // If deletion owns the row lock first, this sees no account after it commits
@@ -1127,6 +1133,9 @@ async function handleMollieWebhook(req, res) {
   }
   const subscriptionId=payment.subscriptionId || payment.subscription_id;
   if (typeof subscriptionId === "string") {
+    // Recurring renewals from retired products are acknowledged but never applied.
+    console.warn("Ignoring retired recurring payment webhook", molliePaymentId);
+    return send(res,200,{received:true,legacy_subscription_ignored:true});
     // Mollie Payment resources include createdAt. Reject an incomplete event
     // rather than applying an ordering decision based on webhook arrival time.
     const paymentCreatedAt = typeof payment.createdAt === "string" ? new Date(payment.createdAt) : null;
