@@ -77,3 +77,45 @@ test("account sign-in session is shared with the member workspace", async () => 
   assert.match(workspace, /sessionStorage\.removeItem\(["']alpinoss_web_email["']/);
   assert.doesNotMatch(workspace, /nexora_web_token|nexora_web_email/);
 });
+
+test("homepage core areas open their matching ALPINOSS workspace modules", async () => {
+  const homePath = new URL("../../index.html", import.meta.url);
+  const workspacePath = new URL("../../app/index.html", import.meta.url);
+  const home = await readFile(homePath, "utf8");
+  const workspace = await readFile(workspacePath, "utf8");
+  for (const route of ["platform", "technology", "marketplace", "community"]) {
+    assert.ok(home.includes('href="app/#' + route + '"'), "homepage must link to " + route);
+  }
+  assert.match(workspace, /const routeToTab=\{platform:"business",business:"business",technology:"technology",marketplace:"marketplace",community:"community"\}/);
+  assert.match(workspace, /window\.addEventListener\("hashchange",activateFromHash\)/);
+  const script = workspace.match(/<script>([\s\S]*?)<\/script>/i)?.[1];
+  assert.ok(script, "workspace page must include its application script");
+  assert.doesNotThrow(() => new vm.Script(script), "workspace application script must parse");
+});
+
+test("official ALPINOSS logo is the first screen and opens the main menu on tap", async () => {
+  const html = await readFile(new URL("../../index.html", import.meta.url), "utf8");
+  assert.match(html, /<button id="alpinoss-splash"[^>]*aria-label="Enter ALPINOSS"/);
+  assert.match(html, /<img src="assets\/alpinoss-official\.jpg" alt="Official ALPINOSS logo — Next Level Together"/);
+  assert.match(html, /<div id="site-shell" hidden>/);
+  assert.ok(html.indexOf('id="alpinoss-splash"') < html.indexOf('id="site-shell"'), "logo screen must appear before the site menu");
+  assert.match(html, /splash\.addEventListener\("click",\s*\(\)\s*=>\s*\{\s*splash\.hidden = true;\s*shell\.hidden = false;/);
+  for (const area of ["Platform", "Technology", "Marketplace", "Community"]) {
+    assert.ok(html.includes(">" + area + "</h2>"), "main menu must include " + area);
+  }
+});
+
+
+test("mobile Payment Integrity sends synthetic events to the backend screening API", async () => {
+  const mobilePath = new URL("../../mobile/App.tsx", import.meta.url);
+  const serverPath = new URL("../src/server.js", import.meta.url);
+  const mobile = await readFile(mobilePath, "utf8");
+  const server = await readFile(serverPath, "utf8");
+  assert.match(mobile, /apiRequest\(["']\/v1\/demo\/events["']/);
+  assert.match(mobile, /currency:\s*["']EUR["']/);
+  assert.match(mobile, /status:\s*["']SUCCESS["']/);
+  assert.match(mobile, /setDecision\(data\.decision\)/);
+  assert.doesNotMatch(mobile, /const screening = useMemo/);
+  assert.match(server, /if \(req\.headers\.origin && req\.headers\.origin !== DEMO_ORIGIN\)/);
+  assert.match(server, /pathname === "\/v1\/demo\/events"/);
+});
