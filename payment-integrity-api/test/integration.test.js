@@ -244,6 +244,34 @@ test("HTTP API persists minimized event data and rejects duplicates", { skip: !e
   assert.equal(typeof loggedIn.token, "string");
   assert.equal(loggedIn.token.length >= 40, true);
 
+  // Every member-only endpoint must reject a request without a bearer session.
+  // This guards against accidentally exposing account, billing or paid features
+  // when a route is added or its handler is refactored.
+  const unauthenticatedRequests = [
+    ["GET", "/v1/auth/me"],
+    ["POST", "/v1/auth/logout"],
+    ["DELETE", "/v1/auth/account"],
+    ["POST", "/v1/subscriptions/checkout"],
+    ["GET", "/v1/subscriptions/me"],
+    ["POST", "/v1/subscriptions/cancel"],
+    ["POST", "/v1/payments"],
+    ["GET", "/v1/payments/00000000-0000-4000-8000-000000000001"],
+    ["POST", "/v1/community/posts"],
+    ["POST", "/v1/marketplace/listings"],
+    ["GET", "/v1/business/workspace"],
+    ["PUT", "/v1/business/workspace"],
+    ["POST", "/v1/business/ai-plan"]
+  ];
+  for (const [method, path] of unauthenticatedRequests) {
+    const response = await fetch(`http://127.0.0.1:${port}${path}`, {
+      method,
+      headers: { "content-type": "application/json" },
+      body: ["POST", "PUT"].includes(method) ? "{}" : undefined
+    });
+    assert.equal(response.status, 401, `${method} ${path} must require authentication`);
+  }
+
+
   const profile = await fetch(`http://127.0.0.1:${port}/v1/auth/me`, {
     headers: { authorization: "Bearer " + loggedIn.token }
   });
